@@ -53,22 +53,36 @@ function Switch-Project {
         return
     }
 
-    # Determine config path
+    # Determine config path with priority order:
+    # 1. Parameter (-ConfigPath)
+    # 2. Environment variable (PROJSWITCH_CONFIG)
+    # 3. Cursor Project Manager
+    # 4. VS Code Project Manager
     if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
-        # Try Cursor first, then VS Code
-        $cursorPath = Join-Path $env:APPDATA "Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
-        $vscodePath = Join-Path $env:APPDATA "Code\User\globalStorage\alefragnani.project-manager\projects.json"
+        # Check environment variable first
+        if (-not [string]::IsNullOrWhiteSpace($env:PROJSWITCH_CONFIG)) {
+            $ConfigPath = $env:PROJSWITCH_CONFIG
+            Write-Host "Using config from environment variable: $ConfigPath" -ForegroundColor Cyan
+        }
+        # Try Project Manager locations
+        else {
+            $cursorPath = Join-Path $env:APPDATA "Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
+            $vscodePath = Join-Path $env:APPDATA "Code\User\globalStorage\alefragnani.project-manager\projects.json"
 
-        if (Test-Path $cursorPath) {
-            $ConfigPath = $cursorPath
-        } elseif (Test-Path $vscodePath) {
-            $ConfigPath = $vscodePath
-        } else {
-            Write-Host "Error: Project Manager configuration not found." -ForegroundColor Red
-            Write-Host "Searched locations:" -ForegroundColor Yellow
-            Write-Host "  - $cursorPath" -ForegroundColor Gray
-            Write-Host "  - $vscodePath" -ForegroundColor Gray
-            return
+            if (Test-Path $cursorPath) {
+                $ConfigPath = $cursorPath
+            } elseif (Test-Path $vscodePath) {
+                $ConfigPath = $vscodePath
+            } else {
+                Write-Host "Error: No project configuration found." -ForegroundColor Red
+                Write-Host "`nSearched locations:" -ForegroundColor Yellow
+                Write-Host "  - Environment variable: PROJSWITCH_CONFIG (not set)" -ForegroundColor Gray
+                Write-Host "  - Cursor: $cursorPath" -ForegroundColor Gray
+                Write-Host "  - VS Code: $vscodePath" -ForegroundColor Gray
+                Write-Host "`nTip: Create a custom config file or install Project Manager extension." -ForegroundColor Cyan
+                Write-Host "See: https://github.com/yourusername/ProjSwitch#configuration" -ForegroundColor Cyan
+                return
+            }
         }
     }
 
@@ -153,16 +167,24 @@ function Get-ProjectList {
 
     # Determine config path (same logic as Switch-Project)
     if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
-        $cursorPath = Join-Path $env:APPDATA "Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
-        $vscodePath = Join-Path $env:APPDATA "Code\User\globalStorage\alefragnani.project-manager\projects.json"
+        # Check environment variable first
+        if (-not [string]::IsNullOrWhiteSpace($env:PROJSWITCH_CONFIG)) {
+            $ConfigPath = $env:PROJSWITCH_CONFIG
+        }
+        # Try Project Manager locations
+        else {
+            $cursorPath = Join-Path $env:APPDATA "Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
+            $vscodePath = Join-Path $env:APPDATA "Code\User\globalStorage\alefragnani.project-manager\projects.json"
 
-        if (Test-Path $cursorPath) {
-            $ConfigPath = $cursorPath
-        } elseif (Test-Path $vscodePath) {
-            $ConfigPath = $vscodePath
-        } else {
-            Write-Host "Error: Project Manager configuration not found." -ForegroundColor Red
-            return
+            if (Test-Path $cursorPath) {
+                $ConfigPath = $cursorPath
+            } elseif (Test-Path $vscodePath) {
+                $ConfigPath = $vscodePath
+            } else {
+                Write-Host "Error: No project configuration found." -ForegroundColor Red
+                Write-Host "Tip: Set PROJSWITCH_CONFIG environment variable or install Project Manager." -ForegroundColor Cyan
+                return
+            }
         }
     }
 

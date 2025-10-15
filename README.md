@@ -7,7 +7,7 @@
 *别再 cd 来 cd 去了！*
 
 在 Vibe Coding 时代，用 CLI 驾驭 AI 编码工具
-Claude Code、Codex、Cursor、Windsurf...
+Claude Code、Codex、Gemini CLI、Droid...
 **一键急停定位，瞬间切换项目 ⚡**
 
 [![PowerShell Gallery](https://img.shields.io/badge/PowerShell_Gallery-Coming_Soon-blue)](https://www.powershellgallery.com/)
@@ -23,7 +23,7 @@ Claude Code、Codex、Cursor、Windsurf...
 **2025 年，Vibe Coding 时代已经到来：**
 
 - 🤖 Claude Code 让你在终端用 AI 写代码
-- ⚡ Cursor、Windsurf、Codex 等 AI 编程助手遍地开花
+- ⚡ Codex、Gemini CLI、Droid 等 CLI AI 编程助手遍地开花
 - 🖥️ 越来越多开发者回归命令行，享受纯键盘流
 
 **但是...**
@@ -108,8 +108,9 @@ choco install fzf
 scoop install fzf
 ```
 
-3. **Project Manager** - VS Code/Cursor 扩展（用于管理项目列表）
-   - [安装链接](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager)
+3. **项目配置**（以下任选其一）
+   - **选项 A**：[Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) 扩展（VS Code/Cursor）
+   - **选项 B**：自定义 JSON 配置文件（见下方示例）
 
 ### 方法一：快速安装（推荐）
 
@@ -223,12 +224,96 @@ PS E:\Learn\ProjSwitch>  # 终端标题 → "ProjSwitch"
 
 ## 🔧 配置
 
-ProjSwitch 直接读取 Project Manager 的配置文件：
+### 选项 1: 使用 Project Manager 扩展（推荐）
+
+ProjSwitch 自动读取 Project Manager 的配置文件：
 
 - **Cursor**: `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
 - **VS Code**: `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
 
 **无需额外配置！** 在 Project Manager 中添加项目，ProjSwitch 自动识别。
+
+### 选项 2: 使用自定义 JSON 配置文件
+
+**不想依赖 VS Code/Cursor？** 你可以创建自己的项目配置文件！
+
+#### 1. 创建配置文件
+
+在任意位置创建一个 JSON 文件，例如 `C:\my-projects.json`：
+
+```json
+[
+  {
+    "name": "我的网站项目",
+    "rootPath": "E:\\Projects\\MyWebsite",
+    "enabled": true
+  },
+  {
+    "name": "后端API",
+    "rootPath": "D:\\Work\\Backend-API",
+    "enabled": true
+  },
+  {
+    "name": "个人博客",
+    "rootPath": "C:\\Code\\PersonalBlog",
+    "enabled": true
+  },
+  {
+    "name": "旧项目（已禁用）",
+    "rootPath": "E:\\Archive\\OldProject",
+    "enabled": false
+  }
+]
+```
+
+**字段说明：**
+- `name`: 项目名称（在 fzf 菜单中显示）
+- `rootPath`: 项目根目录的绝对路径（**注意：Windows 路径中的 `\` 需要写成 `\\`**）
+- `enabled`: 是否启用此项目（`true` 或 `false`）
+
+#### 2. 使用自定义配置
+
+**方法 A：每次指定路径**
+
+```powershell
+Switch-Project -ConfigPath "C:\my-projects.json"
+```
+
+**方法 B：设置默认路径（添加到 $PROFILE）**
+
+```powershell
+# 打开 PowerShell 配置文件
+notepad $PROFILE
+
+# 添加以下内容
+function cdp {
+    Switch-Project -ConfigPath "C:\my-projects.json"
+}
+```
+
+**方法 C：设置环境变量**
+
+```powershell
+# 添加到 $PROFILE
+$env:PROJSWITCH_CONFIG = "C:\my-projects.json"
+
+# 模块会自动检测此环境变量
+```
+
+#### 3. 快速生成配置文件
+
+```powershell
+# 使用 PowerShell 快速创建配置模板
+@"
+[
+  {
+    "name": "项目名称",
+    "rootPath": "C:\\\\项目路径",
+    "enabled": true
+  }
+]
+"@ | Out-File -FilePath "C:\my-projects.json" -Encoding UTF8
+```
 
 ### 自定义 fzf 样式
 

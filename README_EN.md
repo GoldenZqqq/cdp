@@ -7,7 +7,7 @@
 *Stop cd-ing around!*
 
 In the era of Vibe Coding, harness AI coding tools with CLI
-Claude Code, Codex, Cursor, Windsurf...
+Claude Code, Codex, Gemini CLI, Droid...
 **One-key Quick Stop & Switch ⚡**
 
 [![PowerShell Gallery](https://img.shields.io/badge/PowerShell_Gallery-Coming_Soon-blue)](https://www.powershellgallery.com/)
@@ -23,7 +23,7 @@ Claude Code, Codex, Cursor, Windsurf...
 **Welcome to 2025, the Vibe Coding Era:**
 
 - 🤖 Claude Code brings AI coding to your terminal
-- ⚡ Cursor, Windsurf, Codex and other AI assistants are everywhere
+- ⚡ Codex, Gemini CLI, Droid and other CLI AI assistants are everywhere
 - 🖥️ More developers are returning to the command line, embracing keyboard-first workflows
 
 **But...**
@@ -108,8 +108,9 @@ choco install fzf
 scoop install fzf
 ```
 
-3. **Project Manager** - VS Code/Cursor extension (for managing project list)
-   - [Installation Link](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager)
+3. **Project Configuration** (choose one)
+   - **Option A**: [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) extension (VS Code/Cursor)
+   - **Option B**: Custom JSON config file (see example below)
 
 ### Method 1: Quick Install (Recommended)
 
@@ -223,12 +224,98 @@ PS E:\Learn\ProjSwitch>  # Terminal title → "ProjSwitch"
 
 ## 🔧 Configuration
 
-ProjSwitch directly reads Project Manager config files:
+### Option 1: Use Project Manager Extension (Recommended)
+
+ProjSwitch automatically reads Project Manager config files:
 
 - **Cursor**: `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
 - **VS Code**: `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
 
 **No extra config needed!** Add projects in Project Manager, ProjSwitch auto-detects.
+
+### Option 2: Use Custom JSON Config File
+
+**Don't want to depend on VS Code/Cursor?** You can create your own project config file!
+
+#### 1. Create Config File
+
+Create a JSON file anywhere, e.g., `C:\my-projects.json`:
+
+```json
+[
+  {
+    "name": "My Website",
+    "rootPath": "E:/Projects/MyWebsite",
+    "enabled": true
+  },
+  {
+    "name": "Backend API",
+    "rootPath": "D:/Work/Backend-API",
+    "enabled": true
+  },
+  {
+    "name": "Personal Blog",
+    "rootPath": "C:/Code/PersonalBlog",
+    "enabled": true
+  },
+  {
+    "name": "Old Project (Disabled)",
+    "rootPath": "E:/Archive/OldProject",
+    "enabled": false
+  }
+]
+```
+
+**Field Descriptions:**
+- `name`: Project display name (shown in fzf menu)
+- `rootPath`: Absolute path to project root (**Use `/` or `\\` for Windows paths**)
+- `enabled`: Whether to enable this project (`true` or `false`)
+
+#### 2. Use Custom Config
+
+**Method A: Specify path each time**
+
+```powershell
+Switch-Project -ConfigPath "C:\my-projects.json"
+```
+
+**Method B: Set default path (add to $PROFILE)**
+
+```powershell
+# Open PowerShell profile
+notepad $PROFILE
+
+# Add this content
+function cdp {
+    Switch-Project -ConfigPath "C:\my-projects.json"
+}
+```
+
+**Method C: Set environment variable**
+
+```powershell
+# Add to $PROFILE
+$env:PROJSWITCH_CONFIG = "C:\my-projects.json"
+
+# Module will auto-detect this environment variable
+```
+
+#### 3. Quick Config Generation
+
+```powershell
+# Use PowerShell to quickly create config template
+@"
+[
+  {
+    "name": "Project Name",
+    "rootPath": "C:/Project/Path",
+    "enabled": true
+  }
+]
+"@ | Out-File -FilePath "C:\my-projects.json" -Encoding UTF8
+```
+
+**See full examples:** Check the `examples/` directory for more config file examples and tips.
 
 ### Customize fzf Style
 

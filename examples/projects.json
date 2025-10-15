@@ -1,0 +1,42 @@
+[
+  {
+    "name": "ProjSwitch",
+    "rootPath": "E:\\Projects\\ProjSwitch",
+    "enabled": true
+  },
+  {
+    "name": "个人博客",
+    "rootPath": "D:\\Websites\\PersonalBlog",
+    "enabled": true
+  },
+  {
+    "name": "电商后端 API",
+    "rootPath": "C:\\Work\\ECommerce\\Backend",
+    "enabled": true
+  },
+  {
+    "name": "前端 Dashboard",
+    "rootPath": "C:\\Work\\ECommerce\\Frontend-Dashboard",
+    "enabled": true
+  },
+  {
+    "name": "移动端 App",
+    "rootPath": "D:\\Mobile\\ShoppingApp",
+    "enabled": true
+  },
+  {
+    "name": "机器学习项目",
+    "rootPath": "E:\\AI\\ML-Experiments",
+    "enabled": true
+  },
+  {
+    "name": "旧项目（已归档）",
+    "rootPath": "E:\\Archive\\OldProject2023",
+    "enabled": false
+  },
+  {
+    "name": "测试项目",
+    "rootPath": "C:\\Temp\\TestProject",
+    "enabled": false
+  }
+]
