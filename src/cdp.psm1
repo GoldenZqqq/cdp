@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.1.0
+    Version: 1.1.1
     License: MIT
 #>
 
@@ -285,15 +285,18 @@ function Add-Project {
 
     # Determine path to add
     if ([string]::IsNullOrWhiteSpace($Path)) {
-        $Path = Get-Location
+        $Path = (Get-Location).Path
     }
 
     # Resolve to absolute path
-    $Path = Resolve-Path $Path -ErrorAction SilentlyContinue
-    if (-not $Path) {
+    $resolvedPath = Resolve-Path $Path -ErrorAction SilentlyContinue
+    if (-not $resolvedPath) {
         Write-Host "Error: Invalid path." -ForegroundColor Red
         return
     }
+
+    # Convert to string
+    $Path = $resolvedPath.Path
 
     # Determine project name
     if ([string]::IsNullOrWhiteSpace($Name)) {
@@ -324,7 +327,7 @@ function Add-Project {
         # Add new project
         $newProject = [PSCustomObject]@{
             name = $Name
-            rootPath = $Path.Path
+            rootPath = $Path
             enabled = $true
         }
 
@@ -335,7 +338,7 @@ function Add-Project {
 
         Write-Host "Project added successfully!" -ForegroundColor Green
         Write-Host "  Name: $Name" -ForegroundColor Cyan
-        Write-Host "  Path: $($Path.Path)" -ForegroundColor Gray
+        Write-Host "  Path: $Path" -ForegroundColor Gray
         Write-Host "  Config: $ConfigPath" -ForegroundColor Gray
 
     } catch {

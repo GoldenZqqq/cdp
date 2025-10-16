@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.1.0'
+ModuleVersion = '1.1.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.1.1 - Bug Fix Release
+- Fixed: cdp-add command now correctly saves project paths
+- Fixed: Resolved issue where Add-Project would save empty rootPath values
+- Fixed: Improved path resolution to ensure valid absolute paths are always stored
+
 v1.1.0 - Project Renamed to "cdp"
 - BREAKING: Project renamed from ProjSwitch to cdp for simplicity
 - Added Add-Project command (alias: cdp-add) to quickly add current directory to project list
