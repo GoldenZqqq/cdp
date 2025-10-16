@@ -80,8 +80,9 @@ PS C:\> cdp
 ### ⚡ Lightning Fast
 
 - **Instant Launch**: Powered by fzf, millisecond response
-- **Smart Cache**: Auto-reads VS Code/Cursor project configs
+- **Smart Config**: Auto-reads Project Manager plugin configuration
 - **One-Key Switch**: `cdp` - three letters, all projects
+- **Quick Management**: `add` to add projects, `rm` to remove, `ls` to list all
 
 ### 🛠️ Developer Friendly
 
@@ -126,10 +127,10 @@ cd ProjSwitch
 
 ## 🎮 Usage
 
-### Basic Usage
+### 🚀 Quick Project Switch
 
 ```powershell
-# Quick project switch
+# Use alias (recommended)
 cdp
 
 # Or use full command
@@ -143,13 +144,52 @@ Switch-Project
 4. Auto-switches to project directory
 5. Terminal tab title auto-updates
 
-### List All Projects
+### ➕ Add Current Project
 
 ```powershell
+# Add current directory (auto-uses folder name as project name)
+add
+
+# Or use custom name
+Add-Project -Name "My Awesome Project"
+
+# Add specific path
+Add-Project -Path "E:\Projects\MyApp" -Name "MyApp"
+```
+
+### 📝 List All Projects
+
+```powershell
+# Use alias (recommended)
+ls
+
+# Or use full command
 Get-ProjectList
 ```
 
-Displays all enabled projects with their paths.
+Displays all enabled projects with their paths, with index numbers.
+
+### 🗑️ Remove Project
+
+```powershell
+# Use fzf interactive selection to remove project
+rm
+
+# Or specify project name directly
+Remove-Project -Name "Old Project"
+```
+
+### ⚙️ Edit Config File
+
+```powershell
+# Open config file for manual editing
+edit-config
+
+# Or use full command
+Edit-ProjectConfig
+```
+
+Automatically opens config file with VS Code/Cursor or system default editor.
 
 ### Advanced Usage
 
@@ -184,7 +224,10 @@ function cdpe { cdp; explorer . }
 | Command | Alias | Description |
 |---------|-------|-------------|
 | `Switch-Project` | `cdp` | Open fzf menu to select and switch project |
-| `Get-ProjectList` | - | List all enabled projects with paths |
+| `Add-Project` | `add` | Add current directory or specified path to project list |
+| `Remove-Project` | `rm` | Remove project (supports interactive selection) |
+| `Get-ProjectList` | `ls` | List all enabled projects with paths |
+| `Edit-ProjectConfig` | `edit-config` | Open config file for editing |
 
 ---
 
@@ -212,18 +255,32 @@ PS E:\Learn\ProjSwitch>  # Terminal title → "ProjSwitch"
 
 ## 🔧 Configuration
 
-### Option 1: Use Project Manager Extension (Recommended)
+### Configuration Priority
 
-ProjSwitch automatically reads Project Manager config files:
+ProjSwitch automatically searches for config files in this priority order:
 
-- **Cursor**: `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
-- **VS Code**: `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
+1. **Environment variable** `$env:PROJSWITCH_CONFIG` (highest priority)
+2. **User custom config** `~/.projswitch/projects.json` (auto-created on first use)
+3. **Cursor Project Manager plugin** `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
+4. **VS Code Project Manager plugin** `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
+
+### Option 1: Use Default Config (Simplest)
+
+When you first use the `add` command, it will automatically create `~/.projswitch/projects.json`:
+
+```powershell
+# In your project directory
+cd E:\Projects\MyApp
+add  # Automatically adds to config and creates file (if doesn't exist)
+```
+
+### Option 2: Use Project Manager Plugin
+
+If you have [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) plugin installed (VS Code/Cursor), ProjSwitch will automatically read the plugin's config file.
 
 **No extra config needed!** Add projects in Project Manager, ProjSwitch auto-detects.
 
-### Option 2: Use Custom JSON Config File
-
-**Don't want to depend on VS Code/Cursor?** You can create your own project config file!
+### Option 3: Use Custom Config File
 
 #### 1. Create Config File
 
@@ -261,25 +318,7 @@ Create a JSON file anywhere, e.g., `C:\my-projects.json`:
 
 #### 2. Use Custom Config
 
-**Method A: Specify path each time**
-
-```powershell
-Switch-Project -ConfigPath "C:\my-projects.json"
-```
-
-**Method B: Set default path (add to $PROFILE)**
-
-```powershell
-# Open PowerShell profile
-notepad $PROFILE
-
-# Add this content
-function cdp {
-    Switch-Project -ConfigPath "C:\my-projects.json"
-}
-```
-
-**Method C: Set environment variable**
+**Set environment variable (recommended):**
 
 ```powershell
 # Add to $PROFILE
@@ -287,23 +326,6 @@ $env:PROJSWITCH_CONFIG = "C:\my-projects.json"
 
 # Module will auto-detect this environment variable
 ```
-
-#### 3. Quick Config Generation
-
-```powershell
-# Use PowerShell to quickly create config template
-@"
-[
-  {
-    "name": "Project Name",
-    "rootPath": "C:/Project/Path",
-    "enabled": true
-  }
-]
-"@ | Out-File -FilePath "C:\my-projects.json" -Encoding UTF8
-```
-
-**See full examples:** Check the `examples/` directory for more config file examples and tips.
 
 ### Customize fzf Style
 
@@ -384,8 +406,10 @@ Get-Module -ListAvailable ProjSwitch
 
 - [x] Core feature: Fuzzy search project switching
 - [x] Terminal tab title sync
-- [x] Support for Cursor and VS Code
+- [x] Support for Cursor and VS Code Project Manager plugin
 - [x] Install script auto-installs fzf dependency
+- [x] Quick add/remove/list project commands
+- [x] Auto-create default config file
 - [ ] Recent projects quick access
 - [ ] Project tags and grouping
 - [ ] Project favorites/pinning

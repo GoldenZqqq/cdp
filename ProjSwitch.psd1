@@ -10,7 +10,7 @@
 RootModule = 'src\ProjSwitch.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.0'
+ModuleVersion = '1.1.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Switch-Project', 'Get-ProjectList')
+FunctionsToExport = @('Switch-Project', 'Get-ProjectList', 'Add-Project', 'Remove-Project', 'Edit-ProjectConfig')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -76,7 +76,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('cdp')
+AliasesToExport = @('cdp', 'add', 'rm', 'ls', 'edit-config')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -106,7 +106,15 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Initial release of ProjSwitch v1.0.0'
+        ReleaseNotes = @'
+v1.1.0 - Major Feature Update
+- Added Add-Project command (alias: add) to quickly add current directory to project list
+- Added Remove-Project command (alias: rm) to remove projects from configuration
+- Added Edit-ProjectConfig command (alias: edit-config) to quickly edit config file
+- Improved Get-ProjectList (alias: ls) with better formatting and numbering
+- Auto-create default config file at ~/.projswitch/projects.json on first use
+- Simplified configuration management workflow
+'@
 
         # Prerelease string of this module
         # Prerelease = ''

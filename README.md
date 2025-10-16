@@ -80,8 +80,9 @@ PS C:\> cdp
 ### ⚡ 快如闪电
 
 - **即时启动**：fzf 驱动，毫秒级响应
-- **智能缓存**：自动读取 VS Code/Cursor 项目配置
+- **智能配置**：自动读取 Project Manager 插件配置
 - **一键切换**：`cdp` 三个字母，搞定所有项目
+- **快速管理**：`add` 添加项目，`rm` 删除项目，`ls` 查看所有项目
 
 ### 🛠️ 开发者友好
 
@@ -126,10 +127,10 @@ cd ProjSwitch
 
 ## 🎮 使用
 
-### 基础用法
+### 🚀 快速切换项目
 
 ```powershell
-# 快速切换项目
+# 使用别名（推荐）
 cdp
 
 # 或使用完整命令
@@ -143,13 +144,52 @@ Switch-Project
 4. 自动切换到项目目录
 5. 终端标签标题自动更新
 
-### 列出所有项目
+### ➕ 添加当前项目
 
 ```powershell
+# 添加当前目录（自动使用文件夹名作为项目名）
+add
+
+# 或使用自定义名称
+Add-Project -Name "我的超级项目"
+
+# 添加指定路径
+Add-Project -Path "E:\Projects\MyApp" -Name "MyApp"
+```
+
+### 📝 列出所有项目
+
+```powershell
+# 使用别名（推荐）
+ls
+
+# 或使用完整命令
 Get-ProjectList
 ```
 
-显示所有已启用的项目及其路径。
+显示所有已启用的项目及其路径，带有索引编号。
+
+### 🗑️ 删除项目
+
+```powershell
+# 使用 fzf 交互式选择要删除的项目
+rm
+
+# 或指定项目名称直接删除
+Remove-Project -Name "旧项目"
+```
+
+### ⚙️ 编辑配置文件
+
+```powershell
+# 打开配置文件进行手动编辑
+edit-config
+
+# 或使用完整命令
+Edit-ProjectConfig
+```
+
+会自动使用 VS Code/Cursor 或系统默认编辑器打开配置文件。
 
 ### 高级用法
 
@@ -184,7 +224,10 @@ function cdpe { cdp; explorer . }
 | 命令 | 别名 | 描述 |
 |------|------|------|
 | `Switch-Project` | `cdp` | 打开 fzf 菜单选择并切换项目 |
-| `Get-ProjectList` | - | 列出所有已启用的项目及路径 |
+| `Add-Project` | `add` | 添加当前目录或指定路径到项目列表 |
+| `Remove-Project` | `rm` | 删除项目（支持交互式选择） |
+| `Get-ProjectList` | `ls` | 列出所有已启用的项目及路径 |
+| `Edit-ProjectConfig` | `edit-config` | 打开配置文件进行编辑 |
 
 ---
 
@@ -212,18 +255,32 @@ PS E:\Learn\ProjSwitch>  # 终端标题 → "ProjSwitch"
 
 ## 🔧 配置
 
-### 选项 1: 使用 Project Manager 扩展（推荐）
+### 配置优先级
 
-ProjSwitch 自动读取 Project Manager 的配置文件：
+ProjSwitch 按以下优先级自动查找配置文件：
 
-- **Cursor**: `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
-- **VS Code**: `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
+1. **环境变量** `$env:PROJSWITCH_CONFIG`（最高优先级）
+2. **用户自定义配置** `~/.projswitch/projects.json`（首次使用时自动创建）
+3. **Cursor Project Manager 插件** `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
+4. **VS Code Project Manager 插件** `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
+
+### 选项 1: 使用默认配置（最简单）
+
+首次使用 `add` 命令时，会自动创建 `~/.projswitch/projects.json` 配置文件：
+
+```powershell
+# 在项目目录中
+cd E:\Projects\MyApp
+add  # 自动添加到配置并创建文件（如果不存在）
+```
+
+### 选项 2: 使用 Project Manager 插件
+
+如果你已安装 [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) 插件（VS Code/Cursor），ProjSwitch 会自动读取插件的配置文件。
 
 **无需额外配置！** 在 Project Manager 中添加项目，ProjSwitch 自动识别。
 
-### 选项 2: 使用自定义 JSON 配置文件
-
-**不想依赖 VS Code/Cursor？** 你可以创建自己的项目配置文件！
+### 选项 3: 使用自定义配置文件
 
 #### 1. 创建配置文件
 
@@ -261,46 +318,13 @@ ProjSwitch 自动读取 Project Manager 的配置文件：
 
 #### 2. 使用自定义配置
 
-**方法 A：每次指定路径**
-
-```powershell
-Switch-Project -ConfigPath "C:\my-projects.json"
-```
-
-**方法 B：设置默认路径（添加到 $PROFILE）**
-
-```powershell
-# 打开 PowerShell 配置文件
-notepad $PROFILE
-
-# 添加以下内容
-function cdp {
-    Switch-Project -ConfigPath "C:\my-projects.json"
-}
-```
-
-**方法 C：设置环境变量**
+**设置环境变量（推荐）：**
 
 ```powershell
 # 添加到 $PROFILE
 $env:PROJSWITCH_CONFIG = "C:\my-projects.json"
 
 # 模块会自动检测此环境变量
-```
-
-#### 3. 快速生成配置文件
-
-```powershell
-# 使用 PowerShell 快速创建配置模板
-@"
-[
-  {
-    "name": "项目名称",
-    "rootPath": "C:\\\\项目路径",
-    "enabled": true
-  }
-]
-"@ | Out-File -FilePath "C:\my-projects.json" -Encoding UTF8
 ```
 
 ### 自定义 fzf 样式
@@ -382,8 +406,10 @@ Get-Module -ListAvailable ProjSwitch
 
 - [x] 核心功能：模糊搜索切换项目
 - [x] 终端标签标题同步
-- [x] 支持 Cursor 和 VS Code
+- [x] 支持 Cursor 和 VS Code Project Manager 插件
 - [x] 安装脚本自动安装 fzf 依赖
+- [x] 快速添加/删除/列出项目命令
+- [x] 自动创建默认配置文件
 - [ ] 最近访问项目快速切换
 - [ ] 项目标签和分组功能
 - [ ] 项目收藏/置顶
