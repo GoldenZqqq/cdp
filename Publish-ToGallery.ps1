@@ -111,14 +111,64 @@ if ($confirm -ne 'y' -and $confirm -ne 'Y') {
 try {
     Write-Host "`nPublishing module..." -ForegroundColor Cyan
 
+    # Create temporary directory with correct module structure
+    $tempDir = Join-Path $env:TEMP "cdp-publish"
+    $moduleDir = Join-Path $tempDir "cdp"
+
+    if (Test-Path $tempDir) {
+        Remove-Item $tempDir -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Path $moduleDir -Force | Out-Null
+
+    # Copy all module files to temp directory, preserving structure
+    $filesToCopy = @(
+        'cdp.psd1',
+        'LICENSE',
+        'README.md'
+    )
+
+    foreach ($file in $filesToCopy) {
+        $sourcePath = Join-Path $PSScriptRoot $file
+        if (Test-Path $sourcePath) {
+            Copy-Item -Path $sourcePath -Destination $moduleDir -ErrorAction SilentlyContinue
+        }
+    }
+
+    # Copy src directory with its contents
+    $srcDir = Join-Path $PSScriptRoot "src"
+    if (Test-Path $srcDir) {
+        Copy-Item -Path $srcDir -Destination $moduleDir -Recurse -Force
+    }
+
+    Write-Host "Created temporary publish directory: $moduleDir" -ForegroundColor Gray
+
+    # Verify all required files are present
+    $manifestPath = Join-Path $moduleDir "cdp.psd1"
+    if (-not (Test-Path $manifestPath)) {
+        throw "Module manifest not found at $manifestPath"
+    }
+
+    # Test the manifest
+    Write-Host "Validating module manifest..." -ForegroundColor Gray
+    try {
+        $null = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
+    } catch {
+        throw "Invalid module manifest: $($_.Exception.Message)"
+    }
+
     $publishParams = @{
-        Path = $PSScriptRoot
+        Path = $moduleDir
         NuGetApiKey = $ApiKey
         Repository = 'PSGallery'
         Verbose = $true
+        Force = $true
     }
 
     Publish-Module @publishParams
+
+    # Cleanup
+    Remove-Item $tempDir -Recurse -Force
 
     Write-Host "`n========================================" -ForegroundColor Green
     Write-Host "  Module published successfully!" -ForegroundColor Green
@@ -135,5 +185,12 @@ try {
 } catch {
     Write-Host "`nError: Failed to publish module" -ForegroundColor Red
     Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Yellow
+
+    # Cleanup on error
+    $tempDir = Join-Path $env:TEMP "cdp-publish"
+    if (Test-Path $tempDir) {
+        Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     exit 1
 }

@@ -8,7 +8,9 @@
       "Bash(dotnet --list-runtimes)",
       "Bash(pwsh -Command \"Install-Module -Name Microsoft.PowerShell.PSResourceGet -Force -AllowClobber -Scope CurrentUser\")",
       "Bash(rm:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(dotnet --version:*)",
+      "Bash(winget install:*)"
     ],
     "deny": [],
     "ask": []

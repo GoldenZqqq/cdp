@@ -12,6 +12,8 @@ Claude Code, Codex, Gemini CLI, Droid...
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/cdp)
+[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
+[![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 
 </div>
 
@@ -94,7 +96,36 @@ PS C:\> cdp
 
 ## 📦 Installation
 
-### Prerequisites
+### Method 1: Install from PowerShell Gallery (Recommended) ⭐
+
+**One command, ready to use!**
+
+```powershell
+# Install the module
+Install-Module -Name cdp -Scope CurrentUser
+
+# Import the module
+Import-Module cdp
+
+# Start using it immediately!
+cdp
+```
+
+**Benefits:**
+- ✅ Simplest and fastest installation method
+- ✅ Auto-managed updates: `Update-Module cdp`
+- ✅ Official PowerShell package management, safe and reliable
+- ✅ No need to download source code, one command does it all
+
+> **Note**: After installation, you'll need to manually install the fzf dependency (see instructions below)
+
+---
+
+### Method 2: Install from Source
+
+For developers who want to customize or contribute code.
+
+#### Prerequisites
 
 1. **PowerShell 5.1+** or **PowerShell 7+** (pre-installed on Windows)
 2. **Project Configuration** (choose one)
@@ -103,7 +134,7 @@ PS C:\> cdp
 
 > **Note**: The install script will automatically detect and install fzf if not already installed. No manual setup required!
 
-### Quick Install
+#### Installation Steps
 
 ```powershell
 # Clone repository
@@ -117,11 +148,37 @@ cd cdp
 . $PROFILE
 ```
 
-**That's it!** The install script automatically:
+**The install script automatically:**
 - ✅ Detects if fzf is installed
 - ✅ If not installed, automatically installs fzf using winget/scoop/chocolatey
 - ✅ Installs module to PowerShell modules directory
 - ✅ Adds `cdp` alias to your PowerShell profile
+
+---
+
+### Installing fzf Dependency
+
+cdp uses [fzf](https://github.com/junegunn/fzf) to provide fuzzy search functionality.
+
+**Method A: Automatic Installation (Recommended)**
+
+If you install from source using Method 2, the install script will automatically install fzf for you.
+
+**Method B: Manual Installation**
+
+```powershell
+# Option 1: Using winget (recommended)
+winget install fzf
+
+# Option 2: Using scoop
+scoop install fzf
+
+# Option 3: Using chocolatey
+choco install fzf
+
+# Verify after restarting terminal
+fzf --version
+```
 
 ---
 

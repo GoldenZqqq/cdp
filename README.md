@@ -12,6 +12,8 @@ Claude Code、Codex、Gemini CLI、Droid...
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/cdp)
+[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
+[![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 
 </div>
 
@@ -94,7 +96,36 @@ PS C:\> cdp
 
 ## 📦 安装
 
-### 前置要求
+### 方式 1: 从 PowerShell Gallery 安装（推荐）⭐
+
+**一行命令，开箱即用！**
+
+```powershell
+# 安装模块
+Install-Module -Name cdp -Scope CurrentUser
+
+# 导入模块
+Import-Module cdp
+
+# 立即开始使用！
+cdp
+```
+
+**优点：**
+- ✅ 最简单、最快捷的安装方式
+- ✅ 自动管理更新：`Update-Module cdp`
+- ✅ PowerShell 官方包管理，安全可靠
+- ✅ 无需下载源码，一条命令搞定
+
+> **注意**：安装后需手动安装 fzf 依赖（见下方说明）
+
+---
+
+### 方式 2: 从源码安装
+
+适合想要自定义或贡献代码的开发者。
+
+#### 前置要求
 
 1. **PowerShell 5.1+** 或 **PowerShell 7+**（Windows 自带）
 2. **项目配置**（以下任选其一）
@@ -103,7 +134,7 @@ PS C:\> cdp
 
 > **注意**：安装脚本会自动检测并安装 fzf（如果未安装），无需手动操作！
 
-### 快速安装
+#### 安装步骤
 
 ```powershell
 # 克隆仓库
@@ -117,11 +148,37 @@ cd cdp
 . $PROFILE
 ```
 
-**就这么简单！** 安装脚本会自动：
+**安装脚本会自动：**
 - ✅ 检测 fzf 是否已安装
 - ✅ 如果未安装，自动使用 winget/scoop/chocolatey 安装 fzf
 - ✅ 将模块安装到 PowerShell 模块目录
 - ✅ 添加 `cdp` 别名到 PowerShell 配置文件
+
+---
+
+### 安装 fzf 依赖
+
+cdp 使用 [fzf](https://github.com/junegunn/fzf) 提供模糊搜索功能。
+
+**方式 A：自动安装（推荐）**
+
+如果使用方式 2 从源码安装，安装脚本会自动为你安装 fzf。
+
+**方式 B：手动安装**
+
+```powershell
+# 方法 1: 使用 winget（推荐）
+winget install fzf
+
+# 方法 2: 使用 scoop
+scoop install fzf
+
+# 方法 3: 使用 chocolatey
+choco install fzf
+
+# 重启终端后验证
+fzf --version
+```
 
 ---
 
