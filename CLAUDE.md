@@ -57,7 +57,7 @@ Get-Module ProjSwitch | Format-List
 
 - **ProjSwitch.psd1**: Module manifest defining metadata, version, exports (functions: `Switch-Project`, `Get-ProjectList`; alias: `cdp`)
 - **src/ProjSwitch.psm1**: Core implementation with all functions
-- **Install.ps1**: Installation script that copies module to PowerShell modules directory
+- **Install.ps1**: Installation script that automatically installs fzf (if needed) and copies module to PowerShell modules directory
 
 ### Configuration Discovery Logic
 
@@ -104,7 +104,8 @@ Projects are defined as JSON objects with three fields:
 
 - **fzf**: Required external dependency for fuzzy search UI
 - Check: `Get-Command fzf -ErrorAction SilentlyContinue`
-- Installation methods: `winget install fzf`, `choco install fzf`, `scoop install fzf`
+- **Auto-installation**: Install.ps1 automatically detects and installs fzf using winget/scoop/chocolatey if not found
+- Manual installation methods: `winget install fzf`, `choco install fzf`, `scoop install fzf`
 
 ## Coding Conventions (from CONTRIBUTING.md)
 
@@ -131,7 +132,8 @@ When making changes, manually test:
 - Cursor Project Manager config detection
 - Custom config path via parameter
 - Custom config path via environment variable
-- Error handling when fzf not installed
+- Auto-installation of fzf via Install.ps1
+- Error handling when fzf not installed and auto-install fails
 - Error handling when config not found
 - Terminal tab title update in Windows Terminal
 - UTF-8 encoding with international characters

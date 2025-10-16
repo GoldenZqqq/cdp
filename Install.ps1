@@ -132,14 +132,64 @@ Set-Alias -Name cdp -Value Switch-Project
     }
 }
 
-# Check for fzf
+# Check and install fzf
 Write-Host "`nChecking dependencies..." -ForegroundColor Cyan
 if (Get-Command fzf -ErrorAction SilentlyContinue) {
-    Write-Host "  fzf: Installed" -ForegroundColor Green
+    Write-Host "  fzf: Already installed" -ForegroundColor Green
 } else {
-    Write-Host "  fzf: Not found" -ForegroundColor Red
-    Write-Host "`nWarning: fzf is required but not installed." -ForegroundColor Yellow
-    Write-Host "Install it using: winget install fzf" -ForegroundColor Cyan
+    Write-Host "  fzf: Not found" -ForegroundColor Yellow
+    Write-Host "`nInstalling fzf..." -ForegroundColor Cyan
+
+    # Try winget first
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "  Using winget to install fzf..." -ForegroundColor Gray
+        try {
+            winget install fzf --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+
+            # Refresh PATH for current session
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+            if (Get-Command fzf -ErrorAction SilentlyContinue) {
+                Write-Host "  fzf: Installed successfully!" -ForegroundColor Green
+            } else {
+                Write-Host "  fzf: Installation completed, but may require restart" -ForegroundColor Yellow
+                Write-Host "  If 'cdp' doesn't work, please restart PowerShell" -ForegroundColor Gray
+            }
+        } catch {
+            Write-Host "  Failed to install fzf via winget" -ForegroundColor Red
+            Write-Host "  Please install manually: winget install fzf" -ForegroundColor Yellow
+        }
+    }
+    # Try scoop as fallback
+    elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        Write-Host "  Using scoop to install fzf..." -ForegroundColor Gray
+        try {
+            scoop install fzf 2>&1 | Out-Null
+            Write-Host "  fzf: Installed successfully!" -ForegroundColor Green
+        } catch {
+            Write-Host "  Failed to install fzf via scoop" -ForegroundColor Red
+            Write-Host "  Please install manually: scoop install fzf" -ForegroundColor Yellow
+        }
+    }
+    # Try chocolatey as fallback
+    elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+        Write-Host "  Using chocolatey to install fzf..." -ForegroundColor Gray
+        try {
+            choco install fzf -y 2>&1 | Out-Null
+            Write-Host "  fzf: Installed successfully!" -ForegroundColor Green
+        } catch {
+            Write-Host "  Failed to install fzf via chocolatey" -ForegroundColor Red
+            Write-Host "  Please install manually: choco install fzf" -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-Host "  No package manager found (winget/scoop/chocolatey)" -ForegroundColor Red
+        Write-Host "  Please install fzf manually:" -ForegroundColor Yellow
+        Write-Host "    Option 1: winget install fzf" -ForegroundColor Cyan
+        Write-Host "    Option 2: scoop install fzf" -ForegroundColor Cyan
+        Write-Host "    Option 3: choco install fzf" -ForegroundColor Cyan
+        Write-Host "    Option 4: Download from https://github.com/junegunn/fzf/releases" -ForegroundColor Cyan
+    }
 }
 
 # Usage instructions

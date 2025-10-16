@@ -10,7 +10,6 @@ In the era of Vibe Coding, harness AI coding tools with CLI
 Claude Code, Codex, Gemini CLI, Droid...
 **One-key Quick Stop & Switch ⚡**
 
-[![PowerShell Gallery](https://img.shields.io/badge/PowerShell_Gallery-Coming_Soon-blue)](https://www.powershellgallery.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/ProjSwitch)
 
@@ -97,42 +96,31 @@ PS C:\> cdp
 ### Prerequisites
 
 1. **PowerShell 5.1+** or **PowerShell 7+** (pre-installed on Windows)
-2. **fzf** - Fuzzy finder for command line
-
-```powershell
-# Install fzf (required)
-winget install fzf
-
-# Or use other package managers
-choco install fzf
-scoop install fzf
-```
-
-3. **Project Configuration** (choose one)
+2. **Project Configuration** (choose one)
    - **Option A**: [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) extension (VS Code/Cursor)
    - **Option B**: Custom JSON config file (see example below)
 
-### Method 1: Quick Install (Recommended)
+> **Note**: The install script will automatically detect and install fzf if not already installed. No manual setup required!
+
+### Quick Install
 
 ```powershell
 # Clone repository
 git clone https://github.com/GoldenZqqq/ProjSwitch.git
 cd ProjSwitch
 
-# Run install script (auto-configure)
+# Run install script (auto-install fzf + auto-configure)
 .\Install.ps1 -AddToProfile
 
 # Restart terminal or reload config
 . $PROFILE
 ```
 
-### Method 2: PowerShell Gallery (Coming Soon)
-
-```powershell
-# Install from official gallery
-Install-Module -Name ProjSwitch -Scope CurrentUser
-Import-Module ProjSwitch
-```
+**That's it!** The install script automatically:
+- ✅ Detects if fzf is installed
+- ✅ If not installed, automatically installs fzf using winget/scoop/chocolatey
+- ✅ Installs module to PowerShell modules directory
+- ✅ Adds `cdp` alias to your PowerShell profile
 
 ---
 
@@ -334,14 +322,22 @@ $env:FZF_DEFAULT_OPTS = @"
 
 ## 🐛 Troubleshooting
 
-### "fzf: command not found"
+### Install script failed to auto-install fzf
+
+If the install script couldn't automatically install fzf, install manually:
 
 ```powershell
-# Install fzf
+# Method 1: Using winget (recommended)
 winget install fzf
 
-# Restart terminal
-exit  # Then open new terminal
+# Method 2: Using scoop
+scoop install fzf
+
+# Method 3: Using chocolatey
+choco install fzf
+
+# Verify after restarting terminal
+fzf --version
 ```
 
 ### "Project Manager configuration not found"
@@ -389,7 +385,7 @@ Get-Module -ListAvailable ProjSwitch
 - [x] Core feature: Fuzzy search project switching
 - [x] Terminal tab title sync
 - [x] Support for Cursor and VS Code
-- [ ] Publish to PowerShell Gallery
+- [x] Install script auto-installs fzf dependency
 - [ ] Recent projects quick access
 - [ ] Project tags and grouping
 - [ ] Project favorites/pinning

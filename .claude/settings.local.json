@@ -6,7 +6,9 @@
       "Bash(powershell:*)",
       "Bash(dotnet --list-sdks)",
       "Bash(dotnet --list-runtimes)",
-      "Bash(pwsh -Command \"Install-Module -Name Microsoft.PowerShell.PSResourceGet -Force -AllowClobber -Scope CurrentUser\")"
+      "Bash(pwsh -Command \"Install-Module -Name Microsoft.PowerShell.PSResourceGet -Force -AllowClobber -Scope CurrentUser\")",
+      "Bash(rm:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

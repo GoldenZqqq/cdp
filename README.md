@@ -10,7 +10,6 @@
 Claude Code、Codex、Gemini CLI、Droid...
 **一键急停定位，瞬间切换项目 ⚡**
 
-[![PowerShell Gallery](https://img.shields.io/badge/PowerShell_Gallery-Coming_Soon-blue)](https://www.powershellgallery.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/ProjSwitch)
 
@@ -97,42 +96,31 @@ PS C:\> cdp
 ### 前置要求
 
 1. **PowerShell 5.1+** 或 **PowerShell 7+**（Windows 自带）
-2. **fzf** - 模糊搜索工具
-
-```powershell
-# 安装 fzf（必需）
-winget install fzf
-
-# 或使用其他包管理器
-choco install fzf
-scoop install fzf
-```
-
-3. **项目配置**（以下任选其一）
+2. **项目配置**（以下任选其一）
    - **选项 A**：[Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) 扩展（VS Code/Cursor）
    - **选项 B**：自定义 JSON 配置文件（见下方示例）
 
-### 方法一：快速安装（推荐）
+> **注意**：安装脚本会自动检测并安装 fzf（如果未安装），无需手动操作！
+
+### 快速安装
 
 ```powershell
 # 克隆仓库
 git clone https://github.com/GoldenZqqq/ProjSwitch.git
 cd ProjSwitch
 
-# 运行安装脚本（自动配置）
+# 运行安装脚本（自动安装 fzf + 自动配置）
 .\Install.ps1 -AddToProfile
 
 # 重启终端或重新加载配置
 . $PROFILE
 ```
 
-### 方法二：PowerShell Gallery（即将上线）
-
-```powershell
-# 从官方仓库安装
-Install-Module -Name ProjSwitch -Scope CurrentUser
-Import-Module ProjSwitch
-```
+**就这么简单！** 安装脚本会自动：
+- ✅ 检测 fzf 是否已安装
+- ✅ 如果未安装，自动使用 winget/scoop/chocolatey 安装 fzf
+- ✅ 将模块安装到 PowerShell 模块目录
+- ✅ 添加 `cdp` 别名到 PowerShell 配置文件
 
 ---
 
@@ -332,14 +320,22 @@ $env:FZF_DEFAULT_OPTS = @"
 
 ## 🐛 故障排除
 
-### "fzf: command not found"
+### 安装脚本未能自动安装 fzf
+
+如果安装脚本未能自动安装 fzf，手动安装：
 
 ```powershell
-# 安装 fzf
+# 方法 1: 使用 winget（推荐）
 winget install fzf
 
-# 重启终端
-exit  # 然后打开新终端
+# 方法 2: 使用 scoop
+scoop install fzf
+
+# 方法 3: 使用 chocolatey
+choco install fzf
+
+# 重启终端后验证
+fzf --version
 ```
 
 ### "未找到 Project Manager 配置"
@@ -387,7 +383,7 @@ Get-Module -ListAvailable ProjSwitch
 - [x] 核心功能：模糊搜索切换项目
 - [x] 终端标签标题同步
 - [x] 支持 Cursor 和 VS Code
-- [ ] 发布到 PowerShell Gallery
+- [x] 安装脚本自动安装 fzf 依赖
 - [ ] 最近访问项目快速切换
 - [ ] 项目标签和分组功能
 - [ ] 项目收藏/置顶
