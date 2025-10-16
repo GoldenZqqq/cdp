@@ -12,7 +12,7 @@ Claude Code, Codex, Gemini CLI, Droid...
 
 [![PowerShell Gallery](https://img.shields.io/badge/PowerShell_Gallery-Coming_Soon-blue)](https://www.powershellgallery.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/yourusername/ProjSwitch)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/ProjSwitch)
 
 </div>
 
@@ -116,7 +116,7 @@ scoop install fzf
 
 ```powershell
 # Clone repository
-git clone https://github.com/yourusername/ProjSwitch.git
+git clone https://github.com/GoldenZqqq/ProjSwitch.git
 cd ProjSwitch
 
 # Run install script (auto-configure)
@@ -406,7 +406,7 @@ Contributions welcome! Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for detail
 
 ```powershell
 # Fork repository and clone
-git clone https://github.com/yourusername/ProjSwitch.git
+git clone https://github.com/GoldenZqqq/ProjSwitch.git
 cd ProjSwitch
 
 # Make changes
@@ -439,8 +439,8 @@ MIT License - See [LICENSE](./LICENSE) for details
 
 ## 💬 Feedback & Support
 
-- 🐛 [Report Bug](https://github.com/yourusername/ProjSwitch/issues)
-- 💡 [Feature Request](https://github.com/yourusername/ProjSwitch/issues)
+- 🐛 [Report Bug](https://github.com/GoldenZqqq/ProjSwitch/issues)
+- 💡 [Feature Request](https://github.com/GoldenZqqq/ProjSwitch/issues)
 - ⭐ Find it useful? Give it a star!
 
 ---

@@ -12,7 +12,7 @@ Claude Code、Codex、Gemini CLI、Droid...
 
 [![PowerShell Gallery](https://img.shields.io/badge/PowerShell_Gallery-Coming_Soon-blue)](https://www.powershellgallery.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/yourusername/ProjSwitch)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/ProjSwitch)
 
 </div>
 
@@ -116,7 +116,7 @@ scoop install fzf
 
 ```powershell
 # 克隆仓库
-git clone https://github.com/yourusername/ProjSwitch.git
+git clone https://github.com/GoldenZqqq/ProjSwitch.git
 cd ProjSwitch
 
 # 运行安装脚本（自动配置）
@@ -404,7 +404,7 @@ Get-Module -ListAvailable ProjSwitch
 
 ```powershell
 # Fork 仓库并克隆
-git clone https://github.com/yourusername/ProjSwitch.git
+git clone https://github.com/GoldenZqqq/ProjSwitch.git
 cd ProjSwitch
 
 # 修改代码
@@ -437,8 +437,8 @@ MIT License - 详见 [LICENSE](./LICENSE)
 
 ## 💬 反馈与支持
 
-- 🐛 [提交 Bug](https://github.com/yourusername/ProjSwitch/issues)
-- 💡 [功能建议](https://github.com/yourusername/ProjSwitch/issues)
+- 🐛 [提交 Bug](https://github.com/GoldenZqqq/ProjSwitch/issues)
+- 💡 [功能建议](https://github.com/GoldenZqqq/ProjSwitch/issues)
 - ⭐ 觉得有用？给个 Star 吧！
 
 ---

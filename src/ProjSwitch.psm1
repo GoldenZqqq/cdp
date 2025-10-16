@@ -80,7 +80,7 @@ function Switch-Project {
                 Write-Host "  - Cursor: $cursorPath" -ForegroundColor Gray
                 Write-Host "  - VS Code: $vscodePath" -ForegroundColor Gray
                 Write-Host "`nTip: Create a custom config file or install Project Manager extension." -ForegroundColor Cyan
-                Write-Host "See: https://github.com/yourusername/ProjSwitch#configuration" -ForegroundColor Cyan
+                Write-Host "See: https://github.com/GoldenZqqq/ProjSwitch#configuration" -ForegroundColor Cyan
                 return
             }
         }
@@ -219,4 +219,5 @@ function Get-ProjectList {
 }
 
 # Export module members
-Export-ModuleMember -Function Switch-Project, Get-ProjectList
+Set-Alias -Name cdp -Value Switch-Project
+Export-ModuleMember -Function Switch-Project, Get-ProjectList -Alias cdp

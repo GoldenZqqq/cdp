@@ -42,7 +42,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 1. **Fork and clone the repository**
 
 ```powershell
-git clone https://github.com/yourusername/ProjSwitch.git
+git clone https://github.com/GoldenZqqq/ProjSwitch.git
 cd ProjSwitch
 ```
 

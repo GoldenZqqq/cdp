@@ -158,4 +158,4 @@ Write-Host "  3. Run: cdp" -ForegroundColor Gray
 Write-Host "  4. Or: Switch-Project`n" -ForegroundColor Gray
 
 Write-Host "For more information, visit:" -ForegroundColor Yellow
-Write-Host "  https://github.com/yourusername/ProjSwitch`n" -ForegroundColor Cyan
+Write-Host "  https://github.com/GoldenZqqq/ProjSwitch`n" -ForegroundColor Cyan

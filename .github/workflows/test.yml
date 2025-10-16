@@ -1,0 +1,193 @@
+name: Test ProjSwitch Module
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} - PowerShell ${{ matrix.psversion }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+        psversion: ['5.1', '7.4']
+        include:
+          - os: windows-latest
+            psversion: '5.1'
+            pwsh: 'powershell'
+          - os: windows-latest
+            psversion: '7.4'
+            pwsh: 'pwsh'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PowerShell 7
+      if: matrix.psversion != '5.1'
+      uses: azure/powershell@v2
+      with:
+        azPSVersion: 'latest'
+
+    - name: Install fzf
+      run: |
+        choco install fzf -y
+      shell: cmd
+
+    - name: Verify fzf installation
+      run: |
+        $fzfPath = Get-Command fzf -ErrorAction SilentlyContinue
+        if ($fzfPath) {
+          Write-Host "✓ fzf installed at: $($fzfPath.Path)"
+          fzf --version
+        } else {
+          Write-Error "fzf not found in PATH"
+          exit 1
+        }
+      shell: ${{ matrix.pwsh }}
+
+    - name: Test module manifest
+      run: |
+        $manifest = Test-ModuleManifest -Path ./ProjSwitch.psd1 -ErrorAction Stop
+        Write-Host "✓ Module manifest is valid"
+        Write-Host "  Name: $($manifest.Name)"
+        Write-Host "  Version: $($manifest.Version)"
+        Write-Host "  Author: $($manifest.Author)"
+      shell: ${{ matrix.pwsh }}
+
+    - name: Import module
+      run: |
+        Import-Module ./ProjSwitch.psd1 -Force -ErrorAction Stop
+        Write-Host "✓ Module imported successfully"
+
+        $commands = Get-Command -Module ProjSwitch
+        Write-Host "✓ Exported commands:"
+        $commands | ForEach-Object { Write-Host "  - $($_.Name)" }
+
+        if (-not (Get-Command Switch-Project -ErrorAction SilentlyContinue)) {
+          Write-Error "Switch-Project command not found"
+          exit 1
+        }
+
+        if (-not (Get-Command Get-ProjectList -ErrorAction SilentlyContinue)) {
+          Write-Error "Get-ProjectList command not found"
+          exit 1
+        }
+
+        if (-not (Get-Alias cdp -ErrorAction SilentlyContinue)) {
+          Write-Error "cdp alias not found"
+          exit 1
+        }
+
+        Write-Host "✓ All expected commands and aliases are available"
+      shell: ${{ matrix.pwsh }}
+
+    - name: Test with custom config
+      run: |
+        Import-Module ./ProjSwitch.psd1 -Force
+
+        # Create test config
+        $testConfig = @"
+[
+  {
+    "name": "TestProject1",
+    "rootPath": "$PWD",
+    "enabled": true
+  },
+  {
+    "name": "TestProject2",
+    "rootPath": "C:\\Temp",
+    "enabled": true
+  },
+  {
+    "name": "DisabledProject",
+    "rootPath": "C:\\Disabled",
+    "enabled": false
+  }
+]
+"@
+        $testConfigPath = "$env:TEMP\test-projects.json"
+        $testConfig | Out-File -FilePath $testConfigPath -Encoding UTF8
+
+        Write-Host "✓ Test config created at: $testConfigPath"
+
+        # Test Get-ProjectList
+        $projects = Get-Content $testConfigPath | ConvertFrom-Json | Where-Object { $_.enabled }
+        Write-Host "✓ Found $($projects.Count) enabled projects in test config"
+
+        if ($projects.Count -ne 2) {
+          Write-Error "Expected 2 enabled projects, found $($projects.Count)"
+          exit 1
+        }
+
+        Write-Host "✓ Custom config test passed"
+      shell: ${{ matrix.pwsh }}
+
+    - name: Verify file structure
+      run: |
+        $requiredFiles = @(
+          "ProjSwitch.psd1",
+          "src/ProjSwitch.psm1",
+          "LICENSE",
+          "README.md",
+          "README_EN.md",
+          "CHANGELOG.md",
+          "CONTRIBUTING.md",
+          "Install.ps1"
+        )
+
+        $missingFiles = @()
+        foreach ($file in $requiredFiles) {
+          if (-not (Test-Path $file)) {
+            $missingFiles += $file
+          }
+        }
+
+        if ($missingFiles.Count -gt 0) {
+          Write-Error "Missing required files:"
+          $missingFiles | ForEach-Object { Write-Error "  - $_" }
+          exit 1
+        }
+
+        Write-Host "✓ All required files present"
+      shell: ${{ matrix.pwsh }}
+
+  lint:
+    name: PowerShell Script Analyzer
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install PSScriptAnalyzer
+      run: |
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+      shell: pwsh
+
+    - name: Run PSScriptAnalyzer
+      run: |
+        $results = Invoke-ScriptAnalyzer -Path ./src/ProjSwitch.psm1 -Severity Warning,Error
+
+        if ($results) {
+          Write-Host "PSScriptAnalyzer found issues:"
+          $results | Format-Table -AutoSize
+
+          $errorCount = ($results | Where-Object Severity -eq 'Error').Count
+          $warningCount = ($results | Where-Object Severity -eq 'Warning').Count
+
+          Write-Host "`nSummary: $errorCount errors, $warningCount warnings"
+
+          if ($errorCount -gt 0) {
+            Write-Error "PSScriptAnalyzer found $errorCount error(s)"
+            exit 1
+          }
+        } else {
+          Write-Host "✓ No PSScriptAnalyzer issues found"
+        }
+      shell: pwsh

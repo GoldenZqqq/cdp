@@ -19,13 +19,13 @@ CompatiblePSEditions = @('Desktop', 'Core')
 GUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 
 # Author of this module
-Author = 'Your Name'
+Author = 'GoldenZqqq'
 
 # Company or vendor of this module
-CompanyName = 'Unknown'
+CompanyName = 'GoldenZqqq'
 
 # Copyright statement for this module
-Copyright = '(c) 2025 Your Name. All rights reserved.'
+Copyright = '(c) 2025 GoldenZqqq. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'A fast and intuitive project directory switcher for PowerShell. Integrates with Project Manager (VS Code/Cursor extension) and uses fzf for fuzzy search.'
@@ -97,10 +97,10 @@ PrivateData = @{
                  'vscode', 'cursor', 'terminal', 'cli', 'windows-terminal')
 
         # A URL to the license for this module.
-        LicenseUri = 'https://github.com/yourusername/ProjSwitch/blob/main/LICENSE'
+        LicenseUri = 'https://github.com/GoldenZqqq/ProjSwitch/blob/main/LICENSE'
 
         # A URL to the main website for this project.
-        ProjectUri = 'https://github.com/yourusername/ProjSwitch'
+        ProjectUri = 'https://github.com/GoldenZqqq/ProjSwitch'
 
         # A URL to an icon representing this module.
         # IconUri = ''

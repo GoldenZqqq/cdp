@@ -8,6 +8,15 @@ bin/
 obj/
 publish/
 
+# API Keys and Secrets (IMPORTANT!)
+*apikey*
+*api-key*
+*secret*
+*.key
+.env
+.env.*
+credentials.json
+
 # Testing
 *.Tests.ps1.Results.xml
 TestResults/
