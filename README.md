@@ -1,4 +1,4 @@
-# ProjSwitch
+# cdp
 
 <div align="center">
 
@@ -11,7 +11,7 @@ Claude Code、Codex、Gemini CLI、Droid...
 **一键急停定位，瞬间切换项目 ⚡**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/ProjSwitch)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/cdp)
 
 </div>
 
@@ -45,7 +45,7 @@ PS E:\OtherProject\Backend> cd "E:\Work\Client Projects\Some Long Name\Nested\Fo
 
 ---
 
-## 🚀 解决方案：ProjSwitch
+## 🚀 解决方案：cdp
 
 **一个命令，搞定一切：**
 
@@ -53,7 +53,7 @@ PS E:\OtherProject\Backend> cd "E:\Work\Client Projects\Some Long Name\Nested\Fo
 PS C:\> cdp
 
   ┌─ Select project: ────────────────────────────┐
-  │ > ProjSwitch                                 │
+  │ > cdp                                 │
   │   MyAwesomeApp                               │
   │   ClientProjectAlpha                         │
   │   Backend-API-v2                             │
@@ -82,7 +82,7 @@ PS C:\> cdp
 - **即时启动**：fzf 驱动，毫秒级响应
 - **智能配置**：自动读取 Project Manager 插件配置
 - **一键切换**：`cdp` 三个字母，搞定所有项目
-- **快速管理**：`add` 添加项目，`rm` 删除项目，`ls` 查看所有项目
+- **快速管理**：`cdp-add` 添加项目，`cdp-rm` 删除项目，`cdp-ls` 查看所有项目
 
 ### 🛠️ 开发者友好
 
@@ -107,8 +107,8 @@ PS C:\> cdp
 
 ```powershell
 # 克隆仓库
-git clone https://github.com/GoldenZqqq/ProjSwitch.git
-cd ProjSwitch
+git clone https://github.com/GoldenZqqq/cdp.git
+cd cdp
 
 # 运行安装脚本（自动安装 fzf + 自动配置）
 .\Install.ps1 -AddToProfile
@@ -148,7 +148,7 @@ Switch-Project
 
 ```powershell
 # 添加当前目录（自动使用文件夹名作为项目名）
-add
+cdp-add
 
 # 或使用自定义名称
 Add-Project -Name "我的超级项目"
@@ -161,7 +161,7 @@ Add-Project -Path "E:\Projects\MyApp" -Name "MyApp"
 
 ```powershell
 # 使用别名（推荐）
-ls
+cdp-ls
 
 # 或使用完整命令
 Get-ProjectList
@@ -173,7 +173,7 @@ Get-ProjectList
 
 ```powershell
 # 使用 fzf 交互式选择要删除的项目
-rm
+cdp-rm
 
 # 或指定项目名称直接删除
 Remove-Project -Name "旧项目"
@@ -183,7 +183,7 @@ Remove-Project -Name "旧项目"
 
 ```powershell
 # 打开配置文件进行手动编辑
-edit-config
+cdp-edit
 
 # 或使用完整命令
 Edit-ProjectConfig
@@ -224,10 +224,10 @@ function cdpe { cdp; explorer . }
 | 命令 | 别名 | 描述 |
 |------|------|------|
 | `Switch-Project` | `cdp` | 打开 fzf 菜单选择并切换项目 |
-| `Add-Project` | `add` | 添加当前目录或指定路径到项目列表 |
-| `Remove-Project` | `rm` | 删除项目（支持交互式选择） |
-| `Get-ProjectList` | `ls` | 列出所有已启用的项目及路径 |
-| `Edit-ProjectConfig` | `edit-config` | 打开配置文件进行编辑 |
+| `Add-Project` | `cdp-add` | 添加当前目录或指定路径到项目列表 |
+| `Remove-Project` | `cdp-rm` | 删除项目（支持交互式选择） |
+| `Get-ProjectList` | `cdp-ls` | 列出所有已启用的项目及路径 |
+| `Edit-ProjectConfig` | `cdp-edit` | 打开配置文件进行编辑 |
 
 ---
 
@@ -240,15 +240,15 @@ PS C:\> cdp
 ┌───────────────────────────────────────┐
 │ Select project: proj                 │
 ├───────────────────────────────────────┤
-│ > ProjSwitch                         │  ← 当前选择
+│ > cdp                         │  ← 当前选择
 │   ProjectAlpha                       │
 │   ProjectManager-Extension           │
 └───────────────────────────────────────┘
   3/15  ← 匹配 15 个项目中的 3 个
 
 # 选择后
-✓ Switched to project: ProjSwitch
-PS E:\Learn\ProjSwitch>  # 终端标题 → "ProjSwitch"
+✓ Switched to project: cdp
+PS E:\Learn\cdp>  # 终端标题 → "cdp"
 ```
 
 ---
@@ -257,28 +257,28 @@ PS E:\Learn\ProjSwitch>  # 终端标题 → "ProjSwitch"
 
 ### 配置优先级
 
-ProjSwitch 按以下优先级自动查找配置文件：
+cdp 按以下优先级自动查找配置文件：
 
-1. **环境变量** `$env:PROJSWITCH_CONFIG`（最高优先级）
-2. **用户自定义配置** `~/.projswitch/projects.json`（首次使用时自动创建）
+1. **环境变量** `$env:CDP_CONFIG`（最高优先级）
+2. **用户自定义配置** `~/.cdp/projects.json`（首次使用时自动创建）
 3. **Cursor Project Manager 插件** `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
 4. **VS Code Project Manager 插件** `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
 
 ### 选项 1: 使用默认配置（最简单）
 
-首次使用 `add` 命令时，会自动创建 `~/.projswitch/projects.json` 配置文件：
+首次使用 `cdp-add` 命令时，会自动创建 `~/.cdp/projects.json` 配置文件：
 
 ```powershell
 # 在项目目录中
 cd E:\Projects\MyApp
-add  # 自动添加到配置并创建文件（如果不存在）
+cdp-add  # 自动添加到配置并创建文件（如果不存在）
 ```
 
 ### 选项 2: 使用 Project Manager 插件
 
-如果你已安装 [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) 插件（VS Code/Cursor），ProjSwitch 会自动读取插件的配置文件。
+如果你已安装 [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) 插件（VS Code/Cursor），cdp 会自动读取插件的配置文件。
 
-**无需额外配置！** 在 Project Manager 中添加项目，ProjSwitch 自动识别。
+**无需额外配置！** 在 Project Manager 中添加项目，cdp 自动识别。
 
 ### 选项 3: 使用自定义配置文件
 
@@ -322,7 +322,7 @@ add  # 自动添加到配置并创建文件（如果不存在）
 
 ```powershell
 # 添加到 $PROFILE
-$env:PROJSWITCH_CONFIG = "C:\my-projects.json"
+$env:CDP_CONFIG = "C:\my-projects.json"
 
 # 模块会自动检测此环境变量
 ```
@@ -375,15 +375,15 @@ fzf --version
 . $PROFILE
 
 # 或手动导入
-Import-Module ProjSwitch -Force
+Import-Module cdp -Force
 
 # 检查模块是否存在
-Get-Module -ListAvailable ProjSwitch
+Get-Module -ListAvailable cdp
 ```
 
 ---
 
-## 🌟 为什么选择 ProjSwitch？
+## 🌟 为什么选择 cdp？
 
 ### 对比传统方式
 
@@ -391,7 +391,7 @@ Get-Module -ListAvailable ProjSwitch
 |------|---------|------|------|
 | **手动 cd** | 记路径 → 输入 → Tab 补全 | 15-30秒 | 记不住路径，层级深 |
 | **文件管理器** | 打开资源管理器 → 找文件夹 → 右键终端 | 20-40秒 | 打断键盘流，效率低 |
-| **ProjSwitch** | `cdp` → 输入几个字母 → 回车 | **2-5秒** | ✅ 无痛点 |
+| **cdp** | `cdp` → 输入几个字母 → 回车 | **2-5秒** | ✅ 无痛点 |
 
 ### 适合谁？
 
@@ -426,14 +426,14 @@ Get-Module -ListAvailable ProjSwitch
 
 ```powershell
 # Fork 仓库并克隆
-git clone https://github.com/GoldenZqqq/ProjSwitch.git
-cd ProjSwitch
+git clone https://github.com/GoldenZqqq/cdp.git
+cd cdp
 
 # 修改代码
-# src/ProjSwitch.psm1
+# src/cdp.psm1
 
 # 本地测试
-Import-Module ./ProjSwitch.psd1 -Force
+Import-Module ./cdp.psd1 -Force
 cdp
 
 # 提交 PR
@@ -459,8 +459,8 @@ MIT License - 详见 [LICENSE](./LICENSE)
 
 ## 💬 反馈与支持
 
-- 🐛 [提交 Bug](https://github.com/GoldenZqqq/ProjSwitch/issues)
-- 💡 [功能建议](https://github.com/GoldenZqqq/ProjSwitch/issues)
+- 🐛 [提交 Bug](https://github.com/GoldenZqqq/cdp/issues)
+- 💡 [功能建议](https://github.com/GoldenZqqq/cdp/issues)
 - ⭐ 觉得有用？给个 Star 吧！
 
 ---
@@ -471,6 +471,6 @@ MIT License - 详见 [LICENSE](./LICENSE)
 
 Made with ❤️ for Vibe Coders
 
-[⬆ 回到顶部](#projswitch)
+[⬆ 回到顶部](#cdp)
 
 </div>

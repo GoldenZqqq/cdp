@@ -1,6 +1,6 @@
 # 配置文件示例 / Configuration Examples
 
-本目录包含 ProjSwitch 自定义配置文件的示例。
+本目录包含 cdp 自定义配置文件的示例。
 
 ## 文件说明
 
@@ -43,7 +43,7 @@ $example = Get-Content examples\projects.json -Raw
 $example | Out-File "C:\my-projects.json" -Encoding UTF8
 
 # 设置环境变量（推荐）
-$env:PROJSWITCH_CONFIG = "C:\my-projects.json"
+$env:CDP_CONFIG = "C:\my-projects.json"
 ```
 
 ### 方法 3: 添加到 PowerShell 配置
@@ -53,7 +53,7 @@ $env:PROJSWITCH_CONFIG = "C:\my-projects.json"
 notepad $PROFILE
 
 # 添加以下内容：
-$env:PROJSWITCH_CONFIG = "C:\my-projects.json"
+$env:CDP_CONFIG = "C:\my-projects.json"
 ```
 
 ## 路径格式说明
@@ -120,7 +120,7 @@ $env:PROJSWITCH_CONFIG = "C:\my-projects.json"
 2. **启用/禁用**：使用 `enabled: false` 临时禁用项目，而不是删除
 3. **路径验证**：确保路径存在，否则切换时会报错
 4. **中文支持**：项目名称支持中文和 Unicode 字符
-5. **环境变量**：推荐使用 `PROJSWITCH_CONFIG` 环境变量设置默认配置路径
+5. **环境变量**：推荐使用 `CDP_CONFIG` 环境变量设置默认配置路径
 
 ## 自动生成配置文件
 

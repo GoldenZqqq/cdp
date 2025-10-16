@@ -1,5 +1,5 @@
 #
-# Module manifest for module 'ProjSwitch'
+# Module manifest for module 'cdp'
 #
 # Generated on: 2025-10-15
 #
@@ -7,7 +7,7 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-RootModule = 'src\ProjSwitch.psm1'
+RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
 ModuleVersion = '1.1.0'
@@ -28,7 +28,7 @@ CompanyName = 'GoldenZqqq'
 Copyright = '(c) 2025 GoldenZqqq. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'A fast and intuitive project directory switcher for PowerShell. Integrates with Project Manager (VS Code/Cursor extension) and uses fzf for fuzzy search.'
+Description = 'cdp - A fast and intuitive project directory switcher for PowerShell. Fuzzy-find your way to any project instantly.'
 
 # Minimum version of the PowerShell engine required by this module
 PowerShellVersion = '5.1'
@@ -76,7 +76,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('cdp', 'add', 'rm', 'ls', 'edit-config')
+AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -97,23 +97,25 @@ PrivateData = @{
                  'vscode', 'cursor', 'terminal', 'cli', 'windows-terminal')
 
         # A URL to the license for this module.
-        LicenseUri = 'https://github.com/GoldenZqqq/ProjSwitch/blob/main/LICENSE'
+        LicenseUri = 'https://github.com/GoldenZqqq/cdp/blob/main/LICENSE'
 
         # A URL to the main website for this project.
-        ProjectUri = 'https://github.com/GoldenZqqq/ProjSwitch'
+        ProjectUri = 'https://github.com/GoldenZqqq/cdp'
 
         # A URL to an icon representing this module.
         # IconUri = ''
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
-v1.1.0 - Major Feature Update
-- Added Add-Project command (alias: add) to quickly add current directory to project list
-- Added Remove-Project command (alias: rm) to remove projects from configuration
-- Added Edit-ProjectConfig command (alias: edit-config) to quickly edit config file
-- Improved Get-ProjectList (alias: ls) with better formatting and numbering
-- Auto-create default config file at ~/.projswitch/projects.json on first use
+v1.1.0 - Project Renamed to "cdp"
+- BREAKING: Project renamed from ProjSwitch to cdp for simplicity
+- Added Add-Project command (alias: cdp-add) to quickly add current directory to project list
+- Added Remove-Project command (alias: cdp-rm) to remove projects from configuration
+- Added Edit-ProjectConfig command (alias: cdp-edit) to quickly edit config file
+- Improved Get-ProjectList (alias: cdp-ls) with better formatting and numbering
+- Auto-create default config file at ~/.cdp/projects.json on first use
 - Simplified configuration management workflow
+- Fixed: Aliases no longer conflict with system commands (ls, rm, add)
 '@
 
         # Prerelease string of this module

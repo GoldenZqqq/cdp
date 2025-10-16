@@ -1,0 +1,35 @@
+{
+    "version": "1.1.0",
+    "description": "cdp - A fast project directory switcher for PowerShell. Fuzzy-find your way to any project instantly.",
+    "homepage": "https://github.com/GoldenZqqq/cdp",
+    "license": "MIT",
+    "url": "https://github.com/GoldenZqqq/cdp/archive/refs/tags/v1.1.0.zip",
+    "hash": "REPLACE_WITH_ACTUAL_HASH",
+    "extract_dir": "cdp-1.1.0",
+    "depends": "fzf",
+    "installer": {
+        "script": [
+            "$modulePath = \"$env:USERPROFILE\\Documents\\PowerShell\\Modules\\cdp\"",
+            "if (!(Test-Path \"$env:USERPROFILE\\Documents\\PowerShell\\Modules\")) {",
+            "    $modulePath = \"$env:USERPROFILE\\Documents\\WindowsPowerShell\\Modules\\cdp\"",
+            "}",
+            "if (Test-Path $modulePath) { Remove-Item $modulePath -Recurse -Force }",
+            "New-Item -ItemType Directory -Path $modulePath -Force | Out-Null",
+            "Copy-Item \"$dir\\cdp.psd1\" -Destination $modulePath",
+            "Copy-Item \"$dir\\src\" -Destination $modulePath -Recurse"
+        ]
+    },
+    "uninstaller": {
+        "script": [
+            "$modulePath = \"$env:USERPROFILE\\Documents\\PowerShell\\Modules\\cdp\"",
+            "if (Test-Path $modulePath) { Remove-Item $modulePath -Recurse -Force }",
+            "$modulePath = \"$env:USERPROFILE\\Documents\\WindowsPowerShell\\Modules\\cdp\"",
+            "if (Test-Path $modulePath) { Remove-Item $modulePath -Recurse -Force }"
+        ]
+    },
+    "checkver": "github",
+    "autoupdate": {
+        "url": "https://github.com/GoldenZqqq/cdp/archive/refs/tags/v$version.zip",
+        "extract_dir": "cdp-$version"
+    }
+}

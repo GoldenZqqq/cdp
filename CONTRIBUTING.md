@@ -1,6 +1,6 @@
-# Contributing to ProjSwitch
+# Contributing to cdp
 
-First off, thank you for considering contributing to ProjSwitch! It's people like you that make ProjSwitch such a great tool.
+First off, thank you for considering contributing to cdp! It's people like you that make cdp such a great tool.
 
 ## Code of Conduct
 
@@ -42,8 +42,8 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 1. **Fork and clone the repository**
 
 ```powershell
-git clone https://github.com/GoldenZqqq/ProjSwitch.git
-cd ProjSwitch
+git clone https://github.com/GoldenZqqq/cdp.git
+cd cdp
 ```
 
 2. **Create a branch**
@@ -54,13 +54,13 @@ git checkout -b feature/your-feature-name
 
 3. **Make your changes**
 
-The main module code is in `ProjSwitch/src/ProjSwitch.psm1`.
+The main module code is in `cdp/src/cdp.psm1`.
 
 4. **Test your changes**
 
 ```powershell
 # Import the module locally
-Import-Module ./ProjSwitch/ProjSwitch.psd1 -Force
+Import-Module ./cdp/cdp.psd1 -Force
 
 # Test the functions
 Switch-Project
@@ -109,12 +109,12 @@ Go to the original repository and create a pull request from your fork.
 ## Module Structure
 
 ```
-ProjSwitch/
+cdp/
 ├── src/
-│   └── ProjSwitch.psm1      # Main module file
+│   └── cdp.psm1      # Main module file
 ├── tests/                    # Unit tests (future)
 ├── docs/                     # Additional documentation
-├── ProjSwitch.psd1          # Module manifest
+├── cdp.psd1          # Module manifest
 └── Install.ps1              # Installation script
 ```
 
@@ -137,7 +137,7 @@ Manual testing checklist:
 * Update README.md if you change functionality
 * Update function comment-based help
 * Add examples for new features
-* Update version numbers in ProjSwitch.psd1
+* Update version numbers in cdp.psd1
 
 ## Questions?
 

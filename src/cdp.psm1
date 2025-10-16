@@ -1,15 +1,15 @@
 <#
 .SYNOPSIS
-    ProjSwitch - A fast project directory switcher for PowerShell.
+    cdp - A fast project directory switcher for PowerShell.
 
 .DESCRIPTION
-    ProjSwitch provides a fuzzy-search interface powered by fzf to quickly
-    switch between projects managed by Project Manager (VS Code/Cursor extension).
+    cdp provides a fuzzy-search interface powered by fzf to quickly
+    switch between projects. Compatible with Project Manager plugin.
 
 .NOTES
-    Name: ProjSwitch
-    Author: Your Name
-    Version: 1.0.0
+    Name: cdp
+    Author: GoldenZqqq
+    Version: 1.1.0
     License: MIT
 #>
 
@@ -59,7 +59,7 @@ function Switch-Project {
     }
 
     # Initialize config file if it doesn't exist and not using Project Manager
-    $customConfigPath = Join-Path $env:USERPROFILE ".projswitch\projects.json"
+    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
     if ($ConfigPath -eq $customConfigPath) {
         Initialize-ConfigFile -ConfigPath $ConfigPath
     }
@@ -149,7 +149,7 @@ function Get-ProjectList {
     }
 
     # Initialize config file if it doesn't exist and not using Project Manager
-    $customConfigPath = Join-Path $env:USERPROFILE ".projswitch\projects.json"
+    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
     if ($ConfigPath -eq $customConfigPath) {
         Initialize-ConfigFile -ConfigPath $ConfigPath
     }
@@ -198,12 +198,12 @@ function Get-DefaultConfigPath {
     # 3. Cursor Project Manager
     # 4. VS Code Project Manager
 
-    if (-not [string]::IsNullOrWhiteSpace($env:PROJSWITCH_CONFIG)) {
-        return $env:PROJSWITCH_CONFIG
+    if (-not [string]::IsNullOrWhiteSpace($env:CDP_CONFIG)) {
+        return $env:CDP_CONFIG
     }
 
     # Check for custom config directory
-    $customConfigPath = Join-Path $env:USERPROFILE ".projswitch\projects.json"
+    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
     if (Test-Path $customConfigPath) {
         return $customConfigPath
     }
@@ -490,9 +490,9 @@ function Edit-ProjectConfig {
 
 # Export module members
 Set-Alias -Name cdp -Value Switch-Project
-Set-Alias -Name add -Value Add-Project
-Set-Alias -Name rm -Value Remove-Project
-Set-Alias -Name ls -Value Get-ProjectList
-Set-Alias -Name edit-config -Value Edit-ProjectConfig
+Set-Alias -Name cdp-add -Value Add-Project
+Set-Alias -Name cdp-rm -Value Remove-Project
+Set-Alias -Name cdp-ls -Value Get-ProjectList
+Set-Alias -Name cdp-edit -Value Edit-ProjectConfig
 
-Export-ModuleMember -Function Switch-Project, Get-ProjectList, Add-Project, Remove-Project, Edit-ProjectConfig -Alias cdp, add, rm, ls, edit-config
+Export-ModuleMember -Function Switch-Project, Get-ProjectList, Add-Project, Remove-Project, Edit-ProjectConfig -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit

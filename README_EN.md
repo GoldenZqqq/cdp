@@ -1,4 +1,4 @@
-# ProjSwitch
+# cdp
 
 <div align="center">
 
@@ -11,7 +11,7 @@ Claude Code, Codex, Gemini CLI, Droid...
 **One-key Quick Stop & Switch ⚡**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/ProjSwitch)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/cdp)
 
 </div>
 
@@ -45,7 +45,7 @@ PS E:\OtherProject\Backend> cd "E:\Work\Client Projects\Some Long Name\Nested\Fo
 
 ---
 
-## 🚀 The Solution: ProjSwitch
+## 🚀 The Solution: cdp
 
 **One command, solves everything:**
 
@@ -53,7 +53,7 @@ PS E:\OtherProject\Backend> cd "E:\Work\Client Projects\Some Long Name\Nested\Fo
 PS C:\> cdp
 
   ┌─ Select project: ────────────────────────────┐
-  │ > ProjSwitch                                 │
+  │ > cdp                                 │
   │   MyAwesomeApp                               │
   │   ClientProjectAlpha                         │
   │   Backend-API-v2                             │
@@ -82,7 +82,7 @@ PS C:\> cdp
 - **Instant Launch**: Powered by fzf, millisecond response
 - **Smart Config**: Auto-reads Project Manager plugin configuration
 - **One-Key Switch**: `cdp` - three letters, all projects
-- **Quick Management**: `add` to add projects, `rm` to remove, `ls` to list all
+- **Quick Management**: `cdp-add` to add projects, `cdp-rm` to remove, `cdp-ls` to list all
 
 ### 🛠️ Developer Friendly
 
@@ -107,8 +107,8 @@ PS C:\> cdp
 
 ```powershell
 # Clone repository
-git clone https://github.com/GoldenZqqq/ProjSwitch.git
-cd ProjSwitch
+git clone https://github.com/GoldenZqqq/cdp.git
+cd cdp
 
 # Run install script (auto-install fzf + auto-configure)
 .\Install.ps1 -AddToProfile
@@ -148,7 +148,7 @@ Switch-Project
 
 ```powershell
 # Add current directory (auto-uses folder name as project name)
-add
+cdp-add
 
 # Or use custom name
 Add-Project -Name "My Awesome Project"
@@ -161,7 +161,7 @@ Add-Project -Path "E:\Projects\MyApp" -Name "MyApp"
 
 ```powershell
 # Use alias (recommended)
-ls
+cdp-ls
 
 # Or use full command
 Get-ProjectList
@@ -173,7 +173,7 @@ Displays all enabled projects with their paths, with index numbers.
 
 ```powershell
 # Use fzf interactive selection to remove project
-rm
+cdp-rm
 
 # Or specify project name directly
 Remove-Project -Name "Old Project"
@@ -183,7 +183,7 @@ Remove-Project -Name "Old Project"
 
 ```powershell
 # Open config file for manual editing
-edit-config
+cdp-edit
 
 # Or use full command
 Edit-ProjectConfig
@@ -224,10 +224,10 @@ function cdpe { cdp; explorer . }
 | Command | Alias | Description |
 |---------|-------|-------------|
 | `Switch-Project` | `cdp` | Open fzf menu to select and switch project |
-| `Add-Project` | `add` | Add current directory or specified path to project list |
-| `Remove-Project` | `rm` | Remove project (supports interactive selection) |
-| `Get-ProjectList` | `ls` | List all enabled projects with paths |
-| `Edit-ProjectConfig` | `edit-config` | Open config file for editing |
+| `Add-Project` | `cdp-add` | Add current directory or specified path to project list |
+| `Remove-Project` | `cdp-rm` | Remove project (supports interactive selection) |
+| `Get-ProjectList` | `cdp-ls` | List all enabled projects with paths |
+| `Edit-ProjectConfig` | `cdp-edit` | Open config file for editing |
 
 ---
 
@@ -240,15 +240,15 @@ PS C:\> cdp
 ┌───────────────────────────────────────┐
 │ Select project: proj                 │
 ├───────────────────────────────────────┤
-│ > ProjSwitch                         │  ← Current selection
+│ > cdp                         │  ← Current selection
 │   ProjectAlpha                       │
 │   ProjectManager-Extension           │
 └───────────────────────────────────────┘
   3/15  ← Matched 3 out of 15 projects
 
 # After selection
-✓ Switched to project: ProjSwitch
-PS E:\Learn\ProjSwitch>  # Terminal title → "ProjSwitch"
+✓ Switched to project: cdp
+PS E:\Learn\cdp>  # Terminal title → "cdp"
 ```
 
 ---
@@ -257,28 +257,28 @@ PS E:\Learn\ProjSwitch>  # Terminal title → "ProjSwitch"
 
 ### Configuration Priority
 
-ProjSwitch automatically searches for config files in this priority order:
+cdp automatically searches for config files in this priority order:
 
-1. **Environment variable** `$env:PROJSWITCH_CONFIG` (highest priority)
-2. **User custom config** `~/.projswitch/projects.json` (auto-created on first use)
+1. **Environment variable** `$env:CDP_CONFIG` (highest priority)
+2. **User custom config** `~/.cdp/projects.json` (auto-created on first use)
 3. **Cursor Project Manager plugin** `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
 4. **VS Code Project Manager plugin** `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
 
 ### Option 1: Use Default Config (Simplest)
 
-When you first use the `add` command, it will automatically create `~/.projswitch/projects.json`:
+When you first use the `cdp-add` command, it will automatically create `~/.cdp/projects.json`:
 
 ```powershell
 # In your project directory
 cd E:\Projects\MyApp
-add  # Automatically adds to config and creates file (if doesn't exist)
+cdp-add  # Automatically adds to config and creates file (if doesn't exist)
 ```
 
 ### Option 2: Use Project Manager Plugin
 
-If you have [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) plugin installed (VS Code/Cursor), ProjSwitch will automatically read the plugin's config file.
+If you have [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) plugin installed (VS Code/Cursor), cdp will automatically read the plugin's config file.
 
-**No extra config needed!** Add projects in Project Manager, ProjSwitch auto-detects.
+**No extra config needed!** Add projects in Project Manager, cdp auto-detects.
 
 ### Option 3: Use Custom Config File
 
@@ -322,7 +322,7 @@ Create a JSON file anywhere, e.g., `C:\my-projects.json`:
 
 ```powershell
 # Add to $PROFILE
-$env:PROJSWITCH_CONFIG = "C:\my-projects.json"
+$env:CDP_CONFIG = "C:\my-projects.json"
 
 # Module will auto-detect this environment variable
 ```
@@ -375,15 +375,15 @@ fzf --version
 . $PROFILE
 
 # Or manually import
-Import-Module ProjSwitch -Force
+Import-Module cdp -Force
 
 # Check if module exists
-Get-Module -ListAvailable ProjSwitch
+Get-Module -ListAvailable cdp
 ```
 
 ---
 
-## 🌟 Why Choose ProjSwitch?
+## 🌟 Why Choose cdp?
 
 ### Comparison with Traditional Methods
 
@@ -391,7 +391,7 @@ Get-Module -ListAvailable ProjSwitch
 |--------|-------|------|-------------|
 | **Manual cd** | Remember path → Type → Tab complete | 15-30s | Can't remember paths, deep nesting |
 | **File Explorer** | Open explorer → Find folder → Right-click terminal | 20-40s | Breaks keyboard flow, inefficient |
-| **ProjSwitch** | `cdp` → Type few letters → Enter | **2-5s** | ✅ No pain points |
+| **cdp** | `cdp` → Type few letters → Enter | **2-5s** | ✅ No pain points |
 
 ### Who is it for?
 
@@ -426,14 +426,14 @@ Contributions welcome! Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for detail
 
 ```powershell
 # Fork repository and clone
-git clone https://github.com/GoldenZqqq/ProjSwitch.git
-cd ProjSwitch
+git clone https://github.com/GoldenZqqq/cdp.git
+cd cdp
 
 # Make changes
-# src/ProjSwitch.psm1
+# src/cdp.psm1
 
 # Test locally
-Import-Module ./ProjSwitch.psd1 -Force
+Import-Module ./cdp.psd1 -Force
 cdp
 
 # Submit PR
@@ -459,8 +459,8 @@ MIT License - See [LICENSE](./LICENSE) for details
 
 ## 💬 Feedback & Support
 
-- 🐛 [Report Bug](https://github.com/GoldenZqqq/ProjSwitch/issues)
-- 💡 [Feature Request](https://github.com/GoldenZqqq/ProjSwitch/issues)
+- 🐛 [Report Bug](https://github.com/GoldenZqqq/cdp/issues)
+- 💡 [Feature Request](https://github.com/GoldenZqqq/cdp/issues)
 - ⭐ Find it useful? Give it a star!
 
 ---
@@ -471,6 +471,6 @@ MIT License - See [LICENSE](./LICENSE) for details
 
 Made with ❤️ for Vibe Coders
 
-[⬆ Back to top](#projswitch)
+[⬆ Back to top](#cdp)
 
 </div>

@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Installation script for ProjSwitch module.
+    Installation script for cdp module.
 
 .DESCRIPTION
-    This script installs the ProjSwitch module to the current user's PowerShell
+    This script installs the cdp module to the current user's PowerShell
     modules directory and optionally adds the 'cdp' alias to the PowerShell profile.
 
 .PARAMETER AddToProfile
@@ -39,11 +39,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Module information
-$ModuleName = 'ProjSwitch'
+$ModuleName = 'cdp'
 $ScriptRoot = $PSScriptRoot
 
 Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "  ProjSwitch Installation Script" -ForegroundColor Cyan
+Write-Host "  cdp Installation Script" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Check if running as administrator for AllUsers scope
@@ -89,7 +89,7 @@ New-Item -ItemType Directory -Path $modulePath -Force | Out-Null
 
 # Copy module files
 Write-Host "Copying module files..." -ForegroundColor Cyan
-Copy-Item -Path (Join-Path $ScriptRoot "ProjSwitch.psd1") -Destination $modulePath -Force
+Copy-Item -Path (Join-Path $ScriptRoot "cdp.psd1") -Destination $modulePath -Force
 Copy-Item -Path (Join-Path $ScriptRoot "src") -Destination $modulePath -Recurse -Force
 
 # Verify installation
@@ -111,8 +111,8 @@ if ($AddToProfile) {
     $profilePath = $PROFILE.CurrentUserAllHosts
     $profileContent = @"
 
-# ProjSwitch Module - Fast project directory switcher
-Import-Module ProjSwitch
+# cdp Module - Fast project directory switcher
+Import-Module cdp
 Set-Alias -Name cdp -Value Switch-Project
 "@
 
@@ -124,7 +124,7 @@ Set-Alias -Name cdp -Value Switch-Project
 
     # Check if already added
     $currentContent = Get-Content -Path $profilePath -Raw -ErrorAction SilentlyContinue
-    if ($currentContent -notmatch 'Import-Module ProjSwitch') {
+    if ($currentContent -notmatch 'Import-Module cdp') {
         Add-Content -Path $profilePath -Value $profileContent
         Write-Host "Added to PowerShell profile: $profilePath" -ForegroundColor Green
     } else {
@@ -201,11 +201,11 @@ Write-Host "Usage:" -ForegroundColor Yellow
 if ($AddToProfile) {
     Write-Host "  1. Restart PowerShell or run: . `$PROFILE" -ForegroundColor Gray
 } else {
-    Write-Host "  1. Import the module: Import-Module ProjSwitch" -ForegroundColor Gray
+    Write-Host "  1. Import the module: Import-Module cdp" -ForegroundColor Gray
     Write-Host "  2. Set alias (optional): Set-Alias cdp Switch-Project" -ForegroundColor Gray
 }
 Write-Host "  3. Run: cdp" -ForegroundColor Gray
 Write-Host "  4. Or: Switch-Project`n" -ForegroundColor Gray
 
 Write-Host "For more information, visit:" -ForegroundColor Yellow
-Write-Host "  https://github.com/GoldenZqqq/ProjSwitch`n" -ForegroundColor Cyan
+Write-Host "  https://github.com/GoldenZqqq/cdp`n" -ForegroundColor Cyan
