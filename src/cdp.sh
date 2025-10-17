@@ -49,47 +49,69 @@ get_default_config() {
         return
     fi
 
-    # Try to find Windows AppData via WSL
-    local appdata=""
-    if [[ -n "$APPDATA" ]]; then
-        # If APPDATA env var is set (converted from Windows)
-        appdata=$(convert_windows_to_wsl "$APPDATA")
-    elif [[ -d "/mnt/c/Users" ]]; then
-        # Try to detect current Windows user
-        local winuser=$(powershell.exe -NoProfile -Command 'Write-Host $env:USERNAME' 2>/dev/null | tr -d '\r\n')
-        if [[ -n "$winuser" ]]; then
-            appdata="/mnt/c/Users/$winuser/AppData/Roaming"
+    # Try to find Windows user directory
+    local winuser=""
+
+    # Method 1: Try to get from WSLENV or existing Windows env vars
+    if [[ -n "$WSLENV" ]] && [[ -n "$USERNAME" ]]; then
+        winuser="$USERNAME"
+    fi
+
+    # Method 2: Try PowerShell (if available)
+    if [[ -z "$winuser" ]] && command -v powershell.exe &> /dev/null; then
+        winuser=$(powershell.exe -NoProfile -Command 'Write-Host $env:USERNAME' 2>/dev/null | tr -d '\r\n')
+    fi
+
+    # Method 3: Try to detect from current WSL user's Windows home
+    if [[ -z "$winuser" ]] && [[ -d "/mnt/c/Users" ]]; then
+        # Get current Linux username and try to find matching Windows user
+        local current_user=$(whoami)
+        if [[ -d "/mnt/c/Users/$current_user" ]]; then
+            winuser="$current_user"
+        else
+            # Try to find the user directory by checking common locations
+            # Look for non-system user directories
+            for userdir in /mnt/c/Users/*/; do
+                local dirname=$(basename "$userdir")
+                # Skip system directories
+                if [[ "$dirname" != "Public" ]] && [[ "$dirname" != "Default" ]] && [[ "$dirname" != "All Users" ]] && [[ "$dirname" != "Default User" ]]; then
+                    # Check if this directory has a realistic home structure
+                    if [[ -d "$userdir/AppData" ]] || [[ -d "$userdir/Documents" ]]; then
+                        winuser="$dirname"
+                        break
+                    fi
+                fi
+            done
         fi
     fi
 
-    if [[ -n "$appdata" ]]; then
-        # Check Cursor first
-        local cursor_config="$appdata/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
-        if [[ -f "$cursor_config" ]]; then
-            echo "$cursor_config"
-            return
-        fi
+    if [[ -z "$winuser" ]]; then
+        # Could not detect Windows user, use WSL local config
+        echo "$HOME/.cdp/projects.json"
+        return
+    fi
 
-        # Check VS Code
-        local vscode_config="$appdata/Code/User/globalStorage/alefragnani.project-manager/projects.json"
-        if [[ -f "$vscode_config" ]]; then
-            echo "$vscode_config"
-            return
-        fi
+    local appdata="/mnt/c/Users/$winuser/AppData/Roaming"
 
-        # Also check Windows custom config location
-        local windows_custom_config="$appdata/../Local/Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/.cdp/projects.json"
-        if [[ -f "$windows_custom_config" ]]; then
-            echo "$windows_custom_config"
-            return
-        fi
+    # Check Cursor first
+    local cursor_config="$appdata/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
+    if [[ -f "$cursor_config" ]]; then
+        echo "$cursor_config"
+        return
+    fi
 
-        # Check common Windows user profile location
-        local win_user_config="/mnt/c/Users/$winuser/.cdp/projects.json"
-        if [[ -f "$win_user_config" ]]; then
-            echo "$win_user_config"
-            return
-        fi
+    # Check VS Code
+    local vscode_config="$appdata/Code/User/globalStorage/alefragnani.project-manager/projects.json"
+    if [[ -f "$vscode_config" ]]; then
+        echo "$vscode_config"
+        return
+    fi
+
+    # Check common Windows user profile location
+    local win_user_config="/mnt/c/Users/$winuser/.cdp/projects.json"
+    if [[ -f "$win_user_config" ]]; then
+        echo "$win_user_config"
+        return
     fi
 
     # Fallback: Custom config path in WSL home (will be created if needed)
