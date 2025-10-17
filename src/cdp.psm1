@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.1.1
+    Version: 1.2.2
     License: MIT
 #>
 
@@ -233,36 +233,145 @@ function Convert-WindowsPathToWSL {
     return $normalizedPath
 }
 
+# Helper function to get stored config choice path
+function Get-StoredConfigChoice {
+    $configChoiceFile = Join-Path $env:USERPROFILE ".cdp\config"
+    if (Test-Path $configChoiceFile) {
+        $storedPath = Get-Content -Path $configChoiceFile -Raw -ErrorAction SilentlyContinue
+        if (-not [string]::IsNullOrWhiteSpace($storedPath)) {
+            return $storedPath.Trim()
+        }
+    }
+    return $null
+}
+
+# Helper function to save config choice
+function Save-ConfigChoice {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigPath
+    )
+
+    $configChoiceFile = Join-Path $env:USERPROFILE ".cdp\config"
+    $configDir = Split-Path -Parent $configChoiceFile
+
+    if (-not (Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    }
+
+    $ConfigPath | Out-File -FilePath $configChoiceFile -Encoding UTF8 -NoNewline
+}
+
+# Helper function to find all available config files
+function Get-AllAvailableConfigs {
+    $configs = @()
+
+    # Check all possible locations
+    $cursorPath = Join-Path $env:APPDATA "Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
+    $vscodePath = Join-Path $env:APPDATA "Code\User\globalStorage\alefragnani.project-manager\projects.json"
+    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+
+    if (Test-Path $cursorPath) {
+        $configs += [PSCustomObject]@{
+            Path = $cursorPath
+            Source = "Cursor Project Manager"
+        }
+    }
+
+    if (Test-Path $vscodePath) {
+        $configs += [PSCustomObject]@{
+            Path = $vscodePath
+            Source = "VS Code Project Manager"
+        }
+    }
+
+    if (Test-Path $customConfigPath) {
+        $configs += [PSCustomObject]@{
+            Path = $customConfigPath
+            Source = "Custom Config (~/.cdp)"
+        }
+    }
+
+    return $configs
+}
+
 # Helper function to get default config path
 function Get-DefaultConfigPath {
     # Priority order:
-    # 1. Environment variable
-    # 2. User's custom config directory
-    # 3. Cursor Project Manager
-    # 4. VS Code Project Manager
+    # 1. Environment variable (highest priority, skip selection)
+    # 2. Stored user choice from previous selection (~/.cdp/config)
+    # 3. If multiple configs exist, let user choose and save choice
+    # 4. Otherwise return the first available or default path
 
     if (-not [string]::IsNullOrWhiteSpace($env:CDP_CONFIG)) {
         return $env:CDP_CONFIG
     }
 
-    # Check for custom config directory
-    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
-    if (Test-Path $customConfigPath) {
+    # Check for stored config choice
+    $storedChoice = Get-StoredConfigChoice
+    if ($storedChoice -and (Test-Path $storedChoice)) {
+        return $storedChoice
+    }
+
+    # Find all available configs
+    $availableConfigs = Get-AllAvailableConfigs
+
+    # If no configs found, return default (will be created)
+    if ($availableConfigs.Count -eq 0) {
+        $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
         return $customConfigPath
     }
 
-    # Try Project Manager locations
-    $cursorPath = Join-Path $env:APPDATA "Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
-    $vscodePath = Join-Path $env:APPDATA "Code\User\globalStorage\alefragnani.project-manager\projects.json"
-
-    if (Test-Path $cursorPath) {
-        return $cursorPath
-    } elseif (Test-Path $vscodePath) {
-        return $vscodePath
+    # If only one config, use it and save the choice
+    if ($availableConfigs.Count -eq 1) {
+        $selectedPath = $availableConfigs[0].Path
+        Save-ConfigChoice -ConfigPath $selectedPath
+        return $selectedPath
     }
 
-    # Return custom config path as default (will be created if needed)
-    return $customConfigPath
+    # Multiple configs found - let user choose
+    Write-Host "`nMultiple configuration files found:" -ForegroundColor Cyan
+    Write-Host ("=" * 80) -ForegroundColor Gray
+    Write-Host ""
+
+    for ($i = 0; $i -lt $availableConfigs.Count; $i++) {
+        $config = $availableConfigs[$i]
+        Write-Host "  [$($i + 1)] " -ForegroundColor Yellow -NoNewline
+        Write-Host "$($config.Source)" -ForegroundColor Green
+        Write-Host "      $($config.Path)" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    Write-Host "Your choice will be saved. Use " -ForegroundColor Gray -NoNewline
+    Write-Host "cdp-config" -ForegroundColor Cyan -NoNewline
+    Write-Host " to change it later." -ForegroundColor Gray
+    Write-Host "Or set " -ForegroundColor Gray -NoNewline
+    Write-Host "`$env:CDP_CONFIG" -ForegroundColor Cyan -NoNewline
+    Write-Host " to override." -ForegroundColor Gray
+    Write-Host ""
+
+    # Get user selection
+    do {
+        $selection = Read-Host "Select config file (1-$($availableConfigs.Count))"
+        $selectedIndex = $null
+        if ([int]::TryParse($selection, [ref]$selectedIndex)) {
+            if ($selectedIndex -ge 1 -and $selectedIndex -le $availableConfigs.Count) {
+                $selectedPath = $availableConfigs[$selectedIndex - 1].Path
+                $selectedSource = $availableConfigs[$selectedIndex - 1].Source
+
+                # Save the choice
+                Save-ConfigChoice -ConfigPath $selectedPath
+
+                Write-Host "`nUsing: $selectedSource" -ForegroundColor Green
+                Write-Host "Path: $selectedPath" -ForegroundColor Gray
+                Write-Host "Saved to: " -ForegroundColor Gray -NoNewline
+                Write-Host "~/.cdp/config" -ForegroundColor Cyan
+                Write-Host ""
+                return $selectedPath
+            }
+        }
+        Write-Host "Invalid selection. Please enter a number between 1 and $($availableConfigs.Count)." -ForegroundColor Red
+    } while ($true)
 }
 
 # Helper function to ensure config file exists
@@ -534,11 +643,121 @@ function Edit-ProjectConfig {
     }
 }
 
+function Set-ProjectConfig {
+    <#
+    .SYNOPSIS
+        Change the active configuration file.
+
+    .DESCRIPTION
+        Allows you to switch between different project configuration files
+        (Cursor, VS Code, custom config). Your choice will be saved and
+        used for all future cdp commands.
+
+    .EXAMPLE
+        Set-ProjectConfig
+        # Opens interactive menu to select a different config file
+
+    .EXAMPLE
+        cdp-config
+        # Using the alias
+    #>
+
+    [CmdletBinding()]
+    param()
+
+    Write-Host "`n========================================" -ForegroundColor Cyan
+    Write-Host "  Change Configuration File" -ForegroundColor Cyan
+    Write-Host "========================================`n" -ForegroundColor Cyan
+
+    # Find all available configs
+    $availableConfigs = Get-AllAvailableConfigs
+
+    if ($availableConfigs.Count -eq 0) {
+        Write-Host "No configuration files found." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Available options:" -ForegroundColor Cyan
+        Write-Host "  1. Create a custom config with: " -NoNewline -ForegroundColor Gray
+        Write-Host "cdp-add" -ForegroundColor Cyan
+        Write-Host "  2. Install Project Manager extension in VS Code/Cursor" -ForegroundColor Gray
+        return
+    }
+
+    # Show current config
+    $currentConfig = Get-StoredConfigChoice
+    if ($currentConfig) {
+        Write-Host "Current configuration:" -ForegroundColor Cyan
+        $currentSource = ($availableConfigs | Where-Object { $_.Path -eq $currentConfig }).Source
+        if ($currentSource) {
+            Write-Host "  $currentSource" -ForegroundColor Green
+        }
+        Write-Host "  $currentConfig" -ForegroundColor Gray
+        Write-Host ""
+    }
+
+    # Show all available configs
+    Write-Host "Available configuration files:" -ForegroundColor Cyan
+    Write-Host ("=" * 80) -ForegroundColor Gray
+    Write-Host ""
+
+    for ($i = 0; $i -lt $availableConfigs.Count; $i++) {
+        $config = $availableConfigs[$i]
+        $isCurrent = ($config.Path -eq $currentConfig)
+
+        Write-Host "  [$($i + 1)] " -ForegroundColor Yellow -NoNewline
+        Write-Host "$($config.Source)" -ForegroundColor Green -NoNewline
+
+        if ($isCurrent) {
+            Write-Host " (current)" -ForegroundColor Cyan
+        } else {
+            Write-Host ""
+        }
+
+        Write-Host "      $($config.Path)" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+
+    # Get user selection
+    do {
+        $selection = Read-Host "Select config file (1-$($availableConfigs.Count), or 0 to cancel)"
+
+        if ($selection -eq "0") {
+            Write-Host "`nOperation cancelled." -ForegroundColor Gray
+            return
+        }
+
+        $selectedIndex = $null
+        if ([int]::TryParse($selection, [ref]$selectedIndex)) {
+            if ($selectedIndex -ge 1 -and $selectedIndex -le $availableConfigs.Count) {
+                $selectedPath = $availableConfigs[$selectedIndex - 1].Path
+                $selectedSource = $availableConfigs[$selectedIndex - 1].Source
+
+                # Save the choice
+                Save-ConfigChoice -ConfigPath $selectedPath
+
+                Write-Host "`n========================================" -ForegroundColor Green
+                Write-Host "  Configuration Updated!" -ForegroundColor Green
+                Write-Host "========================================`n" -ForegroundColor Green
+                Write-Host "Now using: " -NoNewline -ForegroundColor Gray
+                Write-Host "$selectedSource" -ForegroundColor Green
+                Write-Host "Path: " -NoNewline -ForegroundColor Gray
+                Write-Host "$selectedPath" -ForegroundColor Cyan
+                Write-Host "Saved to: " -NoNewline -ForegroundColor Gray
+                Write-Host "~/.cdp/config" -ForegroundColor Cyan
+                Write-Host ""
+                return
+            }
+        }
+        Write-Host "Invalid selection. Please enter a number between 0 and $($availableConfigs.Count)." -ForegroundColor Red
+    } while ($true)
+}
+
 # Export module members
 Set-Alias -Name cdp -Value Switch-Project
 Set-Alias -Name cdp-add -Value Add-Project
 Set-Alias -Name cdp-rm -Value Remove-Project
 Set-Alias -Name cdp-ls -Value Get-ProjectList
 Set-Alias -Name cdp-edit -Value Edit-ProjectConfig
+Set-Alias -Name cdp-config -Value Set-ProjectConfig
 
-Export-ModuleMember -Function Switch-Project, Get-ProjectList, Add-Project, Remove-Project, Edit-ProjectConfig -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit
+Export-ModuleMember -Function Switch-Project, Get-ProjectList, Add-Project, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config

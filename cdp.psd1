@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.2.0'
+ModuleVersion = '1.2.2'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Switch-Project', 'Get-ProjectList', 'Add-Project', 'Remove-Project', 'Edit-ProjectConfig')
+FunctionsToExport = @('Switch-Project', 'Get-ProjectList', 'Add-Project', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -76,7 +76,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit')
+AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -107,6 +107,20 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.2.2 - Configuration Persistence Feature
+- Added: Automatic config choice persistence to ~/.cdp/config
+- Added: New Set-ProjectConfig command (alias: cdp-config) to change active config
+- Added: Smart config priority: env var > saved choice > interactive selection
+- Improved: Only prompt for config selection on first use or when explicitly requested
+- Improved: Better UX with current config display in cdp-config command
+
+v1.2.1 - Multi-Config Selection Feature
+- Added: Multi-config file selection when multiple configs are detected
+- Added: Interactive menu to choose between Cursor, VS Code, and custom configs
+- Added: Tip to use $env:CDP_CONFIG to skip selection
+- Improved: Better user experience when managing multiple config sources
+- Improved: Consistent behavior across PowerShell and WSL/bash versions
+
 v1.2.0 - WSL/Linux Support Release
 - Added: Full WSL/Linux support with bash/zsh version
 - Added: -WSL parameter to Switch-Project for launching WSL from PowerShell

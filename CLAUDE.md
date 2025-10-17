@@ -124,6 +124,110 @@ Projects are defined as JSON objects with three fields:
 - `Docs:` for documentation changes
 - `Refactor:` for code refactoring
 
+## CRITICAL Development Guidelines
+
+⚠️ **IMPORTANT**: These synchronization rules are mandatory and must be followed for EVERY change.
+
+### 1. Documentation Synchronization
+
+**RULE**: Any change that affects user-facing functionality MUST be documented in BOTH language versions:
+- `README.md` (中文版)
+- `README_EN.md` (English version)
+
+**When to update**:
+- Adding new features
+- Modifying existing functionality
+- Changing command usage or parameters
+- Adding/removing dependencies
+- Updating installation methods
+
+**How to synchronize**:
+1. Make changes to code first
+2. Update README.md with Chinese description
+3. Update README_EN.md with equivalent English description
+4. Ensure both READMEs have identical structure and information
+5. Review both files before committing
+
+### 2. PowerShell Module Version Management
+
+**RULE**: Any change to PowerShell module files requires version update and Gallery re-publishing:
+
+**Files that trigger version updates**:
+- `src/cdp.psm1` (PowerShell module implementation)
+- `cdp.psd1` (Module manifest)
+- Any exported function changes
+
+**Version update procedure**:
+1. Modify the PowerShell code in `src/cdp.psm1` or related files
+2. Update version number in `cdp.psd1`:
+   - **PATCH** (x.x.X): Bug fixes, minor improvements
+   - **MINOR** (x.X.0): New features, backward-compatible changes
+   - **MAJOR** (X.0.0): Breaking changes
+3. Update `ReleaseNotes` in `cdp.psd1` with change description
+4. Test locally: `Import-Module ./cdp.psd1 -Force`
+5. Publish to PowerShell Gallery:
+   ```powershell
+   # Use alternative publishing script (avoids .NET SDK issues)
+   .\Publish-ToGallery-Alt.ps1 -ApiKey "your-api-key"
+   ```
+6. Verify publication at: https://www.powershellgallery.com/packages/cdp
+
+**Note**: WSL/bash changes (`src/cdp.sh`) do NOT require PowerShell Gallery updates, but still need version updates in the bash script header.
+
+### 3. Cross-Platform Consistency
+
+**RULE**: Features must work identically across both PowerShell and WSL/bash versions.
+
+**When implementing new features**:
+1. Implement in PowerShell version (`src/cdp.psm1`)
+2. Implement equivalent functionality in bash version (`src/cdp.sh`)
+3. Ensure both versions:
+   - Accept same parameters
+   - Produce similar output format
+   - Handle errors consistently
+   - Share configuration files
+
+### 4. Pre-Commit Checklist
+
+Before committing ANY change, verify:
+
+- [ ] PowerShell changes tested locally
+- [ ] Bash/WSL changes tested in WSL environment
+- [ ] README.md updated (if user-facing change)
+- [ ] README_EN.md updated (if user-facing change)
+- [ ] Version number incremented (if PowerShell module changed)
+- [ ] ReleaseNotes updated in cdp.psd1 (if version changed)
+- [ ] Commit message follows format (Add/Fix/Update/Docs/Refactor)
+
+### 5. Publishing Workflow
+
+**For PowerShell Gallery releases**:
+
+1. Ensure all changes are committed and tested
+2. Update version in `cdp.psd1`
+3. Update `ReleaseNotes` section with changes
+4. Run publishing script:
+   ```powershell
+   # Recommended: Use alternative publishing script
+   .\Publish-ToGallery-Alt.ps1 -ApiKey $env:PS_GALLERY_API_KEY
+
+   # OR use standard script (requires .NET Core 2.0+ SDK)
+   .\Publish-ToGallery.ps1 -ApiKey $env:PS_GALLERY_API_KEY
+   ```
+5. Wait 5-10 minutes for Gallery indexing
+6. Verify at: https://www.powershellgallery.com/packages/cdp
+7. Tag the release in git:
+   ```bash
+   git tag -a v1.x.x -m "Release v1.x.x: Brief description"
+   git push origin v1.x.x
+   ```
+
+**API Key Management**:
+- Store API key in environment variable: `$env:PS_GALLERY_API_KEY`
+- Get API key from: https://www.powershellgallery.com/account/apikeys
+- Never commit API keys to repository
+
+
 ## Testing Checklist
 
 When making changes, manually test:

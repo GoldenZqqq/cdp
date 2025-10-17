@@ -10,7 +10,13 @@
       "Bash(rm:*)",
       "Bash(git log:*)",
       "Bash(dotnet --version:*)",
-      "Bash(winget install:*)"
+      "Bash(winget install:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(wsl bash -c \"source ~/.bashrc && cdp-ls\")",
+      "Bash(powershell.exe:*)"
     ],
     "deny": [],
     "ask": []

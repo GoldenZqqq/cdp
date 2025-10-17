@@ -395,10 +395,55 @@ PS E:\Learn\cdp>  # 终端标题 → "cdp"
 
 cdp 按以下优先级自动查找配置文件：
 
-1. **环境变量** `$env:CDP_CONFIG`（最高优先级）
+1. **环境变量** `$env:CDP_CONFIG`（最高优先级，跳过选择）
 2. **用户自定义配置** `~/.cdp/projects.json`（首次使用时自动创建）
 3. **Cursor Project Manager 插件** `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
 4. **VS Code Project Manager 插件** `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
+
+### 🔀 多配置文件选择（新功能）
+
+**如果系统中存在多个配置文件，cdp 会让你选择使用哪个：**
+
+```powershell
+PS C:\> cdp
+
+Multiple configuration files found:
+================================================================================
+
+  [1] Cursor Project Manager
+      C:\Users\YourName\AppData\Roaming\Cursor\User\globalStorage\alefragnani.project-manager\projects.json
+  [2] VS Code Project Manager
+      C:\Users\YourName\AppData\Roaming\Code\User\globalStorage\alefragnani.project-manager\projects.json
+  [3] Custom Config (~/.cdp)
+      C:\Users\YourName\.cdp\projects.json
+
+Tip: Set $env:CDP_CONFIG to skip this selection next time.
+
+Select config file (1-3): _
+```
+
+**跳过选择（推荐）：**
+
+如果你总是使用同一个配置文件，可以设置环境变量来跳过每次选择：
+
+```powershell
+# 添加到 PowerShell 配置文件 ($PROFILE)
+$env:CDP_CONFIG = "C:\Users\YourName\AppData\Roaming\Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
+```
+
+设置后，cdp 将始终使用指定的配置文件，不再提示选择。
+
+**WSL/Linux 环境：**
+
+在 WSL 或 Linux 中，多配置选择功能同样有效：
+
+```bash
+# 设置环境变量跳过选择
+export CDP_CONFIG="/mnt/c/Users/YourName/AppData/Roaming/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
+
+# 添加到 ~/.bashrc 或 ~/.zshrc 使其永久生效
+echo 'export CDP_CONFIG="/path/to/your/config.json"' >> ~/.bashrc
+```
 
 ### 选项 1: 使用默认配置（最简单）
 

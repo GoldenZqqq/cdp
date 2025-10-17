@@ -395,10 +395,55 @@ PS E:\Learn\cdp>  # Terminal title → "cdp"
 
 cdp automatically searches for config files in this priority order:
 
-1. **Environment variable** `$env:CDP_CONFIG` (highest priority)
+1. **Environment variable** `$env:CDP_CONFIG` (highest priority, skips selection)
 2. **User custom config** `~/.cdp/projects.json` (auto-created on first use)
 3. **Cursor Project Manager plugin** `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
 4. **VS Code Project Manager plugin** `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
+
+### 🔀 Multiple Config Selection (New Feature)
+
+**If multiple config files exist on your system, cdp will let you choose which one to use:**
+
+```powershell
+PS C:\> cdp
+
+Multiple configuration files found:
+================================================================================
+
+  [1] Cursor Project Manager
+      C:\Users\YourName\AppData\Roaming\Cursor\User\globalStorage\alefragnani.project-manager\projects.json
+  [2] VS Code Project Manager
+      C:\Users\YourName\AppData\Roaming\Code\User\globalStorage\alefragnani.project-manager\projects.json
+  [3] Custom Config (~/.cdp)
+      C:\Users\YourName\.cdp\projects.json
+
+Tip: Set $env:CDP_CONFIG to skip this selection next time.
+
+Select config file (1-3): _
+```
+
+**Skip Selection (Recommended):**
+
+If you always use the same config file, you can set an environment variable to skip selection every time:
+
+```powershell
+# Add to PowerShell profile ($PROFILE)
+$env:CDP_CONFIG = "C:\Users\YourName\AppData\Roaming\Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
+```
+
+After setting this, cdp will always use the specified config file without prompting for selection.
+
+**WSL/Linux Environment:**
+
+Multi-config selection works the same way in WSL or Linux:
+
+```bash
+# Set environment variable to skip selection
+export CDP_CONFIG="/mnt/c/Users/YourName/AppData/Roaming/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
+
+# Add to ~/.bashrc or ~/.zshrc to make it permanent
+echo 'export CDP_CONFIG="/path/to/your/config.json"' >> ~/.bashrc
+```
 
 ### Option 1: Use Default Config (Simplest)
 
