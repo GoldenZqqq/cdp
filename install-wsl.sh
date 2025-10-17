@@ -174,16 +174,27 @@ mkdir -p "$CONFIG_DIR"
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" 2>/dev/null && pwd )"
 
+# Debug: Print SCRIPT_DIR for troubleshooting
+echo -e "${GRAY}[DEBUG] SCRIPT_DIR: '$SCRIPT_DIR'${NC}"
+echo -e "${GRAY}[DEBUG] Checking: $SCRIPT_DIR/src/$SCRIPT_NAME${NC}"
+echo -e "${GRAY}[DEBUG] Checking: $SCRIPT_DIR/$SCRIPT_NAME${NC}"
+
 # Check if we should download from GitHub
 USE_REMOTE=false
 if [[ -z "$SCRIPT_DIR" ]] || [[ ! -d "$SCRIPT_DIR" ]]; then
     # Script directory is empty or doesn't exist (piped from curl)
+    echo -e "${GRAY}[DEBUG] SCRIPT_DIR is empty or doesn't exist, using remote${NC}"
     USE_REMOTE=true
 elif [[ ! -f "$SCRIPT_DIR/src/$SCRIPT_NAME" ]] && [[ ! -f "$SCRIPT_DIR/$SCRIPT_NAME" ]]; then
     # SCRIPT_DIR exists but doesn't contain the required file
     # This happens when script is piped from curl and creates a temp directory
+    echo -e "${GRAY}[DEBUG] Files not found in SCRIPT_DIR, using remote${NC}"
     USE_REMOTE=true
+else
+    echo -e "${GRAY}[DEBUG] Using local files from SCRIPT_DIR${NC}"
 fi
+
+echo -e "${GRAY}[DEBUG] USE_REMOTE: $USE_REMOTE${NC}"
 
 # Copy cdp script
 echo -e "${CYAN}Installing cdp script...${NC}"
