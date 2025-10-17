@@ -40,19 +40,12 @@ convert_windows_to_wsl() {
 get_default_config() {
     # Priority order:
     # 1. CDP_CONFIG environment variable
-    # 2. Custom config in user home (~/.cdp/projects.json)
-    # 3. Cursor Project Manager (Windows AppData via WSL)
-    # 4. VS Code Project Manager (Windows AppData via WSL)
+    # 2. Cursor Project Manager (Windows AppData via WSL) ← Higher priority
+    # 3. VS Code Project Manager (Windows AppData via WSL)
+    # 4. Custom config in user home (~/.cdp/projects.json) ← Fallback only
 
     if [[ -n "$CDP_CONFIG" ]]; then
         echo "$CDP_CONFIG"
-        return
-    fi
-
-    # Custom config path
-    local custom_config="$HOME/.cdp/projects.json"
-    if [[ -f "$custom_config" ]]; then
-        echo "$custom_config"
         return
     fi
 
@@ -83,9 +76,24 @@ get_default_config() {
             echo "$vscode_config"
             return
         fi
+
+        # Also check Windows custom config location
+        local windows_custom_config="$appdata/../Local/Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/.cdp/projects.json"
+        if [[ -f "$windows_custom_config" ]]; then
+            echo "$windows_custom_config"
+            return
+        fi
+
+        # Check common Windows user profile location
+        local win_user_config="/mnt/c/Users/$winuser/.cdp/projects.json"
+        if [[ -f "$win_user_config" ]]; then
+            echo "$win_user_config"
+            return
+        fi
     fi
 
-    # Default to custom config (will be created if needed)
+    # Fallback: Custom config path in WSL home (will be created if needed)
+    local custom_config="$HOME/.cdp/projects.json"
     echo "$custom_config"
 }
 
