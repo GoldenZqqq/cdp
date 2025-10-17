@@ -174,8 +174,14 @@ mkdir -p "$CONFIG_DIR"
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" 2>/dev/null && pwd )"
 
-# If script directory is empty or script is piped from curl, download from GitHub
+# Check if we should download from GitHub
+USE_REMOTE=false
 if [[ -z "$SCRIPT_DIR" ]] || [[ ! -d "$SCRIPT_DIR" ]]; then
+    # Script directory is empty or doesn't exist (piped from curl)
+    USE_REMOTE=true
+elif [[ ! -f "$SCRIPT_DIR/src/$SCRIPT_NAME" ]] && [[ ! -f "$SCRIPT_DIR/$SCRIPT_NAME" ]]; then
+    # SCRIPT_DIR exists but doesn't contain the required file
+    # This happens when script is piped from curl and creates a temp directory
     USE_REMOTE=true
 fi
 
