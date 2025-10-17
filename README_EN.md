@@ -89,6 +89,7 @@ PS C:\> cdp
 ### 🛠️ Developer Friendly
 
 - **PowerShell Native**: Compatible with 5.1+ and 7+
+- **WSL/Linux Support**: bash/zsh version, shares config with Windows version
 - **Auto Install Script**: One command completes installation
 - **Highly Extensible**: Customize fzf options and shortcuts
 
@@ -96,7 +97,9 @@ PS C:\> cdp
 
 ## 📦 Installation
 
-### Method 1: Install from PowerShell Gallery (Recommended) ⭐
+### Windows (PowerShell)
+
+#### Method 1: Install from PowerShell Gallery (Recommended) ⭐
 
 **One command, ready to use!**
 
@@ -121,7 +124,7 @@ cdp
 
 ---
 
-### Method 2: Install from Source
+#### Method 2: Install from Source
 
 For developers who want to customize or contribute code.
 
@@ -156,7 +159,7 @@ cd cdp
 
 ---
 
-### Installing fzf Dependency
+#### Installing fzf Dependency
 
 cdp uses [fzf](https://github.com/junegunn/fzf) to provide fuzzy search functionality.
 
@@ -182,6 +185,63 @@ fzf --version
 
 ---
 
+### WSL / Linux (bash/zsh)
+
+cdp now supports WSL and Linux environments! **One command to install everything**.
+
+#### One-liner Install (Recommended) ⭐
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
+```
+
+This single command automatically:
+- ✅ Detects and installs fzf (if not already installed)
+- ✅ Detects and installs jq (JSON parsing tool)
+- ✅ Downloads and installs cdp.sh to `~/.local/bin`
+- ✅ Adds configuration to `~/.bashrc` or `~/.zshrc`
+- ✅ Sets up correct PATH
+
+After installation, restart your terminal or run:
+```bash
+source ~/.bashrc  # For bash
+source ~/.zshrc   # For zsh
+```
+
+#### Manual Install (Optional)
+
+If you want to install from a local copy:
+
+```bash
+# Clone the repository
+git clone https://github.com/GoldenZqqq/cdp.git
+cd cdp
+
+# Run install script
+chmod +x install-wsl.sh
+./install-wsl.sh --auto  # Auto-install dependencies
+```
+
+#### WSL/Linux Version Features
+
+- **Automatic Path Conversion**: Automatically converts Windows paths (`C:\path`) to WSL paths (`/mnt/c/path`)
+- **Shared Configuration**: Can use the same project config file as the PowerShell version
+- **Auto-detect Config**: Priority order:
+  1. `$CDP_CONFIG` environment variable
+  2. `~/.cdp/projects.json` (custom config)
+  3. Windows Cursor Project Manager config (via `/mnt/c/...`)
+  4. Windows VS Code Project Manager config (via `/mnt/c/...`)
+
+#### Available Commands (WSL/Linux)
+
+```bash
+cdp          # Select and switch to a project
+cdp-add      # Add current directory as a project
+cdp-ls       # List all projects
+```
+
+---
+
 ## 🎮 Usage
 
 ### 🚀 Quick Project Switch
@@ -192,6 +252,9 @@ cdp
 
 # Or use full command
 Switch-Project
+
+# WSL scenario: Launch WSL and switch to project directory
+cdp -WSL
 ```
 
 **Interactive Flow:**
@@ -200,6 +263,11 @@ Switch-Project
 3. Arrow keys to select, Enter to confirm
 4. Auto-switches to project directory
 5. Terminal tab title auto-updates
+
+**WSL Support:**
+- Use `-WSL` parameter to launch WSL from PowerShell and enter project directory
+- Windows paths are automatically converted to WSL mount paths (`C:\path` → `/mnt/c/path`)
+- You can also use the bash/zsh version of cdp inside WSL (see installation instructions above)
 
 ### ➕ Add Current Project
 
@@ -278,13 +346,24 @@ function cdpe { cdp; explorer . }
 
 ## 📋 Command List
 
+### PowerShell Version
+
 | Command | Alias | Description |
 |---------|-------|-------------|
 | `Switch-Project` | `cdp` | Open fzf menu to select and switch project |
+| `Switch-Project -WSL` | `cdp -WSL` | Select project and launch WSL in that directory |
 | `Add-Project` | `cdp-add` | Add current directory or specified path to project list |
 | `Remove-Project` | `cdp-rm` | Remove project (supports interactive selection) |
 | `Get-ProjectList` | `cdp-ls` | List all enabled projects with paths |
 | `Edit-ProjectConfig` | `cdp-edit` | Open config file for editing |
+
+### WSL/Linux Version
+
+| Command | Description |
+|---------|-------------|
+| `cdp` | Open fzf menu to select and switch project |
+| `cdp-add` | Add current directory or specified path to project list |
+| `cdp-ls` | List all enabled projects with paths |
 
 ---
 
@@ -467,6 +546,8 @@ Get-Module -ListAvailable cdp
 - [x] Install script auto-installs fzf dependency
 - [x] Quick add/remove/list project commands
 - [x] Auto-create default config file
+- [x] WSL/Linux support (bash/zsh version)
+- [x] PowerShell direct launch WSL and switch project
 - [ ] Recent projects quick access
 - [ ] Project tags and grouping
 - [ ] Project favorites/pinning

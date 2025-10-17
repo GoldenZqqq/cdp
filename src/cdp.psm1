@@ -27,6 +27,10 @@ function Switch-Project {
         Optional custom path to projects.json file. If not specified, uses the
         default Cursor/VS Code Project Manager location.
 
+    .PARAMETER WSL
+        If specified, launches WSL and changes to the project directory within WSL.
+        Windows paths are automatically converted to WSL mount points (/mnt/c/, etc.).
+
     .EXAMPLE
         Switch-Project
         # Opens fzf menu to select from enabled projects
@@ -35,6 +39,10 @@ function Switch-Project {
         cdp
         # Using the default alias
 
+    .EXAMPLE
+        cdp -WSL
+        # Select a project and launch WSL in that directory
+
     .NOTES
         Requires fzf to be installed. Install via: winget install fzf
     #>
@@ -42,7 +50,10 @@ function Switch-Project {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [string]$ConfigPath
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$WSL
     )
 
     # Check if fzf is installed
@@ -107,12 +118,22 @@ function Switch-Project {
         $selectedProject = $enabledProjects | Where-Object { $_.name -eq $selectedProjectName }
 
         if ($null -ne $selectedProject -and (Test-Path -Path $selectedProject.rootPath)) {
-            Set-Location -Path $selectedProject.rootPath
-            Write-Host "Switched to project: $($selectedProject.name)" -ForegroundColor Green
+            if ($WSL) {
+                # Convert Windows path to WSL path and launch WSL
+                $wslPath = Convert-WindowsPathToWSL -WindowsPath $selectedProject.rootPath
+                Write-Host "Launching WSL in project: $($selectedProject.name)" -ForegroundColor Green
+                Write-Host "WSL path: $wslPath" -ForegroundColor Gray
 
-            # Update Windows Terminal tab title
-            $newTitle = $selectedProject.name
-            Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
+                # Launch WSL with cd command
+                wsl --cd $wslPath
+            } else {
+                Set-Location -Path $selectedProject.rootPath
+                Write-Host "Switched to project: $($selectedProject.name)" -ForegroundColor Green
+
+                # Update Windows Terminal tab title
+                $newTitle = $selectedProject.name
+                Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
+            }
         } else {
             Write-Host "Error: Invalid path for project '$selectedProjectName'." -ForegroundColor Red
         }
@@ -188,6 +209,28 @@ function Get-ProjectList {
         Write-Host "Error: Failed to read configuration." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
     }
+}
+
+# Helper function to convert Windows path to WSL path
+function Convert-WindowsPathToWSL {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$WindowsPath
+    )
+
+    # Normalize path separators
+    $normalizedPath = $WindowsPath -replace '\\', '/'
+
+    # Convert drive letter to WSL mount point
+    # C:\path\to\dir -> /mnt/c/path/to/dir
+    if ($normalizedPath -match '^([A-Za-z]):(.*)$') {
+        $driveLetter = $matches[1].ToLower()
+        $pathRemainder = $matches[2]
+        return "/mnt/$driveLetter$pathRemainder"
+    }
+
+    # If no drive letter found, return as-is (might already be WSL path)
+    return $normalizedPath
 }
 
 # Helper function to get default config path

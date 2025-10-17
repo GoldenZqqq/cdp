@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.1.1'
+ModuleVersion = '1.2.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,15 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.2.0 - WSL/Linux Support Release
+- Added: Full WSL/Linux support with bash/zsh version
+- Added: -WSL parameter to Switch-Project for launching WSL from PowerShell
+- Added: Automatic Windows to WSL path conversion (C:\path → /mnt/c/path)
+- Added: One-liner install script for WSL/Linux environments
+- Added: Shared configuration support between Windows and WSL
+- Added: Support for reading Project Manager configs from WSL
+- Improved: Documentation with comprehensive WSL usage examples
+
 v1.1.1 - Bug Fix Release
 - Fixed: cdp-add command now correctly saves project paths
 - Fixed: Resolved issue where Add-Project would save empty rootPath values

@@ -89,6 +89,7 @@ PS C:\> cdp
 ### 🛠️ 开发者友好
 
 - **PowerShell 原生**：5.1+ 和 7+ 全兼容
+- **WSL/Linux 支持**：bash/zsh 版本，与 Windows 版本共享配置
 - **自动安装脚本**：一行命令完成安装
 - **扩展性强**：可自定义 fzf 选项和快捷命令
 
@@ -96,7 +97,9 @@ PS C:\> cdp
 
 ## 📦 安装
 
-### 方式 1: 从 PowerShell Gallery 安装（推荐）⭐
+### Windows (PowerShell)
+
+#### 方式 1: 从 PowerShell Gallery 安装（推荐）⭐
 
 **一行命令，开箱即用！**
 
@@ -121,7 +124,7 @@ cdp
 
 ---
 
-### 方式 2: 从源码安装
+#### 方式 2: 从源码安装
 
 适合想要自定义或贡献代码的开发者。
 
@@ -156,7 +159,7 @@ cd cdp
 
 ---
 
-### 安装 fzf 依赖
+#### 安装 fzf 依赖
 
 cdp 使用 [fzf](https://github.com/junegunn/fzf) 提供模糊搜索功能。
 
@@ -182,6 +185,63 @@ fzf --version
 
 ---
 
+### WSL / Linux (bash/zsh)
+
+cdp 现在支持在 WSL 和 Linux 环境中使用！**一行命令即可完成安装**。
+
+#### 一键安装（推荐）⭐
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
+```
+
+这一条命令会自动完成：
+- ✅ 检测并安装 fzf（如果未安装）
+- ✅ 检测并安装 jq（JSON 解析工具）
+- ✅ 下载并安装 cdp.sh 到 `~/.local/bin`
+- ✅ 添加配置到 `~/.bashrc` 或 `~/.zshrc`
+- ✅ 设置正确的 PATH
+
+安装完成后，重启终端或运行：
+```bash
+source ~/.bashrc  # 对于 bash
+source ~/.zshrc   # 对于 zsh
+```
+
+#### 手动安装（可选）
+
+如果你想从本地安装：
+
+```bash
+# 克隆仓库
+git clone https://github.com/GoldenZqqq/cdp.git
+cd cdp
+
+# 运行安装脚本
+chmod +x install-wsl.sh
+./install-wsl.sh --auto  # 自动安装依赖
+```
+
+#### WSL/Linux 版本特性
+
+- **路径自动转换**：自动将 Windows 路径（`C:\path`）转换为 WSL 路径（`/mnt/c/path`）
+- **共享配置**：可以使用与 PowerShell 版本相同的项目配置文件
+- **自动检测配置**：优先级顺序：
+  1. `$CDP_CONFIG` 环境变量
+  2. `~/.cdp/projects.json`（自定义配置）
+  3. Windows Cursor Project Manager 配置（通过 `/mnt/c/...` 访问）
+  4. Windows VS Code Project Manager 配置（通过 `/mnt/c/...` 访问）
+
+#### 可用命令（WSL/Linux）
+
+```bash
+cdp          # 选择并切换到项目
+cdp-add      # 添加当前目录为项目
+cdp-ls       # 列出所有项目
+```
+
+---
+
 ## 🎮 使用
 
 ### 🚀 快速切换项目
@@ -192,6 +252,9 @@ cdp
 
 # 或使用完整命令
 Switch-Project
+
+# WSL 场景：直接启动 WSL 并切换到项目目录
+cdp -WSL
 ```
 
 **交互流程：**
@@ -200,6 +263,11 @@ Switch-Project
 3. 方向键选择，回车确认
 4. 自动切换到项目目录
 5. 终端标签标题自动更新
+
+**WSL 支持：**
+- 使用 `-WSL` 参数可从 PowerShell 直接启动 WSL 并进入项目目录
+- Windows 路径自动转换为 WSL 挂载路径（`C:\path` → `/mnt/c/path`）
+- 也可以在 WSL 内使用 bash/zsh 版本的 cdp（见上文安装说明）
 
 ### ➕ 添加当前项目
 
@@ -278,13 +346,24 @@ function cdpe { cdp; explorer . }
 
 ## 📋 命令列表
 
+### PowerShell 版本
+
 | 命令 | 别名 | 描述 |
 |------|------|------|
 | `Switch-Project` | `cdp` | 打开 fzf 菜单选择并切换项目 |
+| `Switch-Project -WSL` | `cdp -WSL` | 选择项目并启动 WSL 进入该目录 |
 | `Add-Project` | `cdp-add` | 添加当前目录或指定路径到项目列表 |
 | `Remove-Project` | `cdp-rm` | 删除项目（支持交互式选择） |
 | `Get-ProjectList` | `cdp-ls` | 列出所有已启用的项目及路径 |
 | `Edit-ProjectConfig` | `cdp-edit` | 打开配置文件进行编辑 |
+
+### WSL/Linux 版本
+
+| 命令 | 描述 |
+|------|------|
+| `cdp` | 打开 fzf 菜单选择并切换项目 |
+| `cdp-add` | 添加当前目录或指定路径到项目列表 |
+| `cdp-ls` | 列出所有已启用的项目及路径 |
 
 ---
 
@@ -467,6 +546,8 @@ Get-Module -ListAvailable cdp
 - [x] 安装脚本自动安装 fzf 依赖
 - [x] 快速添加/删除/列出项目命令
 - [x] 自动创建默认配置文件
+- [x] WSL/Linux 支持（bash/zsh 版本）
+- [x] PowerShell 直接启动 WSL 并切换项目
 - [ ] 最近访问项目快速切换
 - [ ] 项目标签和分组功能
 - [ ] 项目收藏/置顶

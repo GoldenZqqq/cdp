@@ -125,7 +125,9 @@ try {
     $filesToCopy = @(
         'cdp.psd1',
         'LICENSE',
-        'README.md'
+        'README.md',
+        'README_EN.md',
+        'install-wsl.sh'
     )
 
     foreach ($file in $filesToCopy) {
@@ -135,7 +137,7 @@ try {
         }
     }
 
-    # Copy src directory with its contents
+    # Copy src directory with its contents (includes cdp.psm1 and cdp.sh)
     $srcDir = Join-Path $PSScriptRoot "src"
     if (Test-Path $srcDir) {
         Copy-Item -Path $srcDir -Destination $moduleDir -Recurse -Force
