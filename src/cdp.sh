@@ -278,7 +278,7 @@ cdp() {
     fi
 
     # Launch fzf for selection
-    # Note: Removed --bind to avoid conflicts with IME (Chinese input method)
+    # Note: --no-mouse prevents IME mouse click conflicts with candidate selection
     # Height increased to 60% for better visibility
     local selected
     selected=$(echo "$projects" | fzf \
@@ -286,6 +286,7 @@ cdp() {
         --height=60% \
         --layout=reverse \
         --border \
+        --no-mouse \
         --preview-window=hidden)
 
     # Process selection

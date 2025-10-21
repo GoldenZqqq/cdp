@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.2.5
+    Version: 1.2.6
     License: MIT
 #>
 
@@ -97,22 +97,27 @@ function Switch-Project {
     }
 
     # Set console encoding for fzf interaction
+    # CRITICAL: Must set BOTH InputEncoding and OutputEncoding for IME to work
     $originalOutputEncoding = [Console]::OutputEncoding
+    $originalInputEncoding = [Console]::InputEncoding
     try {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
         # Launch fzf with enhanced options
-        # Note: Removed --bind to avoid conflicts with IME (Chinese input method)
+        # Note: --no-mouse prevents IME mouse click conflicts
         # Height increased to 60% for better visibility
         $selectedProjectName = $enabledProjects.name | fzf `
             --prompt="Select project: " `
             --height=60% `
             --layout=reverse `
             --border `
+            --no-mouse `
             --preview-window=hidden
     }
     finally {
         [Console]::OutputEncoding = $originalOutputEncoding
+        [Console]::InputEncoding = $originalInputEncoding
     }
 
     # Process selection
@@ -563,15 +568,22 @@ function Remove-Project {
             }
 
             $originalOutputEncoding = [Console]::OutputEncoding
+            $originalInputEncoding = [Console]::InputEncoding
             try {
                 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-                $Name = $projects.name | fzf --prompt="Select project to remove: " --height=40% --layout=reverse --border
+                [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+                $Name = $projects.name | fzf `
+                    --prompt="Select project to remove: " `
+                    --height=60% `
+                    --layout=reverse `
+                    --border `
+                    --no-mouse
             } finally {
                 [Console]::OutputEncoding = $originalOutputEncoding
+                [Console]::InputEncoding = $originalInputEncoding
             }
 
             if ([string]::IsNullOrWhiteSpace($Name)) {
-                Write-Host "Operation cancelled." -ForegroundColor Gray
                 return
             }
         }

@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.2.5'
+ModuleVersion = '1.2.6'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,12 +107,18 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.2.6 - Critical IME Fix for Candidate Selection
+- Fixed: IME candidate selection via number keys now works correctly
+- Fixed: IME candidate selection via mouse click now works correctly
+- Fixed: Added InputEncoding configuration (previously only OutputEncoding was set)
+- Added: no-mouse parameter to prevent IME mouse event conflicts
+- Note: This resolves the issue where selecting IME candidates caused fzf to exit
+
 v1.2.5 - Complete IME Fix and UI Improvement
 - Fixed: IME candidate selection (number keys or mouse click) no longer triggers false cancellation
 - Fixed: Removed exit code check that caused IME input to be treated as cancellation
 - Improved: Increased fzf menu height from 40 percent to 60 percent for better visibility
 - Improved: Silent cancellation behavior (no more Operation cancelled message when exiting)
-- Note: This version fully resolves all Chinese and IME input issues
 
 v1.2.4 - Critical Bug Fix
 - Fixed: Chinese and IME input now works correctly in fzf search
