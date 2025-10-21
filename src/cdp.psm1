@@ -98,6 +98,7 @@ function Switch-Project {
 
     # Set console encoding for fzf interaction
     $originalOutputEncoding = [Console]::OutputEncoding
+    $fzfExitCode = 0
     try {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -107,13 +108,20 @@ function Switch-Project {
             --height=40% `
             --layout=reverse `
             --border `
-            --preview-window=hidden
+            --preview-window=hidden `
+            --bind="ctrl-c:abort,ctrl-g:abort,esc:clear-query"
+        $fzfExitCode = $LASTEXITCODE
     }
     finally {
         [Console]::OutputEncoding = $originalOutputEncoding
     }
 
     # Process selection
+    if ($fzfExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($selectedProjectName)) {
+        Write-Host "Operation cancelled." -ForegroundColor Gray
+        return
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($selectedProjectName)) {
         $selectedProject = $enabledProjects | Where-Object { $_.name -eq $selectedProjectName }
 
@@ -137,8 +145,6 @@ function Switch-Project {
         } else {
             Write-Host "Error: Invalid path for project '$selectedProjectName'." -ForegroundColor Red
         }
-    } else {
-        Write-Host "Operation cancelled." -ForegroundColor Gray
     }
 }
 
