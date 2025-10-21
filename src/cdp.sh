@@ -277,15 +277,23 @@ cdp() {
         return 1
     fi
 
-    # Launch fzf for selection
-    local selected=$(echo "$projects" | fzf \
+    # Launch fzf for selection (rebind ESC to avoid IME committing as cancel)
+    local selected
+    selected=$(echo "$projects" | fzf \
         --prompt="Select project: " \
         --height=40% \
         --layout=reverse \
         --border \
-        --preview-window=hidden)
+        --preview-window=hidden \
+        --bind='ctrl-c:abort,ctrl-g:abort,esc:clear-query')
+    local fzf_exit=$?
 
     # Process selection
+    if [[ $fzf_exit -ne 0 || -z "$selected" ]]; then
+        echo -e "${GRAY}Operation cancelled.${NC}"
+        return 0
+    fi
+
     if [[ -n "$selected" ]]; then
         # Get the rootPath for selected project
         local project_path=$(jq -r --arg name "$selected" \
@@ -312,9 +320,6 @@ cdp() {
             echo -e "${RED}Error: Could not find path for project '$selected'.${NC}"
             return 1
         fi
-    else
-        echo -e "${GRAY}Operation cancelled.${NC}"
-        return 0
     fi
 }
 
