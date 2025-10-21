@@ -277,41 +277,42 @@ cdp() {
         return 1
     fi
 
-    # Launch fzf for selection (rebind ESC to avoid IME committing as cancel)
+    # Launch fzf for selection
+    # Note: Removed --bind to avoid conflicts with IME (Chinese input method)
+    # Height increased to 60% for better visibility
     local selected
     selected=$(echo "$projects" | fzf \
         --prompt="Select project: " \
-        --height=40% \
+        --height=60% \
         --layout=reverse \
         --border \
-        --preview-window=hidden \
-        --bind='ctrl-c:abort,ctrl-g:abort,esc:clear-query')
-    local fzf_exit=$?
+        --preview-window=hidden)
 
     # Process selection
-    if [[ $fzf_exit -ne 0 || -z "$selected" ]]; then
-        echo -e "${GRAY}Operation cancelled.${NC}"
+    # Note: Don't check exit code to avoid IME-related false cancellations
+    # Only check if a project was actually selected
+    if [[ -z "$selected" ]]; then
+        # User cancelled or no selection made
         return 0
     fi
 
-    if [[ -n "$selected" ]]; then
-        # Get the rootPath for selected project
-        local project_path=$(jq -r --arg name "$selected" \
-            '.[] | select(.name == $name and .enabled == true) | .rootPath' \
-            "$config_path" 2>/dev/null | head -n1)
+    # Get the rootPath for selected project
+    local project_path=$(jq -r --arg name "$selected" \
+        '.[] | select(.name == $name and .enabled == true) | .rootPath' \
+        "$config_path" 2>/dev/null | head -n1)
 
-        if [[ -n "$project_path" ]]; then
-            # Convert Windows path to WSL path if needed
-            project_path=$(convert_windows_to_wsl "$project_path")
+    if [[ -n "$project_path" ]]; then
+        # Convert Windows path to WSL path if needed
+        project_path=$(convert_windows_to_wsl "$project_path")
 
-            # Check if path exists
-            if [[ -d "$project_path" ]]; then
-                cd "$project_path" || return 1
-                echo -e "${GREEN}Switched to project: $selected${NC}"
-                echo -e "${GRAY}Path: $project_path${NC}"
+        # Check if path exists
+        if [[ -d "$project_path" ]]; then
+            cd "$project_path" || return 1
+            echo -e "${GREEN}Switched to project: $selected${NC}"
+            echo -e "${GRAY}Path: $project_path${NC}"
 
-                # Update terminal title (works in most terminals)
-                echo -ne "\033]0;$selected\007"
+            # Update terminal title (works in most terminals)
+            echo -ne "\033]0;$selected\007"
             else
                 echo -e "${RED}Error: Directory not found: $project_path${NC}"
                 return 1

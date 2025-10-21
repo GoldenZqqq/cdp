@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.2.2'
+ModuleVersion = '1.2.5'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,17 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.2.5 - Complete IME Fix and UI Improvement
+- Fixed: IME candidate selection (number keys or mouse click) no longer triggers false cancellation
+- Fixed: Removed exit code check that caused IME input to be treated as cancellation
+- Improved: Increased fzf menu height from 40 percent to 60 percent for better visibility
+- Improved: Silent cancellation behavior (no more Operation cancelled message when exiting)
+- Note: This version fully resolves all Chinese and IME input issues
+
+v1.2.4 - Critical Bug Fix
+- Fixed: Chinese and IME input now works correctly in fzf search
+- Fixed: Removed key bindings that conflicted with input method editors
+
 v1.2.2 - Configuration Persistence Feature
 - Added: Automatic config choice persistence to ~/.cdp/config
 - Added: New Set-ProjectConfig command (alias: cdp-config) to change active config

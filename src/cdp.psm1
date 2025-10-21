@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.2.2
+    Version: 1.2.5
     License: MIT
 #>
 
@@ -98,53 +98,52 @@ function Switch-Project {
 
     # Set console encoding for fzf interaction
     $originalOutputEncoding = [Console]::OutputEncoding
-    $fzfExitCode = 0
     try {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
         # Launch fzf with enhanced options
+        # Note: Removed --bind to avoid conflicts with IME (Chinese input method)
+        # Height increased to 60% for better visibility
         $selectedProjectName = $enabledProjects.name | fzf `
             --prompt="Select project: " `
-            --height=40% `
+            --height=60% `
             --layout=reverse `
             --border `
-            --preview-window=hidden `
-            --bind="ctrl-c:abort,ctrl-g:abort,esc:clear-query"
-        $fzfExitCode = $LASTEXITCODE
+            --preview-window=hidden
     }
     finally {
         [Console]::OutputEncoding = $originalOutputEncoding
     }
 
     # Process selection
-    if ($fzfExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($selectedProjectName)) {
-        Write-Host "Operation cancelled." -ForegroundColor Gray
+    # Note: Don't check exit code to avoid IME-related false cancellations
+    # Only check if a project was actually selected
+    if ([string]::IsNullOrWhiteSpace($selectedProjectName)) {
+        # User cancelled or no selection made
         return
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($selectedProjectName)) {
-        $selectedProject = $enabledProjects | Where-Object { $_.name -eq $selectedProjectName }
+    $selectedProject = $enabledProjects | Where-Object { $_.name -eq $selectedProjectName }
 
-        if ($null -ne $selectedProject -and (Test-Path -Path $selectedProject.rootPath)) {
-            if ($WSL) {
-                # Convert Windows path to WSL path and launch WSL
-                $wslPath = Convert-WindowsPathToWSL -WindowsPath $selectedProject.rootPath
-                Write-Host "Launching WSL in project: $($selectedProject.name)" -ForegroundColor Green
-                Write-Host "WSL path: $wslPath" -ForegroundColor Gray
+    if ($null -ne $selectedProject -and (Test-Path -Path $selectedProject.rootPath)) {
+        if ($WSL) {
+            # Convert Windows path to WSL path and launch WSL
+            $wslPath = Convert-WindowsPathToWSL -WindowsPath $selectedProject.rootPath
+            Write-Host "Launching WSL in project: $($selectedProject.name)" -ForegroundColor Green
+            Write-Host "WSL path: $wslPath" -ForegroundColor Gray
 
-                # Launch WSL with cd command
-                wsl --cd $wslPath
-            } else {
-                Set-Location -Path $selectedProject.rootPath
-                Write-Host "Switched to project: $($selectedProject.name)" -ForegroundColor Green
-
-                # Update Windows Terminal tab title
-                $newTitle = $selectedProject.name
-                Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
-            }
+            # Launch WSL with cd command
+            wsl --cd $wslPath
         } else {
-            Write-Host "Error: Invalid path for project '$selectedProjectName'." -ForegroundColor Red
+            Set-Location -Path $selectedProject.rootPath
+            Write-Host "Switched to project: $($selectedProject.name)" -ForegroundColor Green
+
+            # Update Windows Terminal tab title
+            $newTitle = $selectedProject.name
+            Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
         }
+    } else {
+        Write-Host "Error: Invalid path for project '$selectedProjectName'." -ForegroundColor Red
     }
 }
 
