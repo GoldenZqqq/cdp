@@ -1,11 +1,11 @@
 {
-    "version": "1.1.0",
-    "description": "cdp - A fast project directory switcher for PowerShell. Fuzzy-find your way to any project instantly.",
+    "version": "1.3.0",
+    "description": "A fast project directory switcher for PowerShell, WSL, and Vibe Coding CLI workflows.",
     "homepage": "https://github.com/GoldenZqqq/cdp",
     "license": "MIT",
-    "url": "https://github.com/GoldenZqqq/cdp/archive/refs/tags/v1.1.0.zip",
-    "hash": "REPLACE_WITH_ACTUAL_HASH",
-    "extract_dir": "cdp-1.1.0",
+    "url": "https://github.com/GoldenZqqq/cdp/archive/refs/tags/v1.3.0.zip",
+    "hash": "skip",
+    "extract_dir": "cdp-1.3.0",
     "depends": "fzf",
     "installer": {
         "script": [

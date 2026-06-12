@@ -24,7 +24,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment (please complete the following information):**
  - OS: [e.g. Windows 10, Windows 11]
  - PowerShell Version: [e.g. 5.1, 7.3] (run `$PSVersionTable.PSVersion`)
- - ProjSwitch Version: [e.g. 1.0.0]
+ - cdp Version: [e.g. 1.3.0] (run `(Get-Module cdp).Version`)
  - fzf Version: [run `fzf --version`]
 
 **Project Manager Configuration**

@@ -1,0 +1,748 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"locale","type":"enum","label":"Language","default":"en","options":[
+      {"value":"en","label":"English"},
+      {"value":"zh","label":"简体中文"}
+    ]}
+  ]'
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>cdp intro short</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #07130f;
+        color: #f3f7ed;
+        font-family: "Segoe UI", sans-serif;
+      }
+
+      #cdp-intro-short {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background-color: #07130f;
+      }
+
+      .grid,
+      .glow,
+      .scan,
+      .ghost {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .grid {
+        opacity: 0.38;
+        background-image:
+          linear-gradient(rgba(33, 65, 57, 0.44) 2px, rgba(7, 19, 15, 0) 2px),
+          linear-gradient(90deg, rgba(33, 65, 57, 0.44) 2px, rgba(7, 19, 15, 0) 2px);
+        background-size: 80px 80px;
+      }
+
+      .glow {
+        background:
+          radial-gradient(circle at 18% 18%, rgba(47, 255, 160, 0.22), rgba(47, 255, 160, 0) 30%),
+          radial-gradient(circle at 82% 62%, rgba(21, 148, 95, 0.2), rgba(21, 148, 95, 0) 36%);
+      }
+
+      .scan {
+        opacity: 0.18;
+        background-image: linear-gradient(rgba(243, 247, 237, 0.08) 2px, rgba(7, 19, 15, 0) 8px);
+        background-size: 100% 28px;
+      }
+
+      .ghost {
+        font-family: Consolas, monospace;
+        font-size: 172px;
+        font-weight: 800;
+        color: rgba(166, 183, 174, 0.08);
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-start;
+        padding: 0 0 70px 96px;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 96px 112px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 42px;
+        opacity: 0;
+        filter: blur(18px);
+        transform: translateY(42px) scale(0.985);
+      }
+
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 44px;
+      }
+
+      .scene-kicker {
+        font-family: Consolas, monospace;
+        font-size: 26px;
+        color: #2fffa0;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .scene-title {
+        margin: 0;
+        max-width: 1180px;
+        font-size: 98px;
+        line-height: 0.98;
+        letter-spacing: 0.01em;
+        font-weight: 800;
+      }
+
+      .caption {
+        position: absolute;
+        left: 112px;
+        bottom: 82px;
+        max-width: 1280px;
+        font-size: 40px;
+        line-height: 1.22;
+        font-weight: 350;
+        color: #f3f7ed;
+      }
+
+      .terminal {
+        width: 100%;
+        border: 2px solid #214139;
+        border-radius: 18px;
+        background: #0e1f19;
+        box-shadow: 0 34px 90px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(47, 255, 160, 0.08) inset;
+        overflow: hidden;
+      }
+
+      .terminal.large {
+        max-width: 1180px;
+      }
+
+      .terminal-header {
+        height: 64px;
+        padding: 0 28px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: #142a22;
+        border-bottom: 2px solid #214139;
+        font-family: Consolas, monospace;
+        font-size: 24px;
+        color: #a6b7ae;
+      }
+
+      .dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #214139;
+      }
+
+      .dot.accent {
+        background: #2fffa0;
+        box-shadow: 0 0 24px rgba(47, 255, 160, 0.48);
+      }
+
+      .terminal-body {
+        padding: 34px 38px 42px;
+        font-family: Consolas, monospace;
+        font-size: 38px;
+        line-height: 1.55;
+        color: #f3f7ed;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .muted {
+        color: #a6b7ae;
+      }
+
+      .accent {
+        color: #2fffa0;
+      }
+
+      .warning {
+        color: #f2c14e;
+      }
+
+      .error {
+        color: #ff5c7a;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 54px;
+        padding: 0 24px;
+        border-radius: 999px;
+        border: 2px solid #214139;
+        background: #142a22;
+        color: #f3f7ed;
+        font-family: Consolas, monospace;
+        font-size: 24px;
+      }
+
+      .pill.accent-pill {
+        border-color: #15945f;
+        background: rgba(47, 255, 160, 0.12);
+        color: #2fffa0;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        gap: 58px;
+        align-items: center;
+        min-height: 710px;
+      }
+
+      .metric {
+        width: 360px;
+        min-height: 250px;
+        padding: 34px;
+        border: 2px solid #214139;
+        border-radius: 14px;
+        background: rgba(20, 42, 34, 0.86);
+      }
+
+      .metric-value {
+        font-family: Consolas, monospace;
+        font-size: 92px;
+        font-weight: 800;
+        color: #f2c14e;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .metric-label {
+        margin-top: 16px;
+        font-size: 30px;
+        line-height: 1.3;
+        color: #a6b7ae;
+      }
+
+      .picker {
+        max-width: 980px;
+      }
+
+      .fzf-row {
+        display: flex;
+        align-items: center;
+        height: 62px;
+        padding: 0 22px;
+        border-radius: 10px;
+      }
+
+      .fzf-row.selected {
+        background: rgba(47, 255, 160, 0.14);
+        color: #2fffa0;
+        box-shadow: inset 0 0 0 2px rgba(47, 255, 160, 0.2);
+      }
+
+      .config-grid {
+        display: grid;
+        grid-template-columns: 0.82fr 1.18fr;
+        gap: 48px;
+        align-items: stretch;
+      }
+
+      .source-stack,
+      .json-panel,
+      .doctor-panel,
+      .path-panel,
+      .cta-panel {
+        border: 2px solid #214139;
+        border-radius: 14px;
+        background: rgba(14, 31, 25, 0.92);
+        box-shadow: 0 28px 84px rgba(0, 0, 0, 0.24);
+      }
+
+      .source-stack {
+        padding: 38px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .source-item {
+        min-height: 96px;
+        padding: 24px 28px;
+        border-radius: 12px;
+        background: #142a22;
+        border: 2px solid #214139;
+        font-family: Consolas, monospace;
+        font-size: 30px;
+      }
+
+      .json-panel {
+        padding: 42px;
+        font-family: Consolas, monospace;
+        font-size: 34px;
+        line-height: 1.48;
+      }
+
+      .doctor-panel {
+        max-width: 1060px;
+        padding: 42px;
+      }
+
+      .check-row {
+        display: grid;
+        grid-template-columns: 78px 1fr 130px;
+        column-gap: 24px;
+        align-items: center;
+        min-height: 70px;
+        border-bottom: 2px solid #214139;
+        font-family: Consolas, monospace;
+        font-size: 32px;
+      }
+
+      .check-row:last-child {
+        border-bottom: 0;
+      }
+
+      .check-mark {
+        color: #2fffa0;
+        font-weight: 800;
+      }
+
+      .path-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 42px;
+        align-items: center;
+      }
+
+      .path-panel {
+        min-height: 430px;
+        padding: 38px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 26px;
+      }
+
+      .panel-title {
+        font-family: Consolas, monospace;
+        font-size: 28px;
+        color: #a6b7ae;
+      }
+
+      .path-line {
+        font-family: Consolas, monospace;
+        font-size: 42px;
+        line-height: 1.3;
+        color: #f3f7ed;
+      }
+
+      .map-badge {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        border: 3px solid #15945f;
+        background: #0e1f19;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #2fffa0;
+        font-family: Consolas, monospace;
+        font-size: 30px;
+        line-height: 1.2;
+        box-shadow: 0 0 80px rgba(47, 255, 160, 0.16);
+      }
+
+      .cta-layout {
+        display: grid;
+        grid-template-columns: 0.72fr 1.28fr;
+        gap: 60px;
+        align-items: center;
+      }
+
+      .logo {
+        font-family: Consolas, monospace;
+        font-size: 196px;
+        line-height: 0.9;
+        font-weight: 800;
+        color: #2fffa0;
+        text-shadow: 0 0 60px rgba(47, 255, 160, 0.28);
+      }
+
+      .cta-panel {
+        padding: 48px;
+        font-family: Consolas, monospace;
+        font-size: 38px;
+        line-height: 1.55;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 22px;
+        height: 42px;
+        margin-left: 8px;
+        transform: translateY(6px);
+        background: #2fffa0;
+      }
+
+      .scan-wipe {
+        position: absolute;
+        left: -12%;
+        right: -12%;
+        top: 50%;
+        height: 8px;
+        background: #2fffa0;
+        box-shadow: 0 0 44px rgba(47, 255, 160, 0.9);
+        opacity: 0;
+        z-index: 10;
+      }
+
+      body[data-locale="zh"] .scene-title {
+        max-width: 1320px;
+        font-size: 88px;
+        line-height: 1.1;
+      }
+
+      body[data-locale="zh"] .caption {
+        max-width: 1420px;
+        font-size: 42px;
+      }
+
+      body[data-locale="zh"] .metric-label {
+        font-size: 32px;
+      }
+
+      body[data-locale="zh"] .source-item {
+        font-size: 32px;
+      }
+
+      body[data-locale="zh"] .check-row {
+        grid-template-columns: 78px 1fr 170px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="cdp-intro-short"
+      data-composition-id="cdp-intro-short"
+      data-width="1920"
+      data-height="1080"
+      data-start="0"
+      data-duration="28"
+      data-track-index="0"
+    >
+      <div class="grid" data-layout-ignore></div>
+      <div class="glow" data-layout-ignore></div>
+      <div class="scan" data-layout-ignore></div>
+      <div class="ghost" data-layout-ignore>..\..\..</div>
+      <div class="scan-wipe" data-layout-ignore></div>
+
+      <section id="scene-pain" class="scene">
+        <div class="scene-content">
+          <div class="scene-kicker" data-i18n="pain.kicker">Vibe Coding / terminal flow</div>
+          <div class="split">
+            <div class="terminal large">
+              <div class="terminal-header">
+                <span class="dot"></span><span class="dot"></span><span class="dot accent"></span>
+                <span>PowerShell</span>
+              </div>
+              <div class="terminal-body">
+                <div class="line">PS C:\&gt; cd E:\Work\Client Projects\VeryLongName\backend</div>
+                <div class="line muted">PS E:\Work\...\backend&gt; cd ..\..\..\SideProjects\tooling</div>
+                <div class="line">PS E:\SideProjects\tooling&gt; cd C:\Learn\another-project</div>
+                <div class="line warning"># <span data-i18n="pain.comment">flow interrupted</span><span class="cursor"></span></div>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">27</div>
+              <div class="metric-label" data-i18n="pain.metricLabel">path fragments typed before the work even starts</div>
+              <div class="pill accent-pill" style="margin-top: 30px" data-i18n="pain.pill">too much navigation</div>
+            </div>
+          </div>
+          <div class="caption" data-i18n="pain.caption">AI coding lives in the terminal. Project switching should not break flow.</div>
+        </div>
+      </section>
+
+      <section id="scene-command" class="scene">
+        <div class="scene-content">
+          <div class="scene-kicker" data-i18n="command.kicker">One command</div>
+          <h1 class="scene-title" data-i18n="command.title">Type `cdp`, search, press Enter.</h1>
+          <div class="terminal picker">
+            <div class="terminal-header">
+              <span class="dot"></span><span class="dot"></span><span class="dot accent"></span>
+              <span data-i18n="command.header">fzf project picker</span>
+            </div>
+            <div class="terminal-body">
+              <div class="line" data-i18n-html="command.prompt">Select project: <span class="accent">api</span></div>
+              <div class="fzf-row selected">&gt; my-api <span class="muted" style="margin-left: auto">E:/Projects/my-api</span></div>
+              <div class="fzf-row">  company-admin <span class="muted" style="margin-left: auto">D:/Work/admin</span></div>
+              <div class="fzf-row">  personal-blog <span class="muted" style="margin-left: auto">C:/Code/blog</span></div>
+              <div class="fzf-row">  cdp <span class="muted" style="margin-left: auto">C:/Learn/cdp</span></div>
+            </div>
+          </div>
+          <div class="caption" data-i18n="command.caption">Fuzzy search replaces remembering paths.</div>
+        </div>
+      </section>
+
+      <section id="scene-config" class="scene">
+        <div class="scene-content">
+          <div class="scene-kicker" data-i18n="config.kicker">Bring your own project list</div>
+          <div class="config-grid">
+            <div class="source-stack">
+              <div class="source-item">Cursor Project Manager</div>
+              <div class="source-item">VS Code Project Manager</div>
+              <div class="source-item accent">cdp-add</div>
+              <div class="pill accent-pill" data-i18n="config.pill">same shape, plain JSON</div>
+            </div>
+            <div class="json-panel">
+              <div>{</div>
+              <div>&nbsp;&nbsp;"name": <span class="accent">"my-api"</span>,</div>
+              <div>&nbsp;&nbsp;"rootPath": <span class="accent">"E:/Projects/my-api"</span>,</div>
+              <div>&nbsp;&nbsp;"enabled": <span class="warning">true</span></div>
+              <div>}</div>
+            </div>
+          </div>
+          <div class="caption" data-i18n="config.caption">Use Project Manager automatically, or keep a simple `~/.cdp/projects.json`.</div>
+        </div>
+      </section>
+
+      <section id="scene-doctor" class="scene">
+        <div class="scene-content">
+          <div class="scene-kicker" data-i18n="doctor.kicker">Trust the setup</div>
+          <h1 class="scene-title" data-i18n="doctor.title">`cdp doctor` turns guesswork into checks.</h1>
+          <div class="doctor-panel">
+            <div class="terminal-body" style="padding: 0 0 26px">PS C:\&gt; <span class="accent">cdp doctor</span></div>
+            <div class="check-row"><span class="check-mark">OK</span><span>fzf</span><span class="muted" data-i18n="doctor.found">found</span></div>
+            <div class="check-row"><span class="check-mark">OK</span><span data-i18n="doctor.configFile">config file</span><span class="muted" data-i18n="doctor.active">active</span></div>
+            <div class="check-row"><span class="check-mark">OK</span><span>JSON</span><span class="muted" data-i18n="doctor.parsed">parsed</span></div>
+            <div class="check-row"><span class="check-mark">OK</span><span data-i18n="doctor.duplicates">duplicate names</span><span class="muted">0</span></div>
+            <div class="check-row"><span class="warning">WARN</span><span data-i18n="doctor.paths">project paths</span><span class="warning" data-i18n="doctor.missing">1 missing</span></div>
+          </div>
+          <div class="caption" data-i18n="doctor.caption">Dependencies, JSON, duplicate names, missing paths: visible in seconds.</div>
+        </div>
+      </section>
+
+      <section id="scene-wsl" class="scene">
+        <div class="scene-content">
+          <div class="scene-kicker">Windows + WSL</div>
+          <div class="path-grid">
+            <div class="path-panel">
+              <div class="panel-title">PowerShell</div>
+              <div class="path-line">C:\Learn\cdp</div>
+              <div class="pill">cdp -WSL</div>
+            </div>
+            <div class="path-panel">
+              <div class="panel-title">WSL</div>
+              <div class="path-line accent">/mnt/c/Learn/cdp</div>
+              <div class="pill accent-pill" data-i18n="wsl.sharedConfig">shared config</div>
+            </div>
+          </div>
+          <div class="map-badge"><span data-i18n="wsl.same">same</span><span data-i18n="wsl.map">project map</span></div>
+          <div class="caption" data-i18n="wsl.caption">The same project list works across PowerShell and WSL.</div>
+        </div>
+      </section>
+
+      <section id="scene-cta" class="scene">
+        <div class="scene-content">
+          <div class="cta-layout">
+            <div>
+              <div class="scene-kicker" data-i18n="cta.kicker">Start here</div>
+              <div class="logo">cdp</div>
+            </div>
+            <div class="cta-panel">
+              <div>Install-Module -Name <span class="accent">cdp</span> -Scope CurrentUser</div>
+              <div>winget install <span class="accent">fzf</span></div>
+              <div>Import-Module cdp</div>
+              <div><span class="accent">cdp doctor</span></div>
+            </div>
+          </div>
+          <div class="caption" data-i18n="cta.caption">Stop remembering paths. Start switching projects.</div>
+        </div>
+      </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const copy = {
+        en: {
+          "pain.kicker": "Vibe Coding / terminal flow",
+          "pain.comment": "flow interrupted",
+          "pain.metricLabel": "path fragments typed before the work even starts",
+          "pain.pill": "too much navigation",
+          "pain.caption": "AI coding lives in the terminal. Project switching should not break flow.",
+          "command.kicker": "One command",
+          "command.title": "Type `cdp`, search, press Enter.",
+          "command.header": "fzf project picker",
+          "command.prompt": 'Select project: <span class="accent">api</span>',
+          "command.caption": "Fuzzy search replaces remembering paths.",
+          "config.kicker": "Bring your own project list",
+          "config.pill": "same shape, plain JSON",
+          "config.caption": "Use Project Manager automatically, or keep a simple `~/.cdp/projects.json`.",
+          "doctor.kicker": "Trust the setup",
+          "doctor.title": "`cdp doctor` turns guesswork into checks.",
+          "doctor.found": "found",
+          "doctor.configFile": "config file",
+          "doctor.active": "active",
+          "doctor.parsed": "parsed",
+          "doctor.duplicates": "duplicate names",
+          "doctor.paths": "project paths",
+          "doctor.missing": "1 missing",
+          "doctor.caption": "Dependencies, JSON, duplicate names, missing paths: visible in seconds.",
+          "wsl.sharedConfig": "shared config",
+          "wsl.same": "same",
+          "wsl.map": "project map",
+          "wsl.caption": "The same project list works across PowerShell and WSL.",
+          "cta.kicker": "Start here",
+          "cta.caption": "Stop remembering paths. Start switching projects.",
+        },
+        zh: {
+          "pain.kicker": "Vibe Coding / 终端流",
+          "pain.comment": "心流被打断",
+          "pain.metricLabel": "段路径碎片，工作还没开始",
+          "pain.pill": "导航成本太高",
+          "pain.caption": "AI 编码就在终端里，项目切换不该打断心流。",
+          "command.kicker": "一个命令",
+          "command.title": "输入 `cdp`，搜索，回车。",
+          "command.header": "fzf 项目选择器",
+          "command.prompt": '选择项目: <span class="accent">api</span>',
+          "command.caption": "用模糊搜索替代记路径。",
+          "config.kicker": "接入现有项目列表",
+          "config.pill": "同一种结构，普通 JSON",
+          "config.caption": "自动读取 Project Manager，也可以使用简单的 `~/.cdp/projects.json`。",
+          "doctor.kicker": "让配置可信",
+          "doctor.title": "`cdp doctor` 把猜测变成检查。",
+          "doctor.found": "已找到",
+          "doctor.configFile": "配置文件",
+          "doctor.active": "生效中",
+          "doctor.parsed": "已解析",
+          "doctor.duplicates": "重复项目名",
+          "doctor.paths": "项目路径",
+          "doctor.missing": "1 个缺失",
+          "doctor.caption": "依赖、JSON、重复项目名、失效路径，几秒内看清楚。",
+          "wsl.sharedConfig": "共享配置",
+          "wsl.same": "同一份",
+          "wsl.map": "项目地图",
+          "wsl.caption": "同一份项目列表，同时服务 PowerShell 和 WSL。",
+          "cta.kicker": "从这里开始",
+          "cta.caption": "别再记路径，开始切换项目。",
+        },
+      };
+
+      const variables =
+        window.__hyperframes && typeof window.__hyperframes.getVariables === "function"
+          ? window.__hyperframes.getVariables()
+          : {};
+      const locale = variables.locale === "zh" ? "zh" : "en";
+      const activeCopy = copy[locale];
+
+      document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+      document.body.dataset.locale = locale;
+      document.title = locale === "zh" ? "cdp 中文短版演示" : "cdp intro short";
+
+      document.querySelectorAll("[data-i18n]").forEach((element) => {
+        const key = element.dataset.i18n;
+        if (activeCopy[key]) {
+          element.textContent = activeCopy[key];
+        }
+      });
+
+      document.querySelectorAll("[data-i18n-html]").forEach((element) => {
+        const key = element.dataset.i18nHtml;
+        if (activeCopy[key]) {
+          element.innerHTML = activeCopy[key];
+        }
+      });
+
+      const tl = gsap.timeline({ paused: true });
+      const scenes = ["#scene-pain", "#scene-command", "#scene-config", "#scene-doctor", "#scene-wsl", "#scene-cta"];
+      const starts = [0, 4.8, 10, 15, 20, 23.8];
+      const duration = 28;
+
+      function enterScene(selector, time, fromX, fromY, ease) {
+        tl.fromTo(
+          selector,
+          { opacity: 0, filter: "blur(18px)", x: fromX, y: fromY, scale: 0.985 },
+          { opacity: 1, filter: "blur(0px)", x: 0, y: 0, scale: 1, duration: 0.62, ease, overwrite: "auto" },
+          time,
+        );
+      }
+
+      function transitionOut(selector, time, toX, toY) {
+        tl.to(
+          selector,
+          { opacity: 0, filter: "blur(18px)", x: toX, y: toY, scale: 1.012, duration: 0.45, ease: "power2.inOut", overwrite: "auto" },
+          time,
+        );
+      }
+
+      function fromToIfPresent(root, childSelector, fromVars, toVars, time) {
+        const rootEl = document.querySelector(root);
+        const targets = rootEl ? gsap.utils.toArray(rootEl.querySelectorAll(childSelector)) : [];
+        if (targets.length > 0) {
+          tl.fromTo(targets, fromVars, toVars, time);
+        }
+      }
+
+      function sceneEntrances(root, time) {
+        fromToIfPresent(root, ".scene-kicker", { opacity: 0, x: -48 }, { opacity: 1, x: 0, duration: 0.42, ease: "power3.out", overwrite: "auto" }, time + 0.18);
+        fromToIfPresent(root, ".scene-title", { opacity: 0, y: 54 }, { opacity: 1, y: 0, duration: 0.72, ease: "expo.out", overwrite: "auto" }, time + 0.26);
+        fromToIfPresent(root, ".terminal, .source-stack, .json-panel, .doctor-panel, .path-panel, .cta-panel", { opacity: 0, y: 72, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.74, ease: "power4.out", stagger: 0.08, overwrite: "auto" }, time + 0.38);
+        fromToIfPresent(root, ".caption", { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.52, ease: "sine.out", overwrite: "auto" }, time + 0.86);
+        fromToIfPresent(root, ".pill, .metric, .map-badge, .logo", { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.4)", stagger: 0.08, overwrite: "auto" }, time + 0.72);
+      }
+
+      enterScene("#scene-pain", 0.16, -70, 0, "power3.out");
+      enterScene("#scene-command", starts[1], 90, 0, "expo.out");
+      enterScene("#scene-config", starts[2], 0, 70, "power4.out");
+      enterScene("#scene-doctor", starts[3], 0, -70, "power3.out");
+      enterScene("#scene-wsl", starts[4], 86, 0, "expo.out");
+      enterScene("#scene-cta", starts[5], 0, 58, "power4.out");
+
+      scenes.forEach((scene, index) => sceneEntrances(scene, starts[index]));
+
+      transitionOut("#scene-pain", 4.45, -90, -22);
+      transitionOut("#scene-command", 9.65, 90, -18);
+      tl.fromTo(".scan-wipe", { opacity: 0, y: -310, scaleX: 0.2 }, { opacity: 1, y: 0, scaleX: 1, duration: 0.18, ease: "power3.out", overwrite: "auto" }, 14.55);
+      tl.to(".scan-wipe", { opacity: 0, y: 330, duration: 0.2, ease: "power3.in", overwrite: "auto" }, 14.78);
+      transitionOut("#scene-config", 14.65, 0, -90);
+      transitionOut("#scene-doctor", 19.65, -70, 0);
+      transitionOut("#scene-wsl", 23.45, 80, 10);
+
+      tl.to(".grid", { backgroundPosition: "120px 80px", duration: 7, repeat: Math.floor(duration / 7) - 1, yoyo: true, ease: "sine.inOut", overwrite: "auto" }, 0);
+      tl.to(".glow", { scale: 1.05, duration: 5.6, repeat: Math.floor(duration / 5.6) - 1, yoyo: true, ease: "sine.inOut", overwrite: "auto" }, 0);
+      tl.to(".ghost", { x: 110, duration: 9, repeat: Math.floor(duration / 9) - 1, yoyo: true, ease: "sine.inOut", overwrite: "auto" }, 0);
+      tl.to(".cursor", { opacity: 0.18, duration: 0.38, repeat: Math.floor(duration / 0.76) - 1, yoyo: true, ease: "steps(1)", overwrite: "auto" }, 0);
+      tl.to("#scene-cta", { opacity: 0, filter: "blur(12px)", duration: 0.42, ease: "power2.in", overwrite: "auto" }, 27.45);
+
+      window.__timelines["cdp-intro-short"] = tl;
+    </script>
+  </body>
+</html>

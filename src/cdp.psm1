@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.2.6
+    Version: 1.3.0
     License: MIT
 #>
 
@@ -402,6 +402,180 @@ function Initialize-ConfigFile {
     }
 }
 
+function New-CdpHealthCheck {
+    param(
+        [string]$Name,
+        [bool]$Passed,
+        [string]$Message,
+        [ValidateSet('Info', 'Warning', 'Error')]
+        [string]$Level = 'Info'
+    )
+
+    [PSCustomObject]@{
+        Name = $Name
+        Passed = $Passed
+        Level = $Level
+        Message = $Message
+    }
+}
+
+function Write-CdpHealthCheck {
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Check
+    )
+
+    if ($Check.Passed) {
+        Write-Host "[OK]   " -ForegroundColor Green -NoNewline
+    } elseif ($Check.Level -eq 'Warning') {
+        Write-Host "[WARN] " -ForegroundColor Yellow -NoNewline
+    } else {
+        Write-Host "[FAIL] " -ForegroundColor Red -NoNewline
+    }
+
+    Write-Host "$($Check.Name): " -NoNewline
+    Write-Host $Check.Message -ForegroundColor Gray
+}
+
+function Get-CdpDependencyHealthChecks {
+    $fzfCommand = Get-Command fzf -ErrorAction SilentlyContinue
+
+    if ($fzfCommand) {
+        return @(New-CdpHealthCheck -Name "fzf" -Passed $true -Message "found at $($fzfCommand.Path)")
+    }
+
+    return @(New-CdpHealthCheck -Name "fzf" -Passed $false -Level Error -Message "not found in PATH")
+}
+
+function Resolve-CdpHealthConfigPath {
+    param(
+        [string]$ConfigPath
+    )
+
+    $checks = @()
+    $configSource = "argument"
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        if (-not [string]::IsNullOrWhiteSpace($env:CDP_CONFIG)) {
+            $ConfigPath = $env:CDP_CONFIG
+            $configSource = "CDP_CONFIG"
+        } else {
+            $storedChoice = Get-StoredConfigChoice
+            if ($storedChoice -and (Test-Path -LiteralPath $storedChoice)) {
+                $ConfigPath = $storedChoice
+                $configSource = "saved choice"
+            } else {
+                $availableConfigs = @(Get-AllAvailableConfigs)
+                if ($availableConfigs.Count -gt 0) {
+                    $ConfigPath = $availableConfigs[0].Path
+                    $configSource = $availableConfigs[0].Source
+
+                    if ($availableConfigs.Count -gt 1) {
+                        $checks += New-CdpHealthCheck -Name "config selection" -Passed $false `
+                            -Level Warning -Message "multiple configs found; run cdp-config to choose one"
+                    }
+                } else {
+                    $ConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+                    $configSource = "default custom config"
+                }
+            }
+        }
+    }
+
+    [PSCustomObject]@{
+        Path = $ConfigPath
+        Source = $configSource
+        Checks = $checks
+    }
+}
+
+function Get-CdpConfigParseResult {
+    param(
+        [string]$ConfigPath,
+        [string]$ConfigSource
+    )
+
+    $checks = @()
+    $projects = @()
+    $parsed = $false
+
+    if (-not (Test-Path -LiteralPath $ConfigPath)) {
+        $checks += New-CdpHealthCheck -Name "config file" -Passed $false `
+            -Level Error -Message "not found at $ConfigPath"
+        return [PSCustomObject]@{ Projects = $projects; Checks = $checks; Parsed = $parsed }
+    }
+
+    $checks += New-CdpHealthCheck -Name "config file" -Passed $true -Message "$ConfigSource -> $ConfigPath"
+
+    try {
+        $jsonContent = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8
+        $parsedProjects = ConvertFrom-Json -InputObject $jsonContent
+        if ($null -ne $parsedProjects) {
+            $projects = @($parsedProjects)
+        }
+
+        $checks += New-CdpHealthCheck -Name "JSON" -Passed $true -Message "parsed successfully"
+        $parsed = $true
+    } catch {
+        $checks += New-CdpHealthCheck -Name "JSON" -Passed $false -Level Error -Message $_.Exception.Message
+    }
+
+    [PSCustomObject]@{ Projects = $projects; Checks = $checks; Parsed = $parsed }
+}
+
+function Get-CdpProjectHealthChecks {
+    param(
+        [object[]]$Projects
+    )
+
+    $invalidProjects = @($Projects | Where-Object {
+        [string]::IsNullOrWhiteSpace($_.name) -or
+        [string]::IsNullOrWhiteSpace($_.rootPath) -or
+        -not ($_.enabled -is [bool])
+    })
+    $enabledProjects = @($Projects | Where-Object { $_.enabled -eq $true })
+    $duplicateNames = @($Projects | Group-Object -Property name | Where-Object {
+        -not [string]::IsNullOrWhiteSpace($_.Name) -and $_.Count -gt 1
+    })
+    $missingPaths = @($enabledProjects | Where-Object {
+        -not [string]::IsNullOrWhiteSpace($_.rootPath) -and
+        -not (Test-Path -LiteralPath $_.rootPath)
+    })
+
+    @(
+        New-CdpHealthCheck -Name "project schema" -Passed ($invalidProjects.Count -eq 0) `
+            -Level Error -Message "$($invalidProjects.Count) invalid project entries"
+        New-CdpHealthCheck -Name "enabled projects" -Passed ($enabledProjects.Count -gt 0) `
+            -Level Warning -Message "$($enabledProjects.Count) enabled of $($Projects.Count) total"
+        New-CdpHealthCheck -Name "duplicate names" -Passed ($duplicateNames.Count -eq 0) `
+            -Level Warning -Message "$($duplicateNames.Count) duplicate project names"
+        New-CdpHealthCheck -Name "project paths" -Passed ($missingPaths.Count -eq 0) `
+            -Level Warning -Message "$($missingPaths.Count) enabled project paths missing"
+    )
+}
+
+function Write-CdpHealthSummary {
+    param(
+        [object[]]$Checks
+    )
+
+    Write-Host "`ncdp doctor" -ForegroundColor Cyan
+    Write-Host ("=" * 80) -ForegroundColor Gray
+    foreach ($check in $Checks) {
+        Write-CdpHealthCheck -Check $check
+    }
+    Write-Host ""
+
+    $errorCount = @($Checks | Where-Object { -not $_.Passed -and $_.Level -eq 'Error' }).Count
+    $warningCount = @($Checks | Where-Object { -not $_.Passed -and $_.Level -eq 'Warning' }).Count
+
+    if ($errorCount -eq 0 -and $warningCount -eq 0) {
+        Write-Host "All checks passed." -ForegroundColor Green
+    } else {
+        Write-Host "Summary: $errorCount error(s), $warningCount warning(s)." -ForegroundColor Yellow
+    }
+}
+
 function Add-Project {
     <#
     .SYNOPSIS
@@ -769,12 +943,131 @@ function Set-ProjectConfig {
     } while ($true)
 }
 
+function Test-ProjectHealth {
+    <#
+    .SYNOPSIS
+        Diagnose the cdp runtime environment and project configuration.
+
+    .DESCRIPTION
+        Checks fzf availability, active configuration discovery, JSON shape,
+        duplicate project names, enabled project count, and missing project paths.
+
+    .PARAMETER ConfigPath
+        Optional custom path to projects.json file.
+
+    .PARAMETER PassThru
+        Returns a structured health summary object in addition to console output.
+
+    .EXAMPLE
+        Test-ProjectHealth
+        # Runs diagnostics for the active cdp configuration
+
+    .EXAMPLE
+        cdp doctor
+        # Runs diagnostics through the short cdp command
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    $configResult = Resolve-CdpHealthConfigPath -ConfigPath $ConfigPath
+    $parseResult = Get-CdpConfigParseResult -ConfigPath $configResult.Path -ConfigSource $configResult.Source
+    $projects = @($parseResult.Projects)
+    $checks = @(Get-CdpDependencyHealthChecks) + @($configResult.Checks) + @($parseResult.Checks)
+
+    if ($parseResult.Parsed) {
+        $checks += Get-CdpProjectHealthChecks -Projects $projects
+    }
+
+    $errorCount = @($checks | Where-Object { -not $_.Passed -and $_.Level -eq 'Error' }).Count
+    $warningCount = @($checks | Where-Object { -not $_.Passed -and $_.Level -eq 'Warning' }).Count
+
+    Write-CdpHealthSummary -Checks $checks
+
+    if ($PassThru) {
+        [PSCustomObject]@{
+            ConfigPath = $configResult.Path
+            Checks = $checks
+            ErrorCount = $errorCount
+            WarningCount = $warningCount
+            ProjectCount = $projects.Count
+            EnabledProjectCount = @($projects | Where-Object { $_.enabled -eq $true }).Count
+            MissingPathCount = @($projects | Where-Object {
+                $_.enabled -eq $true -and
+                -not [string]::IsNullOrWhiteSpace($_.rootPath) -and
+                -not (Test-Path -LiteralPath $_.rootPath)
+            }).Count
+        }
+    }
+}
+
+function Invoke-Cdp {
+    <#
+    .SYNOPSIS
+        Short command entry point for cdp.
+
+    .DESCRIPTION
+        Keeps the classic `cdp` project switch behavior and adds lightweight
+        subcommands such as `cdp doctor`.
+
+    .PARAMETER Command
+        Optional subcommand. Use `doctor` to run diagnostics. Any other value is
+        treated as a configuration path for backward-compatible positional use.
+
+    .PARAMETER ConfigPath
+        Optional custom path to projects.json file.
+
+    .PARAMETER WSL
+        If specified, launches WSL and changes to the selected project directory.
+
+    .EXAMPLE
+        cdp
+        # Opens fzf menu to select a project
+
+    .EXAMPLE
+        cdp doctor
+        # Runs cdp diagnostics
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Command,
+
+        [Parameter(Mandatory = $false, Position = 1)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$WSL
+    )
+
+    if ($Command -in @('doctor', 'health', 'check')) {
+        Test-ProjectHealth -ConfigPath $ConfigPath
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath) -and -not [string]::IsNullOrWhiteSpace($Command)) {
+        $ConfigPath = $Command
+    }
+
+    Switch-Project -ConfigPath $ConfigPath -WSL:$WSL
+}
+
 # Export module members
-Set-Alias -Name cdp -Value Switch-Project
+Set-Alias -Name cdp -Value Invoke-Cdp
 Set-Alias -Name cdp-add -Value Add-Project
 Set-Alias -Name cdp-rm -Value Remove-Project
 Set-Alias -Name cdp-ls -Value Get-ProjectList
 Set-Alias -Name cdp-edit -Value Edit-ProjectConfig
 Set-Alias -Name cdp-config -Value Set-ProjectConfig
+Set-Alias -Name cdp-doctor -Value Test-ProjectHealth
 
-Export-ModuleMember -Function Switch-Project, Get-ProjectList, Add-Project, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config
+Export-ModuleMember `
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth `
+    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor

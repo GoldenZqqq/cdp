@@ -2,11 +2,17 @@
 *.ps1xml
 *.nuspec
 *.nupkg
+*.snupkg
+_rels/
+[Content_Types].xml
 
 # Build artifacts
 bin/
 obj/
 publish/
+dist/
+out/
+artifacts/
 
 # API Keys and Secrets (IMPORTANT!)
 *apikey*
@@ -19,6 +25,10 @@ credentials.json
 
 # Testing
 *.Tests.ps1.Results.xml
+testResults.xml
+coverage.xml
+junit*.xml
+*.trx
 TestResults/
 coverage/
 
@@ -26,9 +36,31 @@ coverage/
 .vscode/
 .idea/
 .claude/
+.codex/
 *.swp
 *.swo
 *~
+
+# Node / HyperFrames tooling
+node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# HyperFrames generated outputs
+docs/video/**/.hyperframes/anim-map/
+docs/video/**/.hyperframes/cache/
+docs/video/**/.hyperframes/inspect/
+docs/video/**/.hyperframes/render/
+docs/video/**/.hyperframes/renders/
+docs/video/**/dist/
+docs/video/**/exports/
+docs/video/**/snapshots/
+docs/video/**/*.mp4
+docs/video/**/*.mov
+docs/video/**/*.webm
 
 # OS
 .DS_Store
@@ -41,4 +73,6 @@ desktop.ini
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.orig
 ~$*
