@@ -56,7 +56,6 @@ jobs:
 
       - name: Install test tools
         run: |
-          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
           Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
