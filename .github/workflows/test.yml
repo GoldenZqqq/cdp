@@ -7,18 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  powershell:
-    name: PowerShell ${{ matrix.psversion }}
+  powershell-51:
+    name: Windows PowerShell 5.1
     runs-on: windows-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - psversion: '5.1'
-            shell: powershell
-          - psversion: '7.x'
-            shell: pwsh
 
     steps:
       - name: Checkout
@@ -34,13 +25,13 @@ jobs:
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
           Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
-        shell: ${{ matrix.shell }}
+        shell: powershell
 
       - name: Run Pester tests
         run: |
           Import-Module Pester -MinimumVersion 5.5.0 -Force
           Invoke-Pester -Path ./tests -CI
-        shell: ${{ matrix.shell }}
+        shell: powershell
 
       - name: Run PSScriptAnalyzer errors
         run: |
@@ -49,7 +40,42 @@ jobs:
               $results | Format-Table -AutoSize
               throw "PSScriptAnalyzer found errors."
           }
-        shell: ${{ matrix.shell }}
+        shell: powershell
+
+  powershell-7:
+    name: PowerShell 7.x
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install fzf
+        run: choco install fzf -y
+        shell: cmd
+
+      - name: Install test tools
+        run: |
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+        shell: pwsh
+
+      - name: Run Pester tests
+        run: |
+          Import-Module Pester -MinimumVersion 5.5.0 -Force
+          Invoke-Pester -Path ./tests -CI
+        shell: pwsh
+
+      - name: Run PSScriptAnalyzer errors
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error
+          if ($results) {
+              $results | Format-Table -AutoSize
+              throw "PSScriptAnalyzer found errors."
+          }
+        shell: pwsh
 
   bash:
     name: Bash smoke

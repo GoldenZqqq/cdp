@@ -19,10 +19,9 @@ A fast project directory switcher for the Vibe Coding era, built for Claude Code
 
 ## Intro Video
 
-<video src="./docs/assets/cdp-demo-short-en.mp4" controls muted playsinline width="100%"></video>
+![cdp demo: switch projects quickly with fuzzy search](./docs/assets/cdp-demo-short-en.gif)
 
-[Open the English 28-second MP4 if GitHub does not play it inline.](./docs/assets/cdp-demo-short-en.mp4)
-[中文演示](./docs/assets/cdp-demo-short-zh.mp4)
+[Open the English 28-second MP4](./docs/assets/cdp-demo-short-en.mp4) · [中文 GIF](./docs/assets/cdp-demo-short-zh.gif) · [中文 MP4](./docs/assets/cdp-demo-short-zh.mp4)
 
 This short demo shows why project switching becomes a high-frequency pain point in the Vibe Coding era, and how `cdp` turns `fzf`, Project Manager / JSON config, `cdp doctor`, and WSL support into one stable terminal workflow.
 
