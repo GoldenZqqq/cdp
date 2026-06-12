@@ -19,10 +19,9 @@
 
 ## 演示视频
 
-<video src="./docs/assets/cdp-demo-short-zh.mp4" controls muted playsinline width="100%"></video>
+![cdp 中文演示：用模糊搜索快速切换项目](./docs/assets/cdp-demo-short-zh.gif)
 
-[无法内联播放时，点击观看中文 28 秒 MP4](./docs/assets/cdp-demo-short-zh.mp4)。
-[English demo](./docs/assets/cdp-demo-short-en.mp4)
+[观看中文 28 秒 MP4](./docs/assets/cdp-demo-short-zh.mp4) · [English GIF](./docs/assets/cdp-demo-short-en.gif) · [English MP4](./docs/assets/cdp-demo-short-en.mp4)
 
 这支短版演示讲清楚：Vibe Coding 时代为什么项目切换变成高频痛点，`cdp` 如何用 `fzf`、Project Manager / JSON 配置、`cdp doctor` 和 WSL 支持把这件事变成一个稳定的终端工作流。
 
