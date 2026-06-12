@@ -4,14 +4,12 @@
 
 **English** | **[简体中文](./README.md)**
 
-*Stop cd-ing around!*
+A fast project directory switcher for the Vibe Coding era, built for Claude Code, Codex, Gemini CLI, Cursor, and VS Code users.
 
-In the era of Vibe Coding, harness AI coding tools with CLI
-Claude Code, Codex, Gemini CLI, Droid...
-**One-key Quick Stop & Switch ⚡**
+`cdp` opens your project list with `fzf`. Type a few letters, press Enter, and your terminal jumps to the project root with the tab title updated.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)](https://github.com/GoldenZqqq/cdp)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20WSL%20%7C%20Linux-lightgrey)](https://github.com/GoldenZqqq/cdp)
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 [![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 
@@ -19,641 +17,317 @@ Claude Code, Codex, Gemini CLI, Droid...
 
 ---
 
-## 💡 The Pain Point
+## Intro Video
 
-**Welcome to 2025, the Vibe Coding Era:**
+<video src="./docs/assets/cdp-demo-short-en.mp4" controls muted playsinline width="100%"></video>
 
-- 🤖 Claude Code brings AI coding to your terminal
-- ⚡ Codex, Gemini CLI, Droid and other CLI AI assistants are everywhere
-- 🖥️ More developers are returning to the command line, embracing keyboard-first workflows
+[Open the English 28-second MP4 if GitHub does not play it inline.](./docs/assets/cdp-demo-short-en.mp4)
+[中文演示](./docs/assets/cdp-demo-short-zh.mp4)
 
-**But...**
+This short demo shows why project switching becomes a high-frequency pain point in the Vibe Coding era, and how `cdp` turns `fzf`, Project Manager / JSON config, `cdp doctor`, and WSL support into one stable terminal workflow.
 
-```powershell
-# Repeating this every day?
-PS C:\> cd E:\Projects\WebApp
-PS E:\Projects\WebApp> # Working for hours, then remember another project...
-PS E:\Projects\WebApp> cd ..\..\OtherProject\Backend
-PS E:\OtherProject\Backend> # Path too long to remember? Need to go back?
-PS E:\OtherProject\Backend> cd "E:\Work\Client Projects\Some Long Name\Nested\Folder"
-# 😭 Enough! I just want to switch projects!
-```
-
-**The problems:**
-- ❌ Can't remember project paths, always opening file explorer
-- ❌ Deeply nested directories, counting `cd ../../../` until dizzy
-- ❌ Tab completion too slow, project names too long
-- ❌ Multiple terminal tabs, can't tell which is which project
+Video script, frame spec, and HyperFrames composition:
+[docs/video/cdp-intro-script.md](./docs/video/cdp-intro-script.md),
+[docs/video/cdp-intro/frame.md](./docs/video/cdp-intro/frame.md),
+[docs/video/cdp-intro/index.html](./docs/video/cdp-intro/index.html).
 
 ---
 
-## 🚀 The Solution: cdp
+## Why cdp
 
-**One command, solves everything:**
+AI CLI tools bring developers back to the terminal, but switching between many projects is still clumsy:
+
+```powershell
+PS C:\> cd E:\Work\Client Projects\VeryLongName\backend
+PS E:\Work\Client Projects\VeryLongName\backend> cd ..\..\..\SideProjects\tooling
+PS E:\SideProjects\tooling> cd C:\Learn\another-project
+```
+
+With `cdp`, that becomes:
 
 ```powershell
 PS C:\> cdp
-
-  ┌─ Select project: ────────────────────────────┐
-  │ > cdp                                 │
-  │   MyAwesomeApp                               │
-  │   ClientProjectAlpha                         │
-  │   Backend-API-v2                             │
-  │   ...                                        │
-  └──────────────────────────────────────────────┘
-
-# Type a few letters, fuzzy match, Enter → Instant switch!
-# Terminal tab title auto-updates to project name
+# type api / blog / cdp
+# press Enter and jump to the project root
 ```
 
-**That's it.**
+It is built for:
+
+- Developers who work across many repositories
+- Users of Claude Code, Codex, Gemini CLI, and other terminal AI tools
+- VS Code/Cursor Project Manager users
+- People who want one shared project list across Windows PowerShell and WSL/Linux
 
 ---
 
-## ✨ Features
+## Quick Start
 
-### 🎯 Built for Vibe Coding
-
-- **Fuzzy Search**: Type `web` to match `WebApp`, `WebSite`, `MyWebProject`
-- **Keyboard Flow**: Arrow keys + Enter, zero mouse required
-- **Visual Context**: Terminal tab auto-shows project name, never get lost
-- **Zero Config**: Already have Project Manager plugin? Just use it!
-
-### ⚡ Lightning Fast
-
-- **Instant Launch**: Powered by fzf, millisecond response
-- **Smart Config**: Auto-reads Project Manager plugin configuration
-- **One-Key Switch**: `cdp` - three letters, all projects
-- **Quick Management**: `cdp-add` to add projects, `cdp-rm` to remove, `cdp-ls` to list all
-
-### 🛠️ Developer Friendly
-
-- **PowerShell Native**: Compatible with 5.1+ and 7+
-- **WSL/Linux Support**: bash/zsh version, shares config with Windows version
-- **Auto Install Script**: One command completes installation
-- **Highly Extensible**: Customize fzf options and shortcuts
-
----
-
-## 📦 Installation
-
-### Windows (PowerShell)
-
-#### Method 1: Install from PowerShell Gallery (Recommended) ⭐
-
-**One command, ready to use!**
+### Windows PowerShell
 
 ```powershell
-# Install the module
+# 1. Install cdp
 Install-Module -Name cdp -Scope CurrentUser
 
-# Import the module
-Import-Module cdp
+# 2. Install the fzf dependency
+winget install fzf
 
-# Start using it immediately!
+# 3. Import and verify
+Import-Module cdp
+cdp doctor
+
+# 4. Start switching projects
 cdp
 ```
 
-**Benefits:**
-- ✅ Simplest and fastest installation method
-- ✅ Auto-managed updates: `Update-Module cdp`
-- ✅ Official PowerShell package management, safe and reliable
-- ✅ No need to download source code, one command does it all
-
-> **Note**: After installation, you'll need to manually install the fzf dependency (see instructions below)
-
----
-
-#### Method 2: Install from Source
-
-For developers who want to customize or contribute code.
-
-#### Prerequisites
-
-1. **PowerShell 5.1+** or **PowerShell 7+** (pre-installed on Windows)
-2. **Project Configuration** (choose one)
-   - **Option A**: [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) extension (VS Code/Cursor)
-   - **Option B**: Custom JSON config file (see example below)
-
-> **Note**: The install script will automatically detect and install fzf if not already installed. No manual setup required!
-
-#### Installation Steps
+If you want the install script to handle fzf and profile setup:
 
 ```powershell
-# Clone repository
 git clone https://github.com/GoldenZqqq/cdp.git
 cd cdp
-
-# Run install script (auto-install fzf + auto-configure)
 .\Install.ps1 -AddToProfile
-
-# Restart terminal or reload config
-. $PROFILE
 ```
 
-**The install script automatically:**
-- ✅ Detects if fzf is installed
-- ✅ If not installed, automatically installs fzf using winget/scoop/chocolatey
-- ✅ Installs module to PowerShell modules directory
-- ✅ Adds `cdp` alias to your PowerShell profile
-
----
-
-#### Installing fzf Dependency
-
-cdp uses [fzf](https://github.com/junegunn/fzf) to provide fuzzy search functionality.
-
-**Method A: Automatic Installation (Recommended)**
-
-If you install from source using Method 2, the install script will automatically install fzf for you.
-
-**Method B: Manual Installation**
-
-```powershell
-# Option 1: Using winget (recommended)
-winget install fzf
-
-# Option 2: Using scoop
-scoop install fzf
-
-# Option 3: Using chocolatey
-choco install fzf
-
-# Verify after restarting terminal
-fzf --version
-```
-
----
-
-### WSL / Linux (bash/zsh)
-
-cdp now supports WSL and Linux environments! **One command to install everything**.
-
-#### One-liner Install (Recommended) ⭐
+### WSL / Linux
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
-```
 
-This single command automatically:
-- ✅ Detects and installs fzf (if not already installed)
-- ✅ Detects and installs jq (JSON parsing tool)
-- ✅ Downloads and installs cdp.sh to `~/.local/bin`
-- ✅ Adds configuration to `~/.bashrc` or `~/.zshrc`
-- ✅ Sets up correct PATH
-
-After installation, restart your terminal or run:
-```bash
-source ~/.bashrc  # For bash
-source ~/.zshrc   # For zsh
-```
-
-#### Manual Install (Optional)
-
-If you want to install from a local copy:
-
-```bash
-# Clone the repository
-git clone https://github.com/GoldenZqqq/cdp.git
-cd cdp
-
-# Run install script
-chmod +x install-wsl.sh
-./install-wsl.sh --auto  # Auto-install dependencies
-```
-
-#### WSL/Linux Version Features
-
-- **Automatic Path Conversion**: Automatically converts Windows paths (`C:\path`) to WSL paths (`/mnt/c/path`)
-- **Shared Configuration**: Can use the same project config file as the PowerShell version
-- **Auto-detect Config**: Priority order:
-  1. `$CDP_CONFIG` environment variable
-  2. `~/.cdp/projects.json` (custom config)
-  3. Windows Cursor Project Manager config (via `/mnt/c/...`)
-  4. Windows VS Code Project Manager config (via `/mnt/c/...`)
-
-#### Available Commands (WSL/Linux)
-
-```bash
-cdp          # Select and switch to a project
-cdp-add      # Add current directory as a project
-cdp-ls       # List all projects
+source ~/.bashrc  # zsh users: source ~/.zshrc
+cdp doctor
+cdp
 ```
 
 ---
 
-## 🎮 Usage
-
-### 🚀 Quick Project Switch
+## 30-Second Usage
 
 ```powershell
-# Use alias (recommended)
+# Add the current directory as a project
+cd E:\Projects\my-api
+cdp-add
+
+# Open the project picker from anywhere
 cdp
 
-# Or use full command
-Switch-Project
+# Check your setup
+cdp doctor
 
-# WSL scenario: Launch WSL and switch to project directory
+# Launch WSL directly into a selected project
 cdp -WSL
 ```
 
-**Interactive Flow:**
-1. Opens fzf fuzzy search menu
-2. Type project name (fuzzy matching supported)
-3. Arrow keys to select, Enter to confirm
-4. Auto-switches to project directory
-5. Terminal tab title auto-updates
+Type a few letters in the fzf menu:
 
-**WSL Support:**
-- Use `-WSL` parameter to launch WSL from PowerShell and enter project directory
-- Windows paths are automatically converted to WSL mount paths (`C:\path` → `/mnt/c/path`)
-- You can also use the bash/zsh version of cdp inside WSL (see installation instructions above)
+```text
+Select project: api
 
-### ➕ Add Current Project
-
-```powershell
-# Add current directory (auto-uses folder name as project name)
-cdp-add
-
-# Or use custom name
-Add-Project -Name "My Awesome Project"
-
-# Add specific path
-Add-Project -Path "E:\Projects\MyApp" -Name "MyApp"
+> my-api
+  company-admin
+  personal-blog
+  cdp
 ```
 
-### 📝 List All Projects
+After selection:
 
-```powershell
-# Use alias (recommended)
-cdp-ls
-
-# Or use full command
-Get-ProjectList
-```
-
-Displays all enabled projects with their paths, with index numbers.
-
-### 🗑️ Remove Project
-
-```powershell
-# Use fzf interactive selection to remove project
-cdp-rm
-
-# Or specify project name directly
-Remove-Project -Name "Old Project"
-```
-
-### ⚙️ Edit Config File
-
-```powershell
-# Open config file for manual editing
-cdp-edit
-
-# Or use full command
-Edit-ProjectConfig
-```
-
-Automatically opens config file with VS Code/Cursor or system default editor.
-
-### Advanced Usage
-
-#### Custom Config Path
-
-```powershell
-Switch-Project -ConfigPath "C:\my-projects.json"
-```
-
-#### Workflow Integration
-
-```powershell
-# Add to PowerShell profile ($PROFILE)
-
-# Switch project and open VS Code
-function cdpv { cdp; code . }
-
-# Switch project and show Git status
-function cdpg { cdp; git status }
-
-# Switch project and start dev server
-function cdpd { cdp; npm run dev }
-
-# Switch project and open in Explorer
-function cdpe { cdp; explorer . }
-```
+- The current shell changes to the project root
+- Windows Terminal and common terminals update the tab title
+- WSL mode converts `C:\path` to `/mnt/c/path`
 
 ---
 
-## 📋 Command List
+## Features
 
-### PowerShell Version
+- **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
+- **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
+- **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
+- **Health checks**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths
+- **Windows + WSL/Linux**: PowerShell and bash/zsh versions share the same config shape
+- **Terminal tab titles**: selected project names become visible in terminal tabs
+
+---
+
+## Commands
+
+### PowerShell
 
 | Command | Alias | Description |
-|---------|-------|-------------|
-| `Switch-Project` | `cdp` | Open fzf menu to select and switch project |
-| `Switch-Project -WSL` | `cdp -WSL` | Select project and launch WSL in that directory |
-| `Add-Project` | `cdp-add` | Add current directory or specified path to project list |
-| `Remove-Project` | `cdp-rm` | Remove project (supports interactive selection) |
-| `Get-ProjectList` | `cdp-ls` | List all enabled projects with paths |
-| `Edit-ProjectConfig` | `cdp-edit` | Open config file for editing |
+| --- | --- | --- |
+| `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
+| `Switch-Project` | - | Opens the fzf menu and switches projects |
+| `Switch-Project -WSL` | `cdp -WSL` | Selects a project and launches WSL in that directory |
+| `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | Diagnoses the cdp environment and config |
+| `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
+| `Remove-Project` | `cdp-rm` | Removes a project, with interactive selection support |
+| `Get-ProjectList` | `cdp-ls` | Lists enabled projects |
+| `Edit-ProjectConfig` | `cdp-edit` | Opens the config file |
+| `Set-ProjectConfig` | `cdp-config` | Changes the active config file |
 
-### WSL/Linux Version
+### WSL / Linux
 
 | Command | Description |
-|---------|-------------|
-| `cdp` | Open fzf menu to select and switch project |
-| `cdp-add` | Add current directory or specified path to project list |
-| `cdp-ls` | List all enabled projects with paths |
+| --- | --- |
+| `cdp` | Opens the fzf menu and switches projects |
+| `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
+| `cdp-add` | Adds the current directory or a specific path |
+| `cdp-ls` | Lists enabled projects |
+| `cdp-config` | Changes the active config file |
 
 ---
 
-## 🎨 Screenshot Example
+## Configuration Sources
+
+cdp discovers project config in this order:
+
+1. `CDP_CONFIG` environment variable
+2. The saved choice from `cdp-config`
+3. Cursor Project Manager config
+4. VS Code Project Manager config
+5. Custom config at `~/.cdp/projects.json`
+
+If you already use [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager), cdp usually works without extra setup. Otherwise:
 
 ```powershell
-PS C:\> cdp
-
-# fzf interface example
-┌───────────────────────────────────────┐
-│ Select project: proj                 │
-├───────────────────────────────────────┤
-│ > cdp                         │  ← Current selection
-│   ProjectAlpha                       │
-│   ProjectManager-Extension           │
-└───────────────────────────────────────┘
-  3/15  ← Matched 3 out of 15 projects
-
-# After selection
-✓ Switched to project: cdp
-PS E:\Learn\cdp>  # Terminal title → "cdp"
+cd E:\Projects\my-api
+cdp-add
 ```
 
----
-
-## 🔧 Configuration
-
-### Configuration Priority
-
-cdp automatically searches for config files in this priority order:
-
-1. **Environment variable** `$env:CDP_CONFIG` (highest priority, skips selection)
-2. **User custom config** `~/.cdp/projects.json` (auto-created on first use)
-3. **Cursor Project Manager plugin** `%APPDATA%\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
-4. **VS Code Project Manager plugin** `%APPDATA%\Code\User\globalStorage\alefragnani.project-manager\projects.json`
-
-### 🔀 Multiple Config Selection (New Feature)
-
-**If multiple config files exist on your system, cdp will let you choose which one to use:**
-
-```powershell
-PS C:\> cdp
-
-Multiple configuration files found:
-================================================================================
-
-  [1] Cursor Project Manager
-      C:\Users\YourName\AppData\Roaming\Cursor\User\globalStorage\alefragnani.project-manager\projects.json
-  [2] VS Code Project Manager
-      C:\Users\YourName\AppData\Roaming\Code\User\globalStorage\alefragnani.project-manager\projects.json
-  [3] Custom Config (~/.cdp)
-      C:\Users\YourName\.cdp\projects.json
-
-Tip: Set $env:CDP_CONFIG to skip this selection next time.
-
-Select config file (1-3): _
-```
-
-**Skip Selection (Recommended):**
-
-If you always use the same config file, you can set an environment variable to skip selection every time:
-
-```powershell
-# Add to PowerShell profile ($PROFILE)
-$env:CDP_CONFIG = "C:\Users\YourName\AppData\Roaming\Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
-```
-
-After setting this, cdp will always use the specified config file without prompting for selection.
-
-**WSL/Linux Environment:**
-
-Multi-config selection works the same way in WSL or Linux:
-
-```bash
-# Set environment variable to skip selection
-export CDP_CONFIG="/mnt/c/Users/YourName/AppData/Roaming/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
-
-# Add to ~/.bashrc or ~/.zshrc to make it permanent
-echo 'export CDP_CONFIG="/path/to/your/config.json"' >> ~/.bashrc
-```
-
-### Option 1: Use Default Config (Simplest)
-
-When you first use the `cdp-add` command, it will automatically create `~/.cdp/projects.json`:
-
-```powershell
-# In your project directory
-cd E:\Projects\MyApp
-cdp-add  # Automatically adds to config and creates file (if doesn't exist)
-```
-
-### Option 2: Use Project Manager Plugin
-
-If you have [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) plugin installed (VS Code/Cursor), cdp will automatically read the plugin's config file.
-
-**No extra config needed!** Add projects in Project Manager, cdp auto-detects.
-
-### Option 3: Use Custom Config File
-
-#### 1. Create Config File
-
-Create a JSON file anywhere, e.g., `C:\my-projects.json`:
+Custom config format:
 
 ```json
 [
   {
-    "name": "My Website",
-    "rootPath": "E:/Projects/MyWebsite",
+    "name": "my-api",
+    "rootPath": "E:/Projects/my-api",
     "enabled": true
   },
   {
-    "name": "Backend API",
-    "rootPath": "D:/Work/Backend-API",
+    "name": "personal-blog",
+    "rootPath": "D:/Code/blog",
     "enabled": true
-  },
-  {
-    "name": "Personal Blog",
-    "rootPath": "C:/Code/PersonalBlog",
-    "enabled": true
-  },
-  {
-    "name": "Old Project (Disabled)",
-    "rootPath": "E:/Archive/OldProject",
-    "enabled": false
   }
 ]
 ```
 
-**Field Descriptions:**
-- `name`: Project display name (shown in fzf menu)
-- `rootPath`: Absolute path to project root (**Use `/` or `\\` for Windows paths**)
-- `enabled`: Whether to enable this project (`true` or `false`)
-
-#### 2. Use Custom Config
-
-**Set environment variable (recommended):**
-
-```powershell
-# Add to $PROFILE
-$env:CDP_CONFIG = "C:\my-projects.json"
-
-# Module will auto-detect this environment variable
-```
-
-### Customize fzf Style
-
-```powershell
-# Add to $PROFILE
-$env:FZF_DEFAULT_OPTS = @"
---height=50%
---layout=reverse
---border=rounded
---prompt='🚀 Project: '
---color=fg:#f8f8f2,bg:#282a36,hl:#bd93f9
-"@
-```
+Using `/` in JSON paths avoids escaping Windows backslashes.
 
 ---
 
-## 🐛 Troubleshooting
+## Diagnostics
 
-### Install script failed to auto-install fzf
-
-If the install script couldn't automatically install fzf, install manually:
+Start with:
 
 ```powershell
-# Method 1: Using winget (recommended)
+cdp doctor
+```
+
+It checks:
+
+- Whether `fzf` is available in `PATH`
+- Whether `jq` is installed for the bash/zsh version
+- Which config file is active
+- Whether JSON parsing works
+- Whether project fields are complete
+- Whether project names are duplicated
+- Whether enabled project paths exist
+
+Common fixes:
+
+```powershell
+# fzf missing
 winget install fzf
 
-# Method 2: Using scoop
-scoop install fzf
-
-# Method 3: Using chocolatey
-choco install fzf
-
-# Verify after restarting terminal
-fzf --version
-```
-
-### "Project Manager configuration not found"
-
-1. Ensure Project Manager extension is installed
-2. Save at least one project in VS Code/Cursor
-3. Check config file path is correct
-
-### Module loading failed
-
-```powershell
-# Reload config
-. $PROFILE
-
-# Or manually import
+# Reload the module
 Import-Module cdp -Force
 
-# Check if module exists
-Get-Module -ListAvailable cdp
+# List current projects
+cdp-ls
+
+# Change config file
+cdp-config
 ```
 
 ---
 
-## 🌟 Why Choose cdp?
+## How It Compares
 
-### Comparison with Traditional Methods
+| Tool | Best for |
+| --- | --- |
+| `cd` / tab completion | A few short paths |
+| `zoxide` / `autojump` | Frecency-based jumping to any directory |
+| VS Code/Cursor Project Manager | Managing projects inside the editor |
+| `cdp` | Fast terminal switching between known project roots |
 
-| Method | Steps | Time | Pain Points |
-|--------|-------|------|-------------|
-| **Manual cd** | Remember path → Type → Tab complete | 15-30s | Can't remember paths, deep nesting |
-| **File Explorer** | Open explorer → Find folder → Right-click terminal | 20-40s | Breaks keyboard flow, inefficient |
-| **cdp** | `cdp` → Type few letters → Enter | **2-5s** | ✅ No pain points |
-
-### Who is it for?
-
-- ✅ Developers using Claude Code, Cursor and other AI coding tools
-- ✅ Full-stack engineers managing multiple projects
-- ✅ Efficiency lovers who prefer command line and keyboard flow
-- ✅ VS Code/Cursor + Project Manager plugin users
+cdp does not try to replace every directory jumper. It focuses on making project root switching stable, visible, and shareable.
 
 ---
 
-## 🗺️ Roadmap
-
-- [x] Core feature: Fuzzy search project switching
-- [x] Terminal tab title sync
-- [x] Support for Cursor and VS Code Project Manager plugin
-- [x] Install script auto-installs fzf dependency
-- [x] Quick add/remove/list project commands
-- [x] Auto-create default config file
-- [x] WSL/Linux support (bash/zsh version)
-- [x] PowerShell direct launch WSL and switch project
-- [ ] Recent projects quick access
-- [ ] Project tags and grouping
-- [ ] Project favorites/pinning
-- [ ] Auto-execute scripts on switch (e.g., start services)
-- [ ] Support for more project management tools
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
-
-### Quick Start
+## Development
 
 ```powershell
-# Fork repository and clone
+# Import the local module
+Import-Module ./cdp.psd1 -Force
+
+# Run diagnostics
+cdp doctor .\examples\projects.json
+
+# Run tests
+Import-Module Pester -MinimumVersion 5.5.0 -Force
+Invoke-Pester -Path ./tests -CI
+```
+
+CI covers:
+
+- Windows PowerShell 5.1
+- PowerShell 7.x
+- bash/zsh syntax and `cdp doctor` smoke test
+
+---
+
+## Roadmap
+
+- [x] fzf project switching
+- [x] VS Code/Cursor Project Manager config discovery
+- [x] Custom config files
+- [x] Add, remove, list, and config selection commands
+- [x] PowerShell + WSL/Linux support
+- [x] `cdp doctor` diagnostics
+- [x] GitHub Actions baseline CI
+- [ ] Recent projects
+- [ ] Pinned / favorite projects
+- [ ] `cdp <query>` non-interactive matching
+- [ ] Bulk scan Git repositories into config
+- [ ] Run scripts after switching projects
+
+---
+
+## Contributing
+
+Issues and PRs are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
+
+```powershell
 git clone https://github.com/GoldenZqqq/cdp.git
 cd cdp
-
-# Make changes
-# src/cdp.psm1
-
-# Test locally
-Import-Module ./cdp.psd1 -Force
-cdp
-
-# Submit PR
 git checkout -b feature/your-feature
-git commit -m "Add: your feature"
-git push origin feature/your-feature
+
+Import-Module ./cdp.psd1 -Force
+Invoke-Pester -Path ./tests -CI
+```
+
+Suggested commit messages:
+
+```text
+Add: 添加项目健康检查命令
+Fix: 修复 WSL 路径转换
+Docs: 重写快速开始说明
 ```
 
 ---
 
-## 📄 License
+## Credits
 
-MIT License - See [LICENSE](./LICENSE) for details
+- [fzf](https://github.com/junegunn/fzf)
+- [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager)
 
----
+## License
 
-## 🙏 Acknowledgments
-
-- [fzf](https://github.com/junegunn/fzf) - Powerful fuzzy finder
-- [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) - Excellent VS Code project management extension
-
----
-
-## 💬 Feedback & Support
-
-- 🐛 [Report Bug](https://github.com/GoldenZqqq/cdp/issues)
-- 💡 [Feature Request](https://github.com/GoldenZqqq/cdp/issues)
-- ⭐ Find it useful? Give it a star!
-
----
-
-<div align="center">
-
-**Make project switching as natural as breathing 🌊**
-
-Made with ❤️ for Vibe Coders
-
-[⬆ Back to top](#cdp)
-
-</div>
+[MIT](./LICENSE)

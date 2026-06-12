@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.2.6'
+ModuleVersion = '1.3.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Switch-Project', 'Get-ProjectList', 'Add-Project', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig')
+FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -76,7 +76,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config')
+AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config', 'cdp-doctor')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -107,6 +107,12 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.3.0 - Open Source Readiness and Doctor Command
+- Added: cdp doctor / cdp-doctor diagnostics for dependencies, config, JSON schema, duplicate names, and missing project paths
+- Added: Invoke-Cdp entry point so the short cdp command can support lightweight subcommands while keeping classic switching behavior
+- Improved: Synchronized PowerShell and bash/zsh version numbers for the 1.3.0 release
+- Improved: Added automated test and CI coverage for the public module surface
+
 v1.2.6 - Critical IME Fix for Candidate Selection
 - Fixed: IME candidate selection via number keys now works correctly
 - Fixed: IME candidate selection via mouse click now works correctly

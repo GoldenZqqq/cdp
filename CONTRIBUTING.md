@@ -34,7 +34,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 * Follow the PowerShell coding style
 * Include comments in your code where necessary
 * Update the README.md with details of changes if applicable
-* Test your changes with both PowerShell 5.1 and PowerShell 7+
+* Run the Pester test suite when changing PowerShell behavior
 * Ensure your code works on Windows (primary platform)
 
 ## Development Setup
@@ -60,11 +60,15 @@ The main module code is in `cdp/src/cdp.psm1`.
 
 ```powershell
 # Import the module locally
-Import-Module ./cdp/cdp.psd1 -Force
+Import-Module ./cdp.psd1 -Force
 
 # Test the functions
-Switch-Project
+cdp doctor .\examples\projects.json
 Get-ProjectList
+
+# Run automated tests
+Import-Module Pester -MinimumVersion 5.5.0 -Force
+Invoke-Pester -Path ./tests -CI
 ```
 
 5. **Commit your changes**
@@ -112,15 +116,21 @@ Go to the original repository and create a pull request from your fork.
 cdp/
 ├── src/
 │   └── cdp.psm1      # Main module file
-├── tests/                    # Unit tests (future)
-├── docs/                     # Additional documentation
+├── tests/            # Pester tests
+├── docs/             # Additional documentation and video scripts
 ├── cdp.psd1          # Module manifest
-└── Install.ps1              # Installation script
+└── Install.ps1       # Installation script
 ```
 
 ## Testing
 
-Currently, testing is manual. Future contributions for automated testing (Pester tests) are welcome!
+Automated tests use Pester 5+.
+
+```powershell
+Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+Import-Module Pester -MinimumVersion 5.5.0 -Force
+Invoke-Pester -Path ./tests -CI
+```
 
 Manual testing checklist:
 - [ ] Test with PowerShell 5.1
@@ -131,6 +141,8 @@ Manual testing checklist:
 - [ ] Test with no fzf installed
 - [ ] Test tab title update in Windows Terminal
 - [ ] Test with custom config path
+- [ ] Test `cdp doctor`
+- [ ] Test WSL/bash behavior if shell scripts changed
 
 ## Documentation
 

@@ -20,6 +20,8 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 
 - [ ] Test A
 - [ ] Test B
+- [ ] `Invoke-Pester -Path ./tests -CI`
+- [ ] `cdp doctor`
 
 **Test Configuration**:
 * PowerShell Version:
@@ -34,4 +36,5 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 - [ ] I have made corresponding changes to the documentation
 - [ ] My changes generate no new warnings
 - [ ] I have tested my changes with PowerShell 5.1 and PowerShell 7+
+- [ ] I have updated both README.md and README_EN.md for user-facing changes
 - [ ] Any dependent changes have been merged and published
