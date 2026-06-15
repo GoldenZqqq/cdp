@@ -270,15 +270,15 @@ cdp-config
 
 ## 和其他工具的区别
 
-| 工具 | 更适合 |
-| --- | --- |
-| `cd` / Tab 补全 | 少量路径、路径很短 |
-| `zoxide` / `autojump` | 按访问频率跳转任意目录 |
-| 纯 `fzf cd` 脚本 | 从扫描目录或历史目录中临时选择 |
-| VS Code/Cursor Project Manager | 编辑器内管理项目 |
-| `cdp` | 在终端和 AI CLI 工作流里按项目列表快速切换根目录 |
+| 工具 | 更适合 | 和 `cdp` 的区别 |
+| --- | --- | --- |
+| `cd` / Tab 补全 | 少量路径、路径很短 | 仍然需要记住目录层级；项目多、路径深时切换成本高 |
+| `zoxide` / `autojump` | 按访问频率跳转任意目录 | 依赖历史访问和 frecency 排名，适合“去过的地方”；`cdp` 面向明确的项目清单，新项目可以通过 Project Manager、`cdp-add` 或 `cdp-scan` 直接出现 |
+| 纯 `fzf cd` 脚本 | 从扫描目录或 shell 历史中临时选择 | 通常是一次性列表，没有统一配置、健康检查、跨 PowerShell/WSL 的共享项目表 |
+| VS Code/Cursor Project Manager | 编辑器内管理项目 | 很适合编辑器内打开项目；`cdp` 把同一份项目清单带到终端和 AI CLI 工作流里 |
+| `cdp` | 在终端和 AI CLI 工作流里按项目列表快速切换根目录 | 关注“项目根目录”而不是任意目录，支持 `cdp <query>`、批量 Git 扫描、终端标签同步和配置诊断 |
 
-cdp 的重点不是替代所有跳转工具，而是把“项目根目录切换”这件事做得稳定、可见、可共享。它复用编辑器已有的项目清单，也支持 `~/.cdp/projects.json`，更适合 Windows、WSL 和 AI CLI 混合使用的多仓库工作流。
+cdp 的重点不是替代所有跳转工具，而是把“项目根目录切换”这件事做得稳定、可见、可共享。如果你想跳到最近访问过的任意目录，`zoxide` 很好；如果你想把 VS Code/Cursor、PowerShell、WSL 和 Claude Code/Codex/Gemini CLI 都连接到同一份项目列表，`cdp` 更贴近这个场景。
 
 ---
 
