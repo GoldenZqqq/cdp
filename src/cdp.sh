@@ -6,7 +6,7 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 1.3.0
+# Version: 1.4.0
 # License: MIT
 
 # Colors

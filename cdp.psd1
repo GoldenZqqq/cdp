@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.3.0'
+ModuleVersion = '1.4.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,13 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.4.0 - Fast Query Matching and Git Repository Import
+- Added: cdp <query> and Switch-Project -Query for direct project switching when one match is found
+- Added: Import-GitProjects / cdp-scan / cdp scan for bulk Git repository discovery and import
+- Improved: First-time fzf setup guidance and dependency fallback messages
+- Improved: README comparisons with zoxide, autojump, plain fzf cd scripts, and VS Code/Cursor Project Manager
+- Improved: Added real-world multi-repo, AI CLI, and Windows + WSL workflow examples
+
 v1.3.0 - Open Source Readiness and Doctor Command
 - Added: cdp doctor / cdp-doctor diagnostics for dependencies, config, JSON schema, duplicate names, and missing project paths
 - Added: Invoke-Cdp entry point so the short cdp command can support lightweight subcommands while keeping classic switching behavior

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 ### Added
 
@@ -8,7 +8,7 @@
 - Added `cdp <query> [config]` fast matching for bash/zsh.
 - Added `Import-GitProjects`, `cdp-scan`, and `cdp scan` for bulk Git repository imports.
 - Added query smoke coverage in Pester and GitHub Actions bash checks.
-- Added `PROGRESS.md` to track Ruan Yifeng Weekly submission polish work.
+- Added `PROGRESS.md` to track public release polish work.
 - Added real-world README workflow examples for multi-repo, AI CLI, and Windows + WSL usage.
 
 ### Changed
