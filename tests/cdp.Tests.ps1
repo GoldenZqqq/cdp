@@ -2,6 +2,17 @@ BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
     $script:ManifestPath = Join-Path $script:RepoRoot 'cdp.psd1'
     Import-Module $script:ManifestPath -Force
+
+    function Read-TestProjects {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$Path
+        )
+
+        $jsonContent = Get-Content -Path $Path -Raw -Encoding UTF8
+        $projects = ConvertFrom-Json -InputObject $jsonContent
+        @($projects)
+    }
 }
 
 Describe 'cdp module manifest' {
@@ -49,7 +60,7 @@ Describe 'project configuration helpers' {
 
         Add-Project -Name 'ExampleProject' -Path $projectPath -ConfigPath $configPath
 
-        $projects = @(Get-Content -Path $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects = @(Read-TestProjects -Path $configPath)
         $projects.Count | Should -Be 1
         $projects[0].name | Should -Be 'ExampleProject'
         $projects[0].rootPath | Should -Be $projectPath
@@ -136,7 +147,7 @@ Describe 'project configuration helpers' {
         ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
 
         $result = Import-GitProjects -RootPath $scanRoot -ConfigPath $configPath -MaxDepth 3 -PassThru
-        $projects = @(Get-Content -Path $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects = @(Read-TestProjects -Path $configPath)
 
         $result.FoundCount | Should -Be 2
         $result.AddedCount | Should -Be 1
@@ -160,7 +171,7 @@ Describe 'project configuration helpers' {
             $env:CDP_CONFIG = $previousConfig
         }
 
-        $projects = @(Get-Content -Path $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects = @(Read-TestProjects -Path $configPath)
         $projects.Count | Should -Be 1
         $projects[0].rootPath | Should -Be $repoPath
     }
