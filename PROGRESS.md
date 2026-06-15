@@ -2,11 +2,11 @@
 
 ## Goal
 
-Prepare `cdp` for a stronger Ruan Yifeng Weekly submission by improving first-run clarity, terminal AI workflow fit, and visible product completeness.
+Prepare `cdp` for a stronger public release by improving first-run clarity, terminal AI workflow fit, and visible product completeness.
 
-## Submission Readiness Checklist
+## Release Polish Checklist
 
-- [x] Create a public progress tracker for the submission polish work.
+- [x] Create a public progress tracker for the release polish work.
 - [x] Add `cdp <query>` fast matching.
   - Directly switch when a query has exactly one match.
   - Fall back to `fzf` when a query has multiple matches.
@@ -15,11 +15,10 @@ Prepare `cdp` for a stronger Ruan Yifeng Weekly submission by improving first-ru
 - [x] Strengthen README comparison against `zoxide`, `autojump`, and plain `fzf cd` scripts.
 - [x] Smooth the install path, especially first-time `fzf` setup.
 - [x] Add real-world usage scenarios for multi-repo, AI CLI, and Windows + WSL workflows.
-- [ ] Add a concise Chinese submission pitch for the weekly.
 
 ## Current Focus
 
-Next up: add a concise Chinese submission pitch for the weekly.
+Release polish checklist is complete. Next release step: publish version 1.4.0.
 
 ## Verification Log
 
@@ -36,3 +35,8 @@ Next up: add a concise Chinese submission pitch for the weekly.
 - Install path polish: `Install.ps1` parsed successfully on Windows PowerShell 5.1.
 - Install path polish: `Invoke-Pester -Path ./tests -CI` passed 9 tests.
 - Install path polish: `bash -n ./install-wsl.sh` and `bash -n ./src/cdp.sh` passed in WSL.
+- Release 1.4.0: Windows PowerShell 5.1 `Invoke-Pester -Path ./tests -CI` passed 9 tests.
+- Release 1.4.0: PowerShell 7 `Invoke-Pester -Path ./tests -CI` passed 9 tests.
+- Release 1.4.0: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
+- Release 1.4.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
+- Release 1.4.0: `git diff --check` reported no whitespace errors.

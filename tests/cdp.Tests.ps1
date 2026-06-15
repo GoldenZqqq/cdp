@@ -20,7 +20,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '1.3.0'
+        $manifest.Version.ToString() | Should -Be '1.4.0'
     }
 }
 
