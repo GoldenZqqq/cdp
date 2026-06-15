@@ -14,6 +14,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function ConvertTo-NuspecXmlText {
+    param(
+        [AllowNull()]
+        [object]$Value
+    )
+
+    [System.Security.SecurityElement]::Escape([string]$Value)
+}
+
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  Publishing cdp to PowerShell Gallery" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
@@ -47,6 +56,13 @@ try {
     # Create nuspec file
     Write-Host "Creating NuGet specification..." -ForegroundColor Cyan
     $nuspecPath = Join-Path $moduleDir "cdp.nuspec"
+    $authors = ConvertTo-NuspecXmlText $moduleInfo.Author
+    $licenseUri = ConvertTo-NuspecXmlText $moduleInfo.LicenseUri
+    $projectUri = ConvertTo-NuspecXmlText $moduleInfo.ProjectUri
+    $description = ConvertTo-NuspecXmlText $moduleInfo.Description
+    $releaseNotes = ConvertTo-NuspecXmlText $moduleInfo.ReleaseNotes
+    $copyright = ConvertTo-NuspecXmlText $moduleInfo.Copyright
+    $tags = ConvertTo-NuspecXmlText (($moduleInfo.Tags + 'PSModule') -join ' ')
 
     $nuspecContent = @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -54,15 +70,15 @@ try {
   <metadata>
     <id>cdp</id>
     <version>$($moduleInfo.Version)</version>
-    <authors>$($moduleInfo.Author)</authors>
-    <owners>$($moduleInfo.Author)</owners>
+    <authors>$authors</authors>
+    <owners>$authors</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <licenseUrl>$($moduleInfo.LicenseUri)</licenseUrl>
-    <projectUrl>$($moduleInfo.ProjectUri)</projectUrl>
-    <description>$($moduleInfo.Description)</description>
-    <releaseNotes>$($moduleInfo.ReleaseNotes)</releaseNotes>
-    <copyright>$($moduleInfo.Copyright)</copyright>
-    <tags>$($moduleInfo.Tags -join ' ') PSModule</tags>
+    <licenseUrl>$licenseUri</licenseUrl>
+    <projectUrl>$projectUri</projectUrl>
+    <description>$description</description>
+    <releaseNotes>$releaseNotes</releaseNotes>
+    <copyright>$copyright</copyright>
+    <tags>$tags</tags>
     <dependencies />
   </metadata>
 </package>
