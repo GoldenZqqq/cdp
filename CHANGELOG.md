@@ -16,6 +16,7 @@
 - Non-path positional arguments now act as project queries, while path-like and `.json` arguments remain custom config paths.
 - Updated Chinese and English README files for query usage and clearer tool comparison.
 - Expanded README comparisons with `zoxide`, `autojump`, plain `fzf cd` scripts, and VS Code/Cursor Project Manager.
+- Improved first-time install guidance and dependency fallback messages for `fzf` setup.
 
 ## 1.3.0
 

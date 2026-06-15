@@ -42,6 +42,66 @@ $ErrorActionPreference = 'Stop'
 $ModuleName = 'cdp'
 $ScriptRoot = $PSScriptRoot
 
+function Update-CurrentProcessPath {
+    $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = "$machinePath;$userPath"
+}
+
+function Install-FzfDependency {
+    $installers = @(
+        [PSCustomObject]@{
+            Name = 'winget'
+            Command = 'winget'
+            Arguments = @('install', 'fzf', '--silent', '--accept-source-agreements', '--accept-package-agreements')
+            Manual = 'winget install fzf'
+        },
+        [PSCustomObject]@{
+            Name = 'scoop'
+            Command = 'scoop'
+            Arguments = @('install', 'fzf')
+            Manual = 'scoop install fzf'
+        },
+        [PSCustomObject]@{
+            Name = 'chocolatey'
+            Command = 'choco'
+            Arguments = @('install', 'fzf', '-y')
+            Manual = 'choco install fzf -y'
+        }
+    )
+
+    foreach ($installer in $installers) {
+        if (-not (Get-Command $installer.Command -ErrorAction SilentlyContinue)) {
+            continue
+        }
+
+        Write-Host "  Using $($installer.Name) to install fzf..." -ForegroundColor Gray
+        try {
+            $arguments = @($installer.Arguments)
+            & $installer.Command @arguments 2>&1 | Out-Null
+            Update-CurrentProcessPath
+
+            if (Get-Command fzf -ErrorAction SilentlyContinue) {
+                Write-Host "  fzf: Installed successfully!" -ForegroundColor Green
+                return $true
+            }
+
+            Write-Host "  fzf: Installed, but PATH may require a terminal restart" -ForegroundColor Yellow
+            return $true
+        } catch {
+            Write-Host "  Failed via $($installer.Name). Try manually: $($installer.Manual)" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host "  No working package manager found for fzf." -ForegroundColor Red
+    Write-Host "  Install one of these, then restart PowerShell and run cdp doctor:" -ForegroundColor Yellow
+    Write-Host "    winget install fzf" -ForegroundColor Cyan
+    Write-Host "    scoop install fzf" -ForegroundColor Cyan
+    Write-Host "    choco install fzf -y" -ForegroundColor Cyan
+    Write-Host "    https://github.com/junegunn/fzf/releases" -ForegroundColor Cyan
+    return $false
+}
+
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  cdp Installation Script" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
@@ -113,7 +173,6 @@ if ($AddToProfile) {
 
 # cdp Module - Fast project directory switcher
 Import-Module cdp
-Set-Alias -Name cdp -Value Switch-Project
 "@
 
     # Create profile if it doesn't exist
@@ -139,57 +198,7 @@ if (Get-Command fzf -ErrorAction SilentlyContinue) {
 } else {
     Write-Host "  fzf: Not found" -ForegroundColor Yellow
     Write-Host "`nInstalling fzf..." -ForegroundColor Cyan
-
-    # Try winget first
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-Host "  Using winget to install fzf..." -ForegroundColor Gray
-        try {
-            winget install fzf --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
-
-            # Refresh PATH for current session
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-
-            if (Get-Command fzf -ErrorAction SilentlyContinue) {
-                Write-Host "  fzf: Installed successfully!" -ForegroundColor Green
-            } else {
-                Write-Host "  fzf: Installation completed, but may require restart" -ForegroundColor Yellow
-                Write-Host "  If 'cdp' doesn't work, please restart PowerShell" -ForegroundColor Gray
-            }
-        } catch {
-            Write-Host "  Failed to install fzf via winget" -ForegroundColor Red
-            Write-Host "  Please install manually: winget install fzf" -ForegroundColor Yellow
-        }
-    }
-    # Try scoop as fallback
-    elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
-        Write-Host "  Using scoop to install fzf..." -ForegroundColor Gray
-        try {
-            scoop install fzf 2>&1 | Out-Null
-            Write-Host "  fzf: Installed successfully!" -ForegroundColor Green
-        } catch {
-            Write-Host "  Failed to install fzf via scoop" -ForegroundColor Red
-            Write-Host "  Please install manually: scoop install fzf" -ForegroundColor Yellow
-        }
-    }
-    # Try chocolatey as fallback
-    elseif (Get-Command choco -ErrorAction SilentlyContinue) {
-        Write-Host "  Using chocolatey to install fzf..." -ForegroundColor Gray
-        try {
-            choco install fzf -y 2>&1 | Out-Null
-            Write-Host "  fzf: Installed successfully!" -ForegroundColor Green
-        } catch {
-            Write-Host "  Failed to install fzf via chocolatey" -ForegroundColor Red
-            Write-Host "  Please install manually: choco install fzf" -ForegroundColor Yellow
-        }
-    }
-    else {
-        Write-Host "  No package manager found (winget/scoop/chocolatey)" -ForegroundColor Red
-        Write-Host "  Please install fzf manually:" -ForegroundColor Yellow
-        Write-Host "    Option 1: winget install fzf" -ForegroundColor Cyan
-        Write-Host "    Option 2: scoop install fzf" -ForegroundColor Cyan
-        Write-Host "    Option 3: choco install fzf" -ForegroundColor Cyan
-        Write-Host "    Option 4: Download from https://github.com/junegunn/fzf/releases" -ForegroundColor Cyan
-    }
+    [void](Install-FzfDependency)
 }
 
 # Usage instructions
@@ -202,10 +211,10 @@ if ($AddToProfile) {
     Write-Host "  1. Restart PowerShell or run: . `$PROFILE" -ForegroundColor Gray
 } else {
     Write-Host "  1. Import the module: Import-Module cdp" -ForegroundColor Gray
-    Write-Host "  2. Set alias (optional): Set-Alias cdp Switch-Project" -ForegroundColor Gray
+    Write-Host "  2. Optional profile setup: rerun .\Install.ps1 -AddToProfile" -ForegroundColor Gray
 }
-Write-Host "  3. Run: cdp" -ForegroundColor Gray
-Write-Host "  4. Or: Switch-Project`n" -ForegroundColor Gray
+Write-Host "  3. Check setup: cdp doctor" -ForegroundColor Gray
+Write-Host "  4. Start switching: cdp`n" -ForegroundColor Gray
 
 Write-Host "For more information, visit:" -ForegroundColor Yellow
 Write-Host "  https://github.com/GoldenZqqq/cdp`n" -ForegroundColor Cyan

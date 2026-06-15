@@ -13,13 +13,13 @@ Prepare `cdp` for a stronger Ruan Yifeng Weekly submission by improving first-ru
   - Keep positional custom config path compatibility for `.json` and path-like arguments.
 - [x] Add batch Git repository scanning to generate/import project config.
 - [x] Strengthen README comparison against `zoxide`, `autojump`, and plain `fzf cd` scripts.
-- [ ] Smooth the install path, especially first-time `fzf` setup.
+- [x] Smooth the install path, especially first-time `fzf` setup.
 - [ ] Add real-world usage scenarios for multi-repo, AI CLI, and Windows + WSL workflows.
 - [ ] Add a concise Chinese submission pitch for the weekly.
 
 ## Current Focus
 
-Next up: smooth the first-time install path, especially `fzf` setup.
+Next up: add real-world usage scenarios for multi-repo, AI CLI, and Windows + WSL workflows.
 
 ## Verification Log
 
@@ -33,3 +33,6 @@ Next up: smooth the first-time install path, especially `fzf` setup.
 - PowerShell 7 Pester after Git scan import: `Invoke-Pester -Path ./tests -CI` passed 9 tests.
 - PSScriptAnalyzer after Git scan import: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
 - CI bash smoke now creates two fake Git repositories and checks `cdp-scan` writes both to JSON.
+- Install path polish: `Install.ps1` parsed successfully on Windows PowerShell 5.1.
+- Install path polish: `Invoke-Pester -Path ./tests -CI` passed 9 tests.
+- Install path polish: `bash -n ./install-wsl.sh` and `bash -n ./src/cdp.sh` passed in WSL.
