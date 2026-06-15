@@ -2,6 +2,11 @@
 
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/cdp-logo-dark-transparent.png">
+  <img src="./docs/assets/cdp-logo-light-transparent.png" alt="cdp logo" width="320">
+</picture>
+
 **简体中文** | **[English](./README_EN.md)**
 
 在 Vibe Coding 时代，为 Claude Code、Codex、Gemini CLI、Cursor、VS Code 用户准备的快速项目切换器。
