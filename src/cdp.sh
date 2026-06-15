@@ -244,6 +244,62 @@ cdp_print_check() {
     esac
 }
 
+is_config_path_arg() {
+    local arg="$1"
+
+    if [[ -z "$arg" ]]; then
+        return 1
+    fi
+
+    [[ -f "$arg" ||
+        "$arg" == *.json ||
+        "$arg" == *"/"* ||
+        "$arg" == *"\\"* ||
+        "$arg" == "~/"* ||
+        "$arg" =~ ^[A-Za-z]: ]]
+}
+
+line_count() {
+    local value="$1"
+
+    if [[ -z "$value" ]]; then
+        echo 0
+        return
+    fi
+
+    printf '%s\n' "$value" | wc -l | tr -d ' '
+}
+
+find_project_matches() {
+    local config_path="$1"
+    local query="$2"
+    local exact_matches
+
+    exact_matches=$(jq -r --arg query "$query" '
+        ($query | ascii_downcase) as $needle |
+        .[] |
+        select(.enabled == true) |
+        select(((.name // "") | ascii_downcase) == $needle) |
+        .name
+    ' "$config_path" 2>/dev/null)
+
+    if [[ -n "$exact_matches" ]]; then
+        printf '%s\n' "$exact_matches"
+        return
+    fi
+
+    jq -r --arg query "$query" '
+        ($query | ascii_downcase) as $needle |
+        .[] |
+        select(.enabled == true) |
+        select(
+            ((.name // "") | ascii_downcase | contains($needle)) or
+            ((.rootPath // "") | ascii_downcase | contains($needle))
+        ) |
+        .name
+    ' "$config_path" 2>/dev/null
+}
+
 # Main cdp function
 cdp() {
     case "$1" in
@@ -254,17 +310,16 @@ cdp() {
             ;;
     esac
 
-    local config_path="$1"
+    local query=""
+    local config_path=""
 
-    # Check if fzf is installed
-    if ! command -v fzf &> /dev/null; then
-        echo -e "${RED}Error: 'fzf' command not found.${NC}"
-        echo -e "${CYAN}Please install fzf first:${NC}"
-        echo -e "${CYAN}  Ubuntu/Debian: sudo apt install fzf${NC}"
-        echo -e "${CYAN}  Fedora: sudo dnf install fzf${NC}"
-        echo -e "${CYAN}  Arch: sudo pacman -S fzf${NC}"
-        echo -e "${CYAN}  macOS: brew install fzf${NC}"
-        return 1
+    if [[ -n "$1" ]]; then
+        if is_config_path_arg "$1"; then
+            config_path="$1"
+        else
+            query="$1"
+            config_path="$2"
+        fi
     fi
 
     # Check if jq is installed
@@ -303,17 +358,54 @@ cdp() {
         return 1
     fi
 
+    local selected=""
+
+    if [[ -n "$query" ]]; then
+        local matches
+        local match_count
+
+        matches=$(find_project_matches "$config_path" "$query")
+        match_count=$(line_count "$matches")
+
+        if [[ "$match_count" -eq 0 ]]; then
+            echo -e "${YELLOW}No project matched query: $query${NC}"
+            return 1
+        fi
+
+        if [[ "$match_count" -eq 1 ]]; then
+            selected="$matches"
+        else
+            projects="$matches"
+        fi
+    fi
+
     # Launch fzf for selection
-    # Note: --no-mouse prevents IME mouse click conflicts with candidate selection
-    # Height increased to 60% for better visibility
-    local selected
-    selected=$(echo "$projects" | fzf \
-        --prompt="Select project: " \
-        --height=60% \
-        --layout=reverse \
-        --border \
-        --no-mouse \
-        --preview-window=hidden)
+    if [[ -z "$selected" ]]; then
+        if ! command -v fzf &> /dev/null; then
+            echo -e "${RED}Error: 'fzf' command not found.${NC}"
+            echo -e "${CYAN}Please install fzf first:${NC}"
+            echo -e "${CYAN}  Ubuntu/Debian: sudo apt install fzf${NC}"
+            echo -e "${CYAN}  Fedora: sudo dnf install fzf${NC}"
+            echo -e "${CYAN}  Arch: sudo pacman -S fzf${NC}"
+            echo -e "${CYAN}  macOS: brew install fzf${NC}"
+            return 1
+        fi
+
+        # Note: --no-mouse prevents IME mouse click conflicts with candidate selection
+        # Height increased to 60% for better visibility
+        local prompt="Select project: "
+        if [[ -n "$query" ]]; then
+            prompt="Select project ($query): "
+        fi
+
+        selected=$(echo "$projects" | fzf \
+            --prompt="$prompt" \
+            --height=60% \
+            --layout=reverse \
+            --border \
+            --no-mouse \
+            --preview-window=hidden)
+    fi
 
     # Process selection
     # Note: Don't check exit code to avoid IME-related false cancellations

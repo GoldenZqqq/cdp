@@ -113,6 +113,9 @@ cdp-add
 # 从任意位置打开项目选择器
 cdp
 
+# 只有一个匹配时直接进入项目；多个匹配时再打开 fzf
+cdp api
+
 # 查看当前配置健康状态
 cdp doctor
 
@@ -142,6 +145,7 @@ Select project: api
 ## 核心特性
 
 - **模糊搜索切换项目**：由 `fzf` 驱动，键盘优先，不需要记路径
+- **快速 query 跳转**：`cdp api` 唯一匹配时直接进入项目，多匹配时只在候选中选择
 - **兼容 Project Manager**：自动读取 VS Code/Cursor Project Manager 配置
 - **自带项目管理命令**：`cdp-add`、`cdp-rm`、`cdp-ls`、`cdp-config`
 - **配置健康检查**：`cdp doctor` 检查依赖、JSON、重复项目名、失效路径
@@ -157,7 +161,9 @@ Select project: api
 | 命令 | 别名 | 说明 |
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
+| `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `Switch-Project` | - | 打开 fzf 菜单并切换项目 |
+| `Switch-Project -Query api` | - | 只在匹配 `api` 的项目中切换 |
 | `Switch-Project -WSL` | `cdp -WSL` | 选择项目并启动 WSL 进入目录 |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | 诊断 cdp 环境和配置 |
 | `Add-Project` | `cdp-add` | 添加当前目录或指定路径 |
@@ -171,6 +177,7 @@ Select project: api
 | 命令 | 说明 |
 | --- | --- |
 | `cdp` | 打开 fzf 菜单并切换项目 |
+| `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
 | `cdp-add` | 添加当前目录或指定路径 |
 | `cdp-ls` | 列出已启用项目 |
@@ -258,10 +265,11 @@ cdp-config
 | --- | --- |
 | `cd` / Tab 补全 | 少量路径、路径很短 |
 | `zoxide` / `autojump` | 按访问频率跳转任意目录 |
+| 纯 `fzf cd` 脚本 | 从扫描目录或历史目录中临时选择 |
 | VS Code/Cursor Project Manager | 编辑器内管理项目 |
 | `cdp` | 在终端和 AI CLI 工作流里按项目列表快速切换根目录 |
 
-cdp 的重点不是替代所有跳转工具，而是把“项目根目录切换”这件事做得稳定、可见、可共享。
+cdp 的重点不是替代所有跳转工具，而是把“项目根目录切换”这件事做得稳定、可见、可共享。它复用编辑器已有的项目清单，也支持 `~/.cdp/projects.json`，更适合 Windows、WSL 和 AI CLI 混合使用的多仓库工作流。
 
 ---
 
@@ -298,7 +306,7 @@ CI 覆盖：
 - [x] GitHub Actions 基础 CI
 - [ ] 最近访问项目
 - [ ] 项目置顶 / 收藏
-- [ ] `cdp <query>` 非交互快速匹配
+- [x] `cdp <query>` 非交互快速匹配
 - [ ] 批量扫描 Git 仓库生成配置
 - [ ] 切换项目后自动执行脚本
 

@@ -86,4 +86,34 @@ Describe 'project configuration helpers' {
 
         { Invoke-Cdp doctor $configPath } | Should -Not -Throw
     }
+
+    It 'switches directly when a query has one match' {
+        $configPath = Join-Path $TestDrive 'projects.json'
+        $apiPath = Join-Path $TestDrive 'ApiProject'
+        $webPath = Join-Path $TestDrive 'WebProject'
+        New-Item -ItemType Directory -Path $apiPath | Out-Null
+        New-Item -ItemType Directory -Path $webPath | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                name = 'ApiProject'
+                rootPath = $apiPath
+                enabled = $true
+            },
+            [PSCustomObject]@{
+                name = 'WebProject'
+                rootPath = $webPath
+                enabled = $true
+            }
+        ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
+
+        Push-Location $TestDrive
+        try {
+            Invoke-Cdp Api $configPath
+
+            (Get-Location).Path | Should -Be $apiPath
+        } finally {
+            Pop-Location
+        }
+    }
 }
