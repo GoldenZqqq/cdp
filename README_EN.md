@@ -113,6 +113,9 @@ cdp-add
 # Open the project picker from anywhere
 cdp
 
+# Jump directly when one project matches; fall back to fzf for multiple matches
+cdp api
+
 # Check your setup
 cdp doctor
 
@@ -142,6 +145,7 @@ After selection:
 ## Features
 
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
+- **Fast query jumps**: `cdp api` switches directly on one match, or filters fzf to matching projects
 - **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
 - **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
 - **Health checks**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths
@@ -157,7 +161,9 @@ After selection:
 | Command | Alias | Description |
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
+| `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `Switch-Project` | - | Opens the fzf menu and switches projects |
+| `Switch-Project -Query api` | - | Switches within projects matching `api` |
 | `Switch-Project -WSL` | `cdp -WSL` | Selects a project and launches WSL in that directory |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | Diagnoses the cdp environment and config |
 | `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
@@ -171,6 +177,7 @@ After selection:
 | Command | Description |
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
+| `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
 | `cdp-add` | Adds the current directory or a specific path |
 | `cdp-ls` | Lists enabled projects |
@@ -258,10 +265,11 @@ cdp-config
 | --- | --- |
 | `cd` / tab completion | A few short paths |
 | `zoxide` / `autojump` | Frecency-based jumping to any directory |
+| Plain `fzf cd` scripts | Ad-hoc selection from scanned or historical directories |
 | VS Code/Cursor Project Manager | Managing projects inside the editor |
 | `cdp` | Fast terminal switching between known project roots |
 
-cdp does not try to replace every directory jumper. It focuses on making project root switching stable, visible, and shareable.
+cdp does not try to replace every directory jumper. It focuses on making project root switching stable, visible, and shareable. It reuses existing editor project lists, also supports `~/.cdp/projects.json`, and is tuned for multi-repo workflows across Windows, WSL, and terminal AI tools.
 
 ---
 
@@ -298,7 +306,7 @@ CI covers:
 - [x] GitHub Actions baseline CI
 - [ ] Recent projects
 - [ ] Pinned / favorite projects
-- [ ] `cdp <query>` non-interactive matching
+- [x] `cdp <query>` non-interactive matching
 - [ ] Bulk scan Git repositories into config
 - [ ] Run scripts after switching projects
 

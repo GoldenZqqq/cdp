@@ -27,6 +27,11 @@ function Switch-Project {
         Optional custom path to projects.json file. If not specified, uses the
         default Cursor/VS Code Project Manager location.
 
+    .PARAMETER Query
+        Optional project name or path query. If exactly one enabled project
+        matches, switches directly. If multiple projects match, opens fzf with
+        only those matches.
+
     .PARAMETER WSL
         If specified, launches WSL and changes to the project directory within WSL.
         Windows paths are automatically converted to WSL mount points (/mnt/c/, etc.).
@@ -38,6 +43,10 @@ function Switch-Project {
     .EXAMPLE
         cdp
         # Using the default alias
+
+    .EXAMPLE
+        cdp api
+        # Directly switches to the matching project, or filters fzf to matches
 
     .EXAMPLE
         cdp -WSL
@@ -53,16 +62,11 @@ function Switch-Project {
         [string]$ConfigPath,
 
         [Parameter(Mandatory = $false)]
+        [string]$Query,
+
+        [Parameter(Mandatory = $false)]
         [switch]$WSL
     )
-
-    # Check if fzf is installed
-    if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
-        Write-Host "Error: 'fzf' command not found." -ForegroundColor Red
-        Write-Host "Please install fzf first: winget install fzf" -ForegroundColor Cyan
-        Write-Host "Then restart your terminal." -ForegroundColor Cyan
-        return
-    }
 
     # Get config path
     if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
@@ -84,7 +88,7 @@ function Switch-Project {
     try {
         $jsonContent = Get-Content -Path $ConfigPath -Raw -Encoding UTF8
         $allProjects = ConvertFrom-Json -InputObject $jsonContent
-        $enabledProjects = $allProjects | Where-Object { $_.enabled }
+        $enabledProjects = @($allProjects | Where-Object { $_.enabled })
     } catch {
         Write-Host "Error: Failed to read or parse configuration file." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
@@ -96,28 +100,62 @@ function Switch-Project {
         return
     }
 
-    # Set console encoding for fzf interaction
-    # CRITICAL: Must set BOTH InputEncoding and OutputEncoding for IME to work
-    $originalOutputEncoding = [Console]::OutputEncoding
-    $originalInputEncoding = [Console]::InputEncoding
-    try {
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+    $projectsForSelection = $enabledProjects
+    $selectedProjectName = $null
 
-        # Launch fzf with enhanced options
-        # Note: --no-mouse prevents IME mouse click conflicts
-        # Height increased to 60% for better visibility
-        $selectedProjectName = $enabledProjects.name | fzf `
-            --prompt="Select project: " `
-            --height=60% `
-            --layout=reverse `
-            --border `
-            --no-mouse `
-            --preview-window=hidden
+    if (-not [string]::IsNullOrWhiteSpace($Query)) {
+        $queryMatches = @(Get-CdpProjectMatches -Projects $enabledProjects -Query $Query)
+
+        if ($queryMatches.Count -eq 0) {
+            Write-Host "No project matched query: $Query" -ForegroundColor Yellow
+            return
+        }
+
+        if ($queryMatches.Count -eq 1) {
+            $selectedProjectName = $queryMatches[0].name
+        } else {
+            $projectsForSelection = $queryMatches
+        }
     }
-    finally {
-        [Console]::OutputEncoding = $originalOutputEncoding
-        [Console]::InputEncoding = $originalInputEncoding
+
+    if ([string]::IsNullOrWhiteSpace($selectedProjectName)) {
+        # Check if fzf is installed only when interactive selection is needed.
+        if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+            Write-Host "Error: 'fzf' command not found." -ForegroundColor Red
+            Write-Host "Please install fzf first: winget install fzf" -ForegroundColor Cyan
+            Write-Host "Then restart your terminal." -ForegroundColor Cyan
+            return
+        }
+
+        # Set console encoding for fzf interaction
+        # CRITICAL: Must set BOTH InputEncoding and OutputEncoding for IME to work
+        $originalOutputEncoding = [Console]::OutputEncoding
+        $originalInputEncoding = [Console]::InputEncoding
+        try {
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+
+            # Launch fzf with enhanced options
+            # Note: --no-mouse prevents IME mouse click conflicts
+            # Height increased to 60% for better visibility
+            $prompt = if ([string]::IsNullOrWhiteSpace($Query)) {
+                "Select project: "
+            } else {
+                "Select project ($Query): "
+            }
+
+            $selectedProjectName = $projectsForSelection.name | fzf `
+                --prompt=$prompt `
+                --height=60% `
+                --layout=reverse `
+                --border `
+                --no-mouse `
+                --preview-window=hidden
+        }
+        finally {
+            [Console]::OutputEncoding = $originalOutputEncoding
+            [Console]::InputEncoding = $originalInputEncoding
+        }
     }
 
     # Process selection
@@ -128,7 +166,9 @@ function Switch-Project {
         return
     }
 
-    $selectedProject = $enabledProjects | Where-Object { $_.name -eq $selectedProjectName }
+    $selectedProject = @($enabledProjects | Where-Object {
+        $_.name -eq $selectedProjectName
+    }) | Select-Object -First 1
 
     if ($null -ne $selectedProject -and (Test-Path -Path $selectedProject.rootPath)) {
         if ($WSL) {
@@ -241,6 +281,54 @@ function Convert-WindowsPathToWSL {
 
     # If no drive letter found, return as-is (might already be WSL path)
     return $normalizedPath
+}
+
+function Get-CdpProjectMatches {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Projects,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Query
+    )
+
+    $exactMatches = @($Projects | Where-Object {
+        [string]::Equals([string]$_.name, $Query, [StringComparison]::OrdinalIgnoreCase)
+    })
+
+    if ($exactMatches.Count -gt 0) {
+        return $exactMatches
+    }
+
+    $comparison = [StringComparison]::OrdinalIgnoreCase
+    return @($Projects | Where-Object {
+        $projectName = if ($null -eq $_.name) { "" } else { [string]$_.name }
+        $projectPath = if ($null -eq $_.rootPath) { "" } else { [string]$_.rootPath }
+
+        $projectName.IndexOf($Query, $comparison) -ge 0 -or
+            $projectPath.IndexOf($Query, $comparison) -ge 0
+    })
+}
+
+function Test-CdpConfigPathArgument {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Argument
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Argument)) {
+        return $false
+    }
+
+    if (Test-Path -LiteralPath $Argument) {
+        return $true
+    }
+
+    return $Argument.EndsWith(".json", [StringComparison]::OrdinalIgnoreCase) -or
+        $Argument.Contains('\') -or
+        $Argument.Contains('/') -or
+        $Argument.StartsWith('~') -or
+        $Argument -match '^[A-Za-z]:'
 }
 
 # Helper function to get stored config choice path
@@ -1017,11 +1105,15 @@ function Invoke-Cdp {
         subcommands such as `cdp doctor`.
 
     .PARAMETER Command
-        Optional subcommand. Use `doctor` to run diagnostics. Any other value is
-        treated as a configuration path for backward-compatible positional use.
+        Optional subcommand, query, or path-like config argument. Use `doctor` to
+        run diagnostics. Non-path values are treated as project queries.
 
     .PARAMETER ConfigPath
         Optional custom path to projects.json file.
+
+    .PARAMETER Query
+        Optional project name or path query. `cdp api` is shorthand for
+        `Invoke-Cdp -Query api`.
 
     .PARAMETER WSL
         If specified, launches WSL and changes to the selected project directory.
@@ -1033,6 +1125,10 @@ function Invoke-Cdp {
     .EXAMPLE
         cdp doctor
         # Runs cdp diagnostics
+
+    .EXAMPLE
+        cdp api
+        # Switches directly when the query has one match
     #>
 
     [CmdletBinding()]
@@ -1044,6 +1140,9 @@ function Invoke-Cdp {
         [string]$ConfigPath,
 
         [Parameter(Mandatory = $false)]
+        [string]$Query,
+
+        [Parameter(Mandatory = $false)]
         [switch]$WSL
     )
 
@@ -1053,10 +1152,16 @@ function Invoke-Cdp {
     }
 
     if ([string]::IsNullOrWhiteSpace($ConfigPath) -and -not [string]::IsNullOrWhiteSpace($Command)) {
-        $ConfigPath = $Command
+        if (Test-CdpConfigPathArgument -Argument $Command) {
+            $ConfigPath = $Command
+        } else {
+            $Query = $Command
+        }
+    } elseif ([string]::IsNullOrWhiteSpace($Query) -and -not [string]::IsNullOrWhiteSpace($Command)) {
+        $Query = $Command
     }
 
-    Switch-Project -ConfigPath $ConfigPath -WSL:$WSL
+    Switch-Project -ConfigPath $ConfigPath -Query $Query -WSL:$WSL
 }
 
 # Export module members

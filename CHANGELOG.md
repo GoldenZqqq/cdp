@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added `cdp <query>` and `Switch-Project -Query` fast matching for PowerShell.
+- Added `cdp <query> [config]` fast matching for bash/zsh.
+- Added query smoke coverage in Pester and GitHub Actions bash checks.
+- Added `PROGRESS.md` to track Ruan Yifeng Weekly submission polish work.
+
+### Changed
+
+- Query mode switches directly when one project matches and falls back to `fzf` when multiple projects match.
+- Non-path positional arguments now act as project queries, while path-like and `.json` arguments remain custom config paths.
+- Updated Chinese and English README files for query usage and clearer tool comparison.
+
 ## 1.3.0
 
 ### Added

@@ -113,3 +113,5 @@ jobs:
           source ./src/cdp.sh
           cdp-doctor "$tmpdir/projects.json"
           cdp doctor "$tmpdir/projects.json"
+          cdp SmokeProject "$tmpdir/projects.json"
+          test "$PWD" = "$tmpdir/project"
