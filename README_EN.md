@@ -2,6 +2,11 @@
 
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/cdp-logo-dark-transparent.png">
+  <img src="./docs/assets/cdp-logo-light-transparent.png" alt="cdp logo" width="320">
+</picture>
+
 **English** | **[简体中文](./README.md)**
 
 A fast project directory switcher for the Vibe Coding era, built for Claude Code, Codex, Gemini CLI, Cursor, and VS Code users.
