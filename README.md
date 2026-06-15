@@ -151,6 +151,22 @@ Select project: api
 
 ---
 
+## 真实使用场景
+
+### 多仓库日常开发
+
+同时维护公司后台、前端应用、脚本工具和个人项目时，可以先用 `cdp-scan E:\Projects` 批量导入 Git 仓库。之后从任意终端运行 `cdp api`、`cdp admin` 或 `cdp blog`，唯一匹配时直接进入项目，多匹配时再用 `fzf` 选择。
+
+### AI CLI 工作流
+
+使用 Claude Code、Codex、Gemini CLI 等工具时，终端通常是主工作台。`cdp` 会把项目根目录切换、终端标签标题和项目列表放在一起，减少在多个 AI 会话、多个仓库之间反复复制长路径的时间。
+
+### Windows + WSL 混合环境
+
+Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Linux 版也能使用同类 JSON 项目列表。需要从 PowerShell 进入 WSL 项目时，用 `cdp -WSL` 选择项目，Windows 路径会自动转换为 `/mnt/c/...`。
+
+---
+
 ## 核心特性
 
 - **模糊搜索切换项目**：由 `fzf` 驱动，键盘优先，不需要记路径
