@@ -68,6 +68,8 @@ It is built for:
 
 ### Windows PowerShell
 
+If you are comfortable with PowerShell Gallery, install the module and `fzf` directly:
+
 ```powershell
 # 1. Install cdp
 Install-Module -Name cdp -Scope CurrentUser
@@ -83,13 +85,15 @@ cdp doctor
 cdp
 ```
 
-If you want the install script to handle fzf and profile setup:
+For a first-time setup where the script should handle `fzf` and profile configuration, use the source installer:
 
 ```powershell
 git clone https://github.com/GoldenZqqq/cdp.git
 cd cdp
 .\Install.ps1 -AddToProfile
 ```
+
+`Install.ps1` tries `winget`, `scoop`, then `chocolatey` for `fzf`. If the current terminal still cannot find `fzf` after installation, restart PowerShell and run `cdp doctor`.
 
 ### WSL / Linux
 
@@ -100,6 +104,8 @@ source ~/.bashrc  # zsh users: source ~/.zshrc
 cdp doctor
 cdp
 ```
+
+`--auto` installs `fzf` and `jq` automatically. Without `--auto`, the installer asks before each dependency.
 
 ---
 
@@ -255,6 +261,10 @@ Common fixes:
 ```powershell
 # fzf missing
 winget install fzf
+
+# If winget is unavailable
+scoop install fzf
+choco install fzf -y
 
 # Reload the module
 Import-Module cdp -Force

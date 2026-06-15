@@ -102,25 +102,57 @@ install_package() {
     esac
 }
 
+print_manual_install() {
+    local package="$1"
+
+    echo -e "${CYAN}Please install $package manually:${NC}"
+    case "$package" in
+        fzf)
+            echo -e "${CYAN}  Ubuntu/Debian: sudo apt install fzf${NC}"
+            echo -e "${CYAN}  Fedora: sudo dnf install fzf${NC}"
+            echo -e "${CYAN}  Arch: sudo pacman -S fzf${NC}"
+            echo -e "${CYAN}  macOS: brew install fzf${NC}"
+            ;;
+        jq)
+            echo -e "${CYAN}  Ubuntu/Debian: sudo apt install jq${NC}"
+            echo -e "${CYAN}  Fedora: sudo dnf install jq${NC}"
+            echo -e "${CYAN}  Arch: sudo pacman -S jq${NC}"
+            echo -e "${CYAN}  macOS: brew install jq${NC}"
+            ;;
+    esac
+}
+
+install_required_package() {
+    local package="$1"
+
+    if install_package "$package"; then
+        if command_exists "$package"; then
+            echo -e "${GREEN}✓ $package installed successfully${NC}"
+        else
+            echo -e "${YELLOW}$package installation finished, but PATH may require a terminal restart.${NC}"
+        fi
+    else
+        echo -e "${RED}Error: Could not install $package automatically.${NC}"
+        print_manual_install "$package"
+        exit 1
+    fi
+}
+
 # Check and install fzf
 check_and_install_fzf() {
     if ! command_exists fzf; then
         echo -e "${YELLOW}fzf is not installed.${NC}"
 
         if [[ "$AUTO_INSTALL" == true ]]; then
-            install_package fzf
+            install_required_package fzf
         else
             echo -e "${CYAN}Would you like to install fzf now? (y/N)${NC}"
             read -r response
             if [[ "$response" =~ ^[Yy]$ ]]; then
-                install_package fzf
+                install_required_package fzf
             else
                 echo -e "${RED}Error: fzf is required for cdp to work.${NC}"
-                echo -e "${CYAN}Please install it manually:${NC}"
-                echo -e "${CYAN}  Ubuntu/Debian: sudo apt install fzf${NC}"
-                echo -e "${CYAN}  Fedora: sudo dnf install fzf${NC}"
-                echo -e "${CYAN}  Arch: sudo pacman -S fzf${NC}"
-                echo -e "${CYAN}  macOS: brew install fzf${NC}"
+                print_manual_install fzf
                 exit 1
             fi
         fi
@@ -135,19 +167,15 @@ check_and_install_jq() {
         echo -e "${YELLOW}jq is not installed.${NC}"
 
         if [[ "$AUTO_INSTALL" == true ]]; then
-            install_package jq
+            install_required_package jq
         else
             echo -e "${CYAN}Would you like to install jq now? (y/N)${NC}"
             read -r response
             if [[ "$response" =~ ^[Yy]$ ]]; then
-                install_package jq
+                install_required_package jq
             else
                 echo -e "${RED}Error: jq is required for cdp to work.${NC}"
-                echo -e "${CYAN}Please install it manually:${NC}"
-                echo -e "${CYAN}  Ubuntu/Debian: sudo apt install jq${NC}"
-                echo -e "${CYAN}  Fedora: sudo dnf install jq${NC}"
-                echo -e "${CYAN}  Arch: sudo pacman -S jq${NC}"
-                echo -e "${CYAN}  macOS: brew install jq${NC}"
+                print_manual_install jq
                 exit 1
             fi
         fi
@@ -174,27 +202,16 @@ mkdir -p "$CONFIG_DIR"
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" 2>/dev/null && pwd )"
 
-# Debug: Print SCRIPT_DIR for troubleshooting
-echo -e "${GRAY}[DEBUG] SCRIPT_DIR: '$SCRIPT_DIR'${NC}"
-echo -e "${GRAY}[DEBUG] Checking: $SCRIPT_DIR/src/$SCRIPT_NAME${NC}"
-echo -e "${GRAY}[DEBUG] Checking: $SCRIPT_DIR/$SCRIPT_NAME${NC}"
-
 # Check if we should download from GitHub
 USE_REMOTE=false
 if [[ -z "$SCRIPT_DIR" ]] || [[ ! -d "$SCRIPT_DIR" ]]; then
     # Script directory is empty or doesn't exist (piped from curl)
-    echo -e "${GRAY}[DEBUG] SCRIPT_DIR is empty or doesn't exist, using remote${NC}"
     USE_REMOTE=true
 elif [[ ! -f "$SCRIPT_DIR/src/$SCRIPT_NAME" ]] && [[ ! -f "$SCRIPT_DIR/$SCRIPT_NAME" ]]; then
     # SCRIPT_DIR exists but doesn't contain the required file
     # This happens when script is piped from curl and creates a temp directory
-    echo -e "${GRAY}[DEBUG] Files not found in SCRIPT_DIR, using remote${NC}"
     USE_REMOTE=true
-else
-    echo -e "${GRAY}[DEBUG] Using local files from SCRIPT_DIR${NC}"
 fi
-
-echo -e "${GRAY}[DEBUG] USE_REMOTE: $USE_REMOTE${NC}"
 
 # Copy cdp script
 echo -e "${CYAN}Installing cdp script...${NC}"

@@ -68,6 +68,8 @@ PS C:\> cdp
 
 ### Windows PowerShell
 
+如果已经习惯 PowerShell Gallery，可以直接安装模块并安装 `fzf`：
+
 ```powershell
 # 1. 安装 cdp
 Install-Module -Name cdp -Scope CurrentUser
@@ -83,13 +85,15 @@ cdp doctor
 cdp
 ```
 
-想让安装脚本自动处理 fzf 和 profile 配置，可以从源码安装：
+第一次使用、希望脚本自动处理 `fzf` 和 profile 配置时，推荐从源码安装：
 
 ```powershell
 git clone https://github.com/GoldenZqqq/cdp.git
 cd cdp
 .\Install.ps1 -AddToProfile
 ```
+
+`Install.ps1` 会依次尝试 `winget`、`scoop`、`chocolatey` 安装 `fzf`；如果安装后当前终端还找不到 `fzf`，重启 PowerShell 后运行 `cdp doctor`。
 
 ### WSL / Linux
 
@@ -100,6 +104,8 @@ source ~/.bashrc  # zsh 用户改为 source ~/.zshrc
 cdp doctor
 cdp
 ```
+
+`--auto` 会自动安装 `fzf` 和 `jq`；不加 `--auto` 时会逐项询问。
 
 ---
 
@@ -255,6 +261,10 @@ cdp doctor
 ```powershell
 # fzf 未安装
 winget install fzf
+
+# winget 不可用时
+scoop install fzf
+choco install fzf -y
 
 # 重新导入模块
 Import-Module cdp -Force
