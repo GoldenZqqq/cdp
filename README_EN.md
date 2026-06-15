@@ -151,6 +151,22 @@ After selection:
 
 ---
 
+## Real-World Workflows
+
+### Multi-Repository Development
+
+When you maintain a backend, frontend, scripts, and personal projects side by side, start with `cdp-scan E:\Projects` to bulk import Git repositories. After that, run `cdp api`, `cdp admin`, or `cdp blog` from any terminal. One match switches directly; multiple matches fall back to `fzf`.
+
+### AI CLI Workflows
+
+When using Claude Code, Codex, Gemini CLI, or similar tools, the terminal becomes the main workspace. `cdp` keeps project-root switching, terminal tab titles, and a shared project list together, reducing the time spent copying long paths across AI sessions and repositories.
+
+### Windows + WSL
+
+Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WSL/Linux version can use the same JSON shape. When you need to enter a WSL project from PowerShell, run `cdp -WSL`; Windows paths are converted to `/mnt/c/...` automatically.
+
+---
+
 ## Features
 
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization

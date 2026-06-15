@@ -14,12 +14,12 @@ Prepare `cdp` for a stronger Ruan Yifeng Weekly submission by improving first-ru
 - [x] Add batch Git repository scanning to generate/import project config.
 - [x] Strengthen README comparison against `zoxide`, `autojump`, and plain `fzf cd` scripts.
 - [x] Smooth the install path, especially first-time `fzf` setup.
-- [ ] Add real-world usage scenarios for multi-repo, AI CLI, and Windows + WSL workflows.
+- [x] Add real-world usage scenarios for multi-repo, AI CLI, and Windows + WSL workflows.
 - [ ] Add a concise Chinese submission pitch for the weekly.
 
 ## Current Focus
 
-Next up: add real-world usage scenarios for multi-repo, AI CLI, and Windows + WSL workflows.
+Next up: add a concise Chinese submission pitch for the weekly.
 
 ## Verification Log
 
