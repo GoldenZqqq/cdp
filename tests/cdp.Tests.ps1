@@ -21,6 +21,7 @@ Describe 'cdp public surface' {
         $commandNames | Should -Contain 'Switch-Project'
         $commandNames | Should -Contain 'Get-ProjectList'
         $commandNames | Should -Contain 'Add-Project'
+        $commandNames | Should -Contain 'Import-GitProjects'
         $commandNames | Should -Contain 'Remove-Project'
         $commandNames | Should -Contain 'Edit-ProjectConfig'
         $commandNames | Should -Contain 'Set-ProjectConfig'
@@ -35,6 +36,7 @@ Describe 'cdp public surface' {
         (Get-Alias cdp-edit).Definition | Should -Be 'Edit-ProjectConfig'
         (Get-Alias cdp-config).Definition | Should -Be 'Set-ProjectConfig'
         (Get-Alias cdp-doctor).Definition | Should -Be 'Test-ProjectHealth'
+        (Get-Alias cdp-scan).Definition | Should -Be 'Import-GitProjects'
     }
 }
 
@@ -115,5 +117,51 @@ Describe 'project configuration helpers' {
         } finally {
             Pop-Location
         }
+    }
+
+    It 'imports Git repositories from a scan root' {
+        $configPath = Join-Path $TestDrive 'projects.json'
+        $scanRoot = Join-Path $TestDrive 'Repos'
+        $apiPath = Join-Path $scanRoot 'ApiProject'
+        $webPath = Join-Path (Join-Path $scanRoot 'Nested') 'WebProject'
+        New-Item -ItemType Directory -Path (Join-Path $apiPath '.git') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $webPath '.git') -Force | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                name = 'ApiProject'
+                rootPath = $apiPath
+                enabled = $true
+            }
+        ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
+
+        $result = Import-GitProjects -RootPath $scanRoot -ConfigPath $configPath -MaxDepth 3 -PassThru
+        $projects = @(Get-Content -Path $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+
+        $result.FoundCount | Should -Be 2
+        $result.AddedCount | Should -Be 1
+        $result.SkippedCount | Should -Be 1
+        $projects.Count | Should -Be 2
+        $projects.rootPath | Should -Contain $webPath
+    }
+
+    It 'routes cdp scan through Invoke-Cdp' {
+        $configPath = Join-Path $TestDrive 'scan-route-projects.json'
+        $scanRoot = Join-Path $TestDrive 'ScanRoute'
+        $repoPath = Join-Path $scanRoot 'RouteProject'
+        New-Item -ItemType Directory -Path (Join-Path $repoPath '.git') -Force | Out-Null
+        '[]' | Set-Content -Path $configPath -Encoding UTF8
+
+        $previousConfig = $env:CDP_CONFIG
+        $env:CDP_CONFIG = $configPath
+        try {
+            Invoke-Cdp scan $scanRoot
+        } finally {
+            $env:CDP_CONFIG = $previousConfig
+        }
+
+        $projects = @(Get-Content -Path $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects.Count | Should -Be 1
+        $projects[0].rootPath | Should -Be $repoPath
     }
 }

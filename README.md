@@ -116,6 +116,9 @@ cdp
 # 只有一个匹配时直接进入项目；多个匹配时再打开 fzf
 cdp api
 
+# 批量导入某个目录下的 Git 仓库
+cdp-scan E:\Projects
+
 # 查看当前配置健康状态
 cdp doctor
 
@@ -148,6 +151,7 @@ Select project: api
 - **快速 query 跳转**：`cdp api` 唯一匹配时直接进入项目，多匹配时只在候选中选择
 - **兼容 Project Manager**：自动读取 VS Code/Cursor Project Manager 配置
 - **自带项目管理命令**：`cdp-add`、`cdp-rm`、`cdp-ls`、`cdp-config`
+- **批量 Git 扫描**：`cdp-scan` 可把目录下的 Git 仓库批量导入配置
 - **配置健康检查**：`cdp doctor` 检查依赖、JSON、重复项目名、失效路径
 - **Windows + WSL/Linux**：PowerShell 和 bash/zsh 版本共享同一类配置
 - **终端标签同步**：切换后自动把 tab title 改为项目名
@@ -167,6 +171,7 @@ Select project: api
 | `Switch-Project -WSL` | `cdp -WSL` | 选择项目并启动 WSL 进入目录 |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | 诊断 cdp 环境和配置 |
 | `Add-Project` | `cdp-add` | 添加当前目录或指定路径 |
+| `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | 扫描 Git 仓库并批量导入配置 |
 | `Remove-Project` | `cdp-rm` | 删除项目，支持交互选择 |
 | `Get-ProjectList` | `cdp-ls` | 列出已启用项目 |
 | `Edit-ProjectConfig` | `cdp-edit` | 打开配置文件 |
@@ -180,6 +185,7 @@ Select project: api
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
 | `cdp-add` | 添加当前目录或指定路径 |
+| `cdp-scan ~/code` / `cdp scan ~/code` | 扫描 Git 仓库并批量导入配置 |
 | `cdp-ls` | 列出已启用项目 |
 | `cdp-config` | 切换当前使用的配置文件 |
 
@@ -200,6 +206,9 @@ cdp 会按以下规则寻找项目配置：
 ```powershell
 cd E:\Projects\my-api
 cdp-add
+
+# 或者一次性扫描某个目录下的 Git 仓库
+cdp-scan E:\Projects
 ```
 
 自定义配置文件格式：
@@ -307,7 +316,7 @@ CI 覆盖：
 - [ ] 最近访问项目
 - [ ] 项目置顶 / 收藏
 - [x] `cdp <query>` 非交互快速匹配
-- [ ] 批量扫描 Git 仓库生成配置
+- [x] 批量扫描 Git 仓库生成配置
 - [ ] 切换项目后自动执行脚本
 
 ---

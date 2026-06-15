@@ -115,3 +115,9 @@ jobs:
           cdp doctor "$tmpdir/projects.json"
           cdp SmokeProject "$tmpdir/projects.json"
           test "$PWD" = "$tmpdir/project"
+
+          scanroot="$tmpdir/repos"
+          mkdir -p "$scanroot/alpha/.git" "$scanroot/nested/beta/.git"
+          echo "[]" > "$tmpdir/scan-projects.json"
+          cdp-scan "$scanroot" "$tmpdir/scan-projects.json" 3
+          test "$(jq length "$tmpdir/scan-projects.json")" = "2"

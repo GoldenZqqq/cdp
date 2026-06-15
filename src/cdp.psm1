@@ -771,6 +771,211 @@ function Add-Project {
     }
 }
 
+function Get-CdpComparablePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    try {
+        return (Resolve-Path -LiteralPath $Path -ErrorAction Stop).Path
+    } catch {
+        try {
+            return [System.IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+        } catch {
+            return $Path.TrimEnd('\', '/')
+        }
+    }
+}
+
+function Get-CdpUniqueProjectName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [object]$ExistingNames
+    )
+
+    $baseName = Split-Path -Leaf $Path
+    if (-not $ExistingNames.Contains($baseName)) {
+        return $baseName
+    }
+
+    $parentPath = Split-Path -Parent $Path
+    $parentName = Split-Path -Leaf $parentPath
+    $candidateRoot = if ([string]::IsNullOrWhiteSpace($parentName)) {
+        $baseName
+    } else {
+        "$parentName-$baseName"
+    }
+
+    $candidate = $candidateRoot
+    $index = 2
+    while ($ExistingNames.Contains($candidate)) {
+        $candidate = "$candidateRoot-$index"
+        $index++
+    }
+
+    $candidate
+}
+
+function Get-CdpGitRepositoryRoots {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+
+        [Parameter(Mandatory = $false)]
+        [int]$MaxDepth = 4
+    )
+
+    $resolvedRoot = (Resolve-Path -LiteralPath $RootPath -ErrorAction Stop).Path
+
+    function Search-GitRepository {
+        param(
+            [string]$Path,
+            [int]$Depth
+        )
+
+        if (Test-Path -LiteralPath (Join-Path $Path '.git')) {
+            [PSCustomObject]@{ Path = $Path }
+            return
+        }
+
+        if ($Depth -le 0) {
+            return
+        }
+
+        Get-ChildItem -LiteralPath $Path -Directory -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -ne '.git' } |
+            ForEach-Object { Search-GitRepository -Path $_.FullName -Depth ($Depth - 1) }
+    }
+
+    @((Search-GitRepository -Path $resolvedRoot -Depth $MaxDepth) |
+        Sort-Object -Property Path -Unique)
+}
+
+function Import-GitProjects {
+    <#
+    .SYNOPSIS
+        Scan Git repositories and import them into the project list.
+
+    .DESCRIPTION
+        Finds directories containing a .git entry under the target root path and
+        appends missing repositories to the active cdp configuration.
+
+    .PARAMETER RootPath
+        Directory to scan. Defaults to the current directory.
+
+    .PARAMETER ConfigPath
+        Optional custom path to projects.json file.
+
+    .PARAMETER MaxDepth
+        Maximum directory depth to scan under RootPath. Defaults to 4.
+
+    .PARAMETER PassThru
+        Returns a summary object for tests and scripting.
+
+    .EXAMPLE
+        cdp-scan E:\Projects
+        # Imports Git repositories below E:\Projects
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$RootPath,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [int]$MaxDepth = 4,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RootPath)) {
+        $RootPath = (Get-Location).Path
+    }
+
+    $resolvedRoot = Resolve-Path -LiteralPath $RootPath -ErrorAction SilentlyContinue
+    if (-not $resolvedRoot) {
+        Write-Host "Error: Invalid scan path." -ForegroundColor Red
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Get-DefaultConfigPath
+    }
+
+    Initialize-ConfigFile -ConfigPath $ConfigPath
+
+    try {
+        $jsonContent = Get-Content -Path $ConfigPath -Raw -Encoding UTF8
+        $parsedProjects = ConvertFrom-Json -InputObject $jsonContent
+        $projects = @()
+        if ($null -ne $parsedProjects) {
+            $projects = @($parsedProjects)
+        }
+        $repos = @(Get-CdpGitRepositoryRoots -RootPath $resolvedRoot.Path -MaxDepth $MaxDepth)
+    } catch {
+        Write-Host "Error: Failed to scan or read configuration." -ForegroundColor Red
+        Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+        return
+    }
+
+    $existingPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+    $existingNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($project in $projects) {
+        if (-not [string]::IsNullOrWhiteSpace($project.rootPath)) {
+            [void]$existingPaths.Add((Get-CdpComparablePath -Path $project.rootPath))
+        }
+        if (-not [string]::IsNullOrWhiteSpace($project.name)) {
+            [void]$existingNames.Add([string]$project.name)
+        }
+    }
+
+    $addedProjects = @()
+    $skippedCount = 0
+    foreach ($repo in $repos) {
+        $repoPath = (Get-CdpComparablePath -Path $repo.Path)
+        if ($existingPaths.Contains($repoPath)) {
+            $skippedCount++
+            continue
+        }
+
+        $name = Get-CdpUniqueProjectName -Path $repoPath -ExistingNames $existingNames
+        $newProject = [PSCustomObject]@{ name = $name; rootPath = $repoPath; enabled = $true }
+        $projects += $newProject
+        $addedProjects += $newProject
+        [void]$existingPaths.Add($repoPath)
+        [void]$existingNames.Add($name)
+    }
+
+    if ($addedProjects.Count -gt 0) {
+        ConvertTo-Json -InputObject @($projects) -Depth 10 |
+            Out-File -FilePath $ConfigPath -Encoding UTF8
+    }
+
+    Write-Host "Git repositories found: $($repos.Count)" -ForegroundColor Cyan
+    Write-Host "Projects added: $($addedProjects.Count)" -ForegroundColor Green
+    Write-Host "Projects skipped: $skippedCount" -ForegroundColor Yellow
+    Write-Host "Config: $ConfigPath" -ForegroundColor Gray
+
+    if ($PassThru) {
+        [PSCustomObject]@{
+            RootPath = $resolvedRoot.Path
+            ConfigPath = $ConfigPath
+            FoundCount = $repos.Count
+            AddedCount = $addedProjects.Count
+            SkippedCount = $skippedCount
+            AddedProjects = $addedProjects
+        }
+    }
+}
+
 function Remove-Project {
     <#
     .SYNOPSIS
@@ -1151,6 +1356,11 @@ function Invoke-Cdp {
         return
     }
 
+    if ($Command -in @('scan', 'import')) {
+        Import-GitProjects -RootPath $ConfigPath
+        return
+    }
+
     if ([string]::IsNullOrWhiteSpace($ConfigPath) -and -not [string]::IsNullOrWhiteSpace($Command)) {
         if (Test-CdpConfigPathArgument -Argument $Command) {
             $ConfigPath = $Command
@@ -1172,7 +1382,8 @@ Set-Alias -Name cdp-ls -Value Get-ProjectList
 Set-Alias -Name cdp-edit -Value Edit-ProjectConfig
 Set-Alias -Name cdp-config -Value Set-ProjectConfig
 Set-Alias -Name cdp-doctor -Value Test-ProjectHealth
+Set-Alias -Name cdp-scan -Value Import-GitProjects
 
 Export-ModuleMember `
-    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth `
-    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth `
+    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan
