@@ -6,6 +6,7 @@
 
 - Added `cdp <query>` and `Switch-Project -Query` fast matching for PowerShell.
 - Added `cdp <query> [config]` fast matching for bash/zsh.
+- Added `Import-GitProjects`, `cdp-scan`, and `cdp scan` for bulk Git repository imports.
 - Added query smoke coverage in Pester and GitHub Actions bash checks.
 - Added `PROGRESS.md` to track Ruan Yifeng Weekly submission polish work.
 

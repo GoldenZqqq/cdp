@@ -116,6 +116,9 @@ cdp
 # Jump directly when one project matches; fall back to fzf for multiple matches
 cdp api
 
+# Bulk import Git repositories under a directory
+cdp-scan E:\Projects
+
 # Check your setup
 cdp doctor
 
@@ -148,6 +151,7 @@ After selection:
 - **Fast query jumps**: `cdp api` switches directly on one match, or filters fzf to matching projects
 - **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
 - **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
+- **Bulk Git scanning**: `cdp-scan` imports Git repositories under a directory into your config
 - **Health checks**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths
 - **Windows + WSL/Linux**: PowerShell and bash/zsh versions share the same config shape
 - **Terminal tab titles**: selected project names become visible in terminal tabs
@@ -167,6 +171,7 @@ After selection:
 | `Switch-Project -WSL` | `cdp -WSL` | Selects a project and launches WSL in that directory |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | Diagnoses the cdp environment and config |
 | `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
+| `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | Scans Git repositories and imports them into the config |
 | `Remove-Project` | `cdp-rm` | Removes a project, with interactive selection support |
 | `Get-ProjectList` | `cdp-ls` | Lists enabled projects |
 | `Edit-ProjectConfig` | `cdp-edit` | Opens the config file |
@@ -180,6 +185,7 @@ After selection:
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
 | `cdp-add` | Adds the current directory or a specific path |
+| `cdp-scan ~/code` / `cdp scan ~/code` | Scans Git repositories and imports them into the config |
 | `cdp-ls` | Lists enabled projects |
 | `cdp-config` | Changes the active config file |
 
@@ -200,6 +206,9 @@ If you already use [Project Manager](https://marketplace.visualstudio.com/items?
 ```powershell
 cd E:\Projects\my-api
 cdp-add
+
+# Or scan Git repositories under a directory in one pass
+cdp-scan E:\Projects
 ```
 
 Custom config format:
@@ -307,7 +316,7 @@ CI covers:
 - [ ] Recent projects
 - [ ] Pinned / favorite projects
 - [x] `cdp <query>` non-interactive matching
-- [ ] Bulk scan Git repositories into config
+- [x] Bulk scan Git repositories into config
 - [ ] Run scripts after switching projects
 
 ---

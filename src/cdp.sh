@@ -300,12 +300,74 @@ find_project_matches() {
     ' "$config_path" 2>/dev/null
 }
 
+find_git_repos() {
+    local root="$1"
+    local depth="${2:-4}"
+
+    if [[ -e "$root/.git" ]]; then
+        realpath "$root"
+        return
+    fi
+
+    if [[ "$depth" -le 0 ]]; then
+        return
+    fi
+
+    local child
+    while IFS= read -r -d '' child; do
+        [[ "$(basename "$child")" == ".git" ]] && continue
+        find_git_repos "$child" $((depth - 1))
+    done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+}
+
+project_name_exists() {
+    local name="$1"
+    local config_path="$2"
+
+    jq -e --arg name "$name" '.[] | select(.name == $name)' "$config_path" >/dev/null 2>&1
+}
+
+unique_project_name() {
+    local path="$1"
+    local config_path="$2"
+    local base_name
+    local parent_name
+    local candidate
+    local index=2
+
+    base_name=$(basename "$path")
+    if ! project_name_exists "$base_name" "$config_path"; then
+        echo "$base_name"
+        return
+    fi
+
+    parent_name=$(basename "$(dirname "$path")")
+    if [[ -n "$parent_name" ]]; then
+        candidate="${parent_name}-${base_name}"
+    else
+        candidate="$base_name"
+    fi
+
+    local candidate_root="$candidate"
+    while project_name_exists "$candidate" "$config_path"; do
+        candidate="${candidate_root}-${index}"
+        ((index++))
+    done
+
+    echo "$candidate"
+}
+
 # Main cdp function
 cdp() {
     case "$1" in
         doctor|health|check)
             shift
             cdp-doctor "$@"
+            return
+            ;;
+        scan|import)
+            shift
+            cdp-scan "$@"
             return
             ;;
     esac
@@ -554,6 +616,68 @@ cdp-add() {
     echo -e "  ${GRAY}Config:${NC} $config_path"
 }
 
+cdp-scan() {
+    local root_path="$1"
+    local config_path="$2"
+    local max_depth="${3:-4}"
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$root_path" ]]; then
+        root_path="$PWD"
+    fi
+
+    root_path=$(realpath "$root_path" 2>/dev/null)
+    if [[ -z "$root_path" || ! -d "$root_path" ]]; then
+        echo -e "${RED}Error: Invalid scan path.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    initialize_config "$config_path"
+
+    local repos
+    repos=$(find_git_repos "$root_path" "$max_depth" | sort -u)
+
+    local found_count=0
+    local added_count=0
+    local skipped_count=0
+    local repo
+
+    if [[ -n "$repos" ]]; then
+        while IFS= read -r repo; do
+            [[ -z "$repo" ]] && continue
+            ((found_count += 1))
+
+            if jq -e --arg path "$repo" '.[] | select(.rootPath == $path)' "$config_path" >/dev/null 2>&1; then
+                ((skipped_count += 1))
+                continue
+            fi
+
+            local name
+            local temp_file
+            name=$(unique_project_name "$repo" "$config_path")
+            temp_file=$(mktemp)
+            jq --arg name "$name" --arg path "$repo" \
+                '. += [{"name": $name, "rootPath": $path, "enabled": true}]' \
+                "$config_path" > "$temp_file"
+            mv "$temp_file" "$config_path"
+            ((added_count += 1))
+        done <<< "$repos"
+    fi
+
+    echo -e "${CYAN}Git repositories found:${NC} $found_count"
+    echo -e "${GREEN}Projects added:${NC} $added_count"
+    echo -e "${YELLOW}Projects skipped:${NC} $skipped_count"
+    echo -e "${GRAY}Config:${NC} $config_path"
+}
+
 # Function to diagnose cdp setup
 cdp-doctor() {
     local config_path="$1"
@@ -788,4 +912,5 @@ if [[ -n "$BASH_VERSION" ]]; then
     export -f cdp-add
     export -f cdp-config
     export -f cdp-doctor
+    export -f cdp-scan
 fi
