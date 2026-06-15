@@ -199,28 +199,118 @@ Before committing ANY change, verify:
 - [ ] ReleaseNotes updated in cdp.psd1 (if version changed)
 - [ ] Commit message follows format (Add/Fix/Update/Docs/Refactor)
 
-### 5. Publishing Workflow
+### 5. Release Publishing Workflow
 
-**For PowerShell Gallery releases**:
+**RULE**: A public version release is not complete until the git commit, git tag, GitHub Release, PowerShell Gallery package, CI, and post-release verification all succeed.
 
-1. Ensure all changes are committed and tested
-2. Update version in `cdp.psd1`
-3. Update `ReleaseNotes` section with changes
-4. Run publishing script:
+**Release preparation checklist**:
+
+1. Decide the semantic version bump.
+   - **PATCH** (x.x.X): Bug fixes, minor improvements
+   - **MINOR** (x.X.0): New features, backward-compatible changes
+   - **MAJOR** (X.0.0): Breaking changes
+2. Update all versioned release files:
+   - `cdp.psd1` `ModuleVersion`
+   - `cdp.psd1` `ReleaseNotes`
+   - `src/cdp.psm1` header version
+   - `src/cdp.sh` header version
+   - `tests/cdp.Tests.ps1` expected manifest version
+   - `scoop/cdp.json` `version`, tag URL, and `extract_dir`
+   - `CHANGELOG.md` release section
+3. Update `README.md` and `README_EN.md` when the release changes user-facing behavior.
+4. Keep private submission pitches or one-off promotion copy out of repository Markdown unless explicitly requested.
+
+**Required local validation before the release commit**:
+
+```powershell
+powershell -NoLogo -NoProfile -Command "Import-Module Pester -MinimumVersion 5.5.0 -Force; Invoke-Pester -Path ./tests -CI"
+pwsh -NoLogo -NoProfile -Command "Import-Module Pester -MinimumVersion 5.5.0 -Force; Invoke-Pester -Path ./tests -CI"
+pwsh -NoLogo -NoProfile -Command '$results = Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error; if ($results) { $results | Format-Table -AutoSize; throw "PSScriptAnalyzer found errors." } else { "PSScriptAnalyzer: no errors" }'
+wsl -d Arch -- bash -lc 'cd /mnt/c/Learn/cdp && bash -n ./src/cdp.sh && bash -n ./install-wsl.sh && echo bash syntax: ok'
+git diff --check
+```
+
+**Git release steps**:
+
+1. Confirm the worktree is clean except for the intended release changes:
    ```powershell
-   # Recommended: Use alternative publishing script
-   .\Publish-ToGallery-Alt.ps1 -ApiKey $env:PS_GALLERY_API_KEY
+   git status --short
+   ```
+2. Rebase on the remote branch before committing:
+   ```powershell
+   git pull --rebase --autostash
+   ```
+3. Commit the release preparation:
+   ```powershell
+   git add CHANGELOG.md PROGRESS.md cdp.psd1 scoop/cdp.json src/cdp.psm1 src/cdp.sh tests/cdp.Tests.ps1 README.md README_EN.md
+   git commit -m "chore: 准备 x.y.z 发布"
+   ```
+4. Push the release commit:
+   ```powershell
+   git push origin main
+   ```
+5. Wait for GitHub Actions CI on `main` to finish successfully:
+   ```powershell
+   gh run list --branch main --limit 5
+   gh run watch <run-id> --exit-status
+   ```
+6. Create and push an annotated release tag only after the final release commit is on `main`:
+   ```powershell
+   git tag -a vx.y.z -m "Release vx.y.z: Brief description"
+   git push origin vx.y.z
+   ```
+7. Verify the tag points to the final commit:
+   ```powershell
+   git rev-parse HEAD
+   git rev-parse "vx.y.z^{}"
+   git ls-remote --tags origin vx.y.z
+   ```
 
-   # OR use standard script (requires .NET Core 2.0+ SDK)
-   .\Publish-ToGallery.ps1 -ApiKey $env:PS_GALLERY_API_KEY
+**If any release-blocking fix is needed after tagging**:
+
+1. Commit and push the fix first.
+2. Move the local annotated tag to the new final commit.
+3. Force-update the remote tag before publishing GitHub Release or Gallery package:
+   ```powershell
+   git tag -f -a vx.y.z -m "Release vx.y.z: Brief description"
+   git push --force origin vx.y.z
    ```
-5. Wait 5-10 minutes for Gallery indexing
-6. Verify at: https://www.powershellgallery.com/packages/cdp
-7. Tag the release in git:
-   ```bash
-   git tag -a v1.x.x -m "Release v1.x.x: Brief description"
-   git push origin v1.x.x
+
+**GitHub Release steps**:
+
+1. Create the GitHub Release from the existing verified tag:
+   ```powershell
+   gh release create vx.y.z --verify-tag --latest --title "vx.y.z" --notes-file -
    ```
+2. Verify it is public, non-draft, and non-prerelease:
+   ```powershell
+   gh release view vx.y.z --json tagName,name,url,isDraft,isPrerelease,publishedAt,targetCommitish
+   ```
+
+**PowerShell Gallery steps**:
+
+1. Confirm `$env:PS_GALLERY_API_KEY` exists without printing the key:
+   ```powershell
+   if ([string]::IsNullOrWhiteSpace($env:PS_GALLERY_API_KEY)) { "PS_GALLERY_API_KEY_MISSING" } else { "PS_GALLERY_API_KEY_PRESENT" }
+   ```
+2. Publish with the alternative script:
+   ```powershell
+   .\Publish-ToGallery-Alt.ps1 -ApiKey $env:PS_GALLERY_API_KEY
+   ```
+3. Wait for Gallery indexing if needed.
+4. Verify the exact version through both PowerShellGet and the package page:
+   ```powershell
+   pwsh -NoLogo -NoProfile -Command '$m = Find-Module -Name cdp -Repository PSGallery -ErrorAction Stop; $m | Select-Object Name,Version,Repository,ProjectUri | Format-List'
+   pwsh -NoLogo -NoProfile -Command 'Invoke-WebRequest -Uri "https://www.powershellgallery.com/packages/cdp/x.y.z" -UseBasicParsing -MaximumRedirection 5 -ErrorAction Stop | Select-Object StatusCode'
+   ```
+
+**Release completion report must include**:
+
+- Release commit SHA and tag name
+- GitHub Release URL
+- PowerShell Gallery URL and verified version
+- CI result
+- Any warnings that do not block the release, such as GitHub Actions runtime deprecation warnings
 
 **API Key Management**:
 - Store API key in environment variable: `$env:PS_GALLERY_API_KEY`
