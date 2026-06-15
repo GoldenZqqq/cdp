@@ -270,15 +270,15 @@ cdp-config
 
 ## How It Compares
 
-| Tool | Best for |
-| --- | --- |
-| `cd` / tab completion | A few short paths |
-| `zoxide` / `autojump` | Frecency-based jumping to any directory |
-| Plain `fzf cd` scripts | Ad-hoc selection from scanned or historical directories |
-| VS Code/Cursor Project Manager | Managing projects inside the editor |
-| `cdp` | Fast terminal switching between known project roots |
+| Tool | Best for | How it differs from `cdp` |
+| --- | --- | --- |
+| `cd` / tab completion | A few short paths | You still need to remember directory structure; deep or numerous projects become slower |
+| `zoxide` / `autojump` | Frecency-based jumping to any directory | They learn from visited directories and ranking history; `cdp` is driven by an explicit project list, so new projects can appear through Project Manager, `cdp-add`, or `cdp-scan` |
+| Plain `fzf cd` scripts | Ad-hoc selection from scanned or historical directories | They are usually one-off lists without shared config, diagnostics, or a project table that works across PowerShell and WSL |
+| VS Code/Cursor Project Manager | Managing projects inside the editor | Great inside the editor; `cdp` brings the same project list into terminal and AI CLI workflows |
+| `cdp` | Fast terminal switching between known project roots | Focuses on project roots, not arbitrary directories; supports `cdp <query>`, bulk Git scanning, terminal tab titles, and config diagnostics |
 
-cdp does not try to replace every directory jumper. It focuses on making project root switching stable, visible, and shareable. It reuses existing editor project lists, also supports `~/.cdp/projects.json`, and is tuned for multi-repo workflows across Windows, WSL, and terminal AI tools.
+cdp does not try to replace every directory jumper. If you want to jump to any recently visited directory, `zoxide` is excellent. If you want VS Code/Cursor, PowerShell, WSL, and Claude Code/Codex/Gemini CLI to share one predictable project list, `cdp` is tuned for that workflow.
 
 ---
 

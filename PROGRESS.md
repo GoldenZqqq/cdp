@@ -12,14 +12,14 @@ Prepare `cdp` for a stronger Ruan Yifeng Weekly submission by improving first-ru
   - Fall back to `fzf` when a query has multiple matches.
   - Keep positional custom config path compatibility for `.json` and path-like arguments.
 - [x] Add batch Git repository scanning to generate/import project config.
-- [ ] Strengthen README comparison against `zoxide`, `autojump`, and plain `fzf cd` scripts.
-- [ ] Add a concise Chinese submission pitch for the weekly.
+- [x] Strengthen README comparison against `zoxide`, `autojump`, and plain `fzf cd` scripts.
 - [ ] Smooth the install path, especially first-time `fzf` setup.
 - [ ] Add real-world usage scenarios for multi-repo, AI CLI, and Windows + WSL workflows.
+- [ ] Add a concise Chinese submission pitch for the weekly.
 
 ## Current Focus
 
-Next up: strengthen the README comparison against `zoxide`, `autojump`, and plain `fzf cd` scripts.
+Next up: smooth the first-time install path, especially `fzf` setup.
 
 ## Verification Log
 
