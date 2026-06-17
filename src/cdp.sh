@@ -6,8 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 1.4.1
+# Version: 1.5.0
 # License: MIT
+
+CDP_VERSION="1.5.0"
 
 # Colors
 RED='\033[0;31m'
@@ -16,6 +18,38 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 GRAY='\033[0;90m'
 NC='\033[0m' # No Color
+
+cdp_brand_header() {
+    echo ""
+    echo -e "${CYAN}         _${NC}"
+    echo -e "${CYAN}  ___ __| |_ __${NC}"
+    echo -e "${CYAN} / __/ _\` | \"_ \\\\${NC}"
+    echo -e "${CYAN}| (_| (_| | |_) |${NC}"
+    echo -e "${CYAN} \\___\\__,_| .__/${NC}"
+    echo -e "${CYAN}          |_|${NC}"
+    echo -e "${GREEN}cdp v$CDP_VERSION${NC}"
+    echo -e "${GRAY}fast project switching for PowerShell and WSL${NC}"
+    echo ""
+}
+
+cdp_upgrade_command() {
+    echo "bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto"
+}
+
+cdp_picker_header() {
+    local shown_count="$1"
+    local total_count="$2"
+    local config_path="$3"
+    local project_text
+
+    if [[ "$shown_count" == "$total_count" ]]; then
+        project_text="$total_count projects"
+    else
+        project_text="$shown_count shown / $total_count projects"
+    fi
+
+    echo "cdp v$CDP_VERSION | $project_text | $config_path"
+}
 
 # Function to convert Windows path to WSL path
 convert_windows_to_wsl() {
@@ -357,12 +391,38 @@ unique_project_name() {
     echo "$candidate"
 }
 
+cdp_about() {
+    local config_path="$1"
+    local project_count="unknown"
+    local enabled_count="unknown"
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    if [[ -f "$config_path" ]] && command -v jq &> /dev/null; then
+        project_count=$(jq 'length' "$config_path" 2>/dev/null || echo 0)
+        enabled_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path" 2>/dev/null || echo 0)
+    fi
+
+    cdp_brand_header
+    echo -e "${GRAY}Module:${NC} ${CYAN}${BASH_SOURCE[0]}${NC}"
+    echo -e "${GRAY}Config:${NC} ${CYAN}$config_path${NC}"
+    echo -e "${GRAY}Projects:${NC} ${GREEN}$enabled_count enabled / $project_count total${NC}"
+    echo -e "${GRAY}Upgrade:${NC} ${CYAN}$(cdp_upgrade_command)${NC}"
+}
+
 # Main cdp function
 cdp() {
     case "$1" in
         doctor|health|check)
             shift
             cdp-doctor "$@"
+            return
+            ;;
+        about|version|--version|-v)
+            shift
+            cdp_about "$@"
             return
             ;;
         scan|import)
@@ -459,9 +519,16 @@ cdp() {
         if [[ -n "$query" ]]; then
             prompt="Select project ($query): "
         fi
+        local total_count
+        local shown_count
+        local header
+        total_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path" 2>/dev/null || echo 0)
+        shown_count=$(line_count "$projects")
+        header=$(cdp_picker_header "$shown_count" "$total_count" "$config_path")
 
         selected=$(echo "$projects" | fzf \
             --prompt="$prompt" \
+            --header="$header" \
             --height=60% \
             --layout=reverse \
             --border \
@@ -685,7 +752,8 @@ cdp-doctor() {
     local error_count=0
     local warning_count=0
 
-    echo -e "\n${CYAN}cdp doctor${NC}"
+    cdp_brand_header
+    echo -e "${CYAN}cdp doctor${NC}"
     echo -e "${GRAY}$(printf '=%.0s' {1..80})${NC}"
 
     if command -v fzf &> /dev/null; then
@@ -908,6 +976,7 @@ cdp-config() {
 # Export functions for bash/zsh
 if [[ -n "$BASH_VERSION" ]]; then
     export -f cdp
+    export -f cdp_about
     export -f cdp-ls
     export -f cdp-add
     export -f cdp-config

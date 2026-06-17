@@ -128,6 +128,9 @@ cdp-scan E:\Projects
 # 查看当前配置健康状态
 cdp doctor
 
+# 查看当前版本、配置和升级命令
+cdp version
+
 # 从 PowerShell 直接启动 WSL 并进入项目
 cdp -WSL
 ```
@@ -135,6 +138,7 @@ cdp -WSL
 fzf 菜单里输入几个字母即可模糊匹配：
 
 ```text
+cdp v1.5.0 | 56 projects | C:\Users\you\.cdp\projects.json
 Select project: api
 
 > my-api
@@ -192,6 +196,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | `Switch-Project -Query api` | - | 只在匹配 `api` 的项目中切换 |
 | `Switch-Project -WSL` | `cdp -WSL` | 选择项目并启动 WSL 进入目录 |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | 诊断 cdp 环境和配置 |
+| `Show-CdpAbout` | `cdp about`, `cdp version` | 显示 cdp Logo、版本、配置路径、项目数量和升级命令 |
 | `Add-Project` | `cdp-add` | 添加当前目录或指定路径 |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | 扫描 Git 仓库并批量导入配置 |
 | `Remove-Project` | `cdp-rm` | 删除项目，支持交互选择 |
@@ -206,6 +211,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | `cdp` | 打开 fzf 菜单并切换项目 |
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
+| `cdp about` / `cdp version` | 显示版本、配置路径、项目数量和升级命令 |
 | `cdp-add` | 添加当前目录或指定路径 |
 | `cdp-scan ~/code` / `cdp scan ~/code` | 扫描 Git 仓库并批量导入配置 |
 | `cdp-ls` | 列出已启用项目 |
@@ -280,6 +286,7 @@ cdp doctor
 它会检查：
 
 - `fzf` 是否在 `PATH` 中
+- PowerShell Gallery 是否有新的 `cdp` 版本
 - bash/zsh 版是否安装 `jq`
 - 当前使用哪个配置文件
 - JSON 是否能解析
@@ -299,6 +306,12 @@ choco install fzf -y
 
 # 重新导入模块
 Import-Module cdp -Force
+
+# 升级 cdp（PowerShell Gallery 安装）
+Update-Module -Name cdp -Scope CurrentUser -Force
+
+# 如果不是通过 Install-Module 安装，或 Update-Module 找不到旧安装记录
+Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber
 
 # 查看当前项目列表
 cdp-ls

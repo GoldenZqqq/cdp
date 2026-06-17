@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.5.0
+
+### Added
+
+- Added `cdp about`, `cdp version`, and `Show-CdpAbout` for compact logo, version, config, project count, and upgrade guidance.
+- Added a `cdp doctor` update check that compares the installed module version with the latest PowerShell Gallery release.
+- Added upgrade guidance when a newer version is available.
+
+### Changed
+
+- `cdp doctor` now starts with a compact cdp brand header.
+- The interactive `fzf` picker now shows a one-line header with the cdp version, project count, and active config path.
+- Update checks are kept out of the normal `cdp` switching path to avoid slowing down project selection.
+
 ## 1.4.1
 
 ### Changed

@@ -18,7 +18,7 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Release polish checklist is complete. Current release step: publish version 1.4.1.
+Release polish checklist is complete. Current release step: prepare version 1.5.0.
 
 ## Verification Log
 
@@ -47,3 +47,12 @@ Release polish checklist is complete. Current release step: publish version 1.4.
 - Release 1.4.1: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
 - Release 1.4.1: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
 - Release 1.4.1: `git diff --check` reported no whitespace errors.
+- Release 1.5.0: Added `cdp doctor` update reminder with PowerShell Gallery version comparison.
+- Release 1.5.0: Added `cdp about` / `cdp version` brand and runtime information.
+- Release 1.5.0: Added a compact fzf picker header with cdp version, project count, and active config path.
+- Release 1.5.0: Upgrade guidance uses `Update-Module -Name cdp -Scope CurrentUser -Force`.
+- Release 1.5.0: Windows PowerShell 5.1 `Invoke-Pester -Path ./tests -CI` passed 12 tests.
+- Release 1.5.0: PowerShell 7 `Invoke-Pester -Path ./tests -CI` passed 12 tests.
+- Release 1.5.0: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
+- Release 1.5.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
+- Release 1.5.0: `git diff --check` reported no whitespace errors.

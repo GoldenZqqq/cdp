@@ -128,6 +128,9 @@ cdp-scan E:\Projects
 # Check your setup
 cdp doctor
 
+# Show the current version, config, and upgrade command
+cdp version
+
 # Launch WSL directly into a selected project
 cdp -WSL
 ```
@@ -135,6 +138,7 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
+cdp v1.5.0 | 56 projects | C:\Users\you\.cdp\projects.json
 Select project: api
 
 > my-api
@@ -192,6 +196,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | `Switch-Project -Query api` | - | Switches within projects matching `api` |
 | `Switch-Project -WSL` | `cdp -WSL` | Selects a project and launches WSL in that directory |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | Diagnoses the cdp environment and config |
+| `Show-CdpAbout` | `cdp about`, `cdp version` | Shows the cdp logo, version, config path, project count, and upgrade command |
 | `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | Scans Git repositories and imports them into the config |
 | `Remove-Project` | `cdp-rm` | Removes a project, with interactive selection support |
@@ -206,6 +211,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | `cdp` | Opens the fzf menu and switches projects |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
+| `cdp about` / `cdp version` | Shows the version, config path, project count, and upgrade command |
 | `cdp-add` | Adds the current directory or a specific path |
 | `cdp-scan ~/code` / `cdp scan ~/code` | Scans Git repositories and imports them into the config |
 | `cdp-ls` | Lists enabled projects |
@@ -280,6 +286,7 @@ cdp doctor
 It checks:
 
 - Whether `fzf` is available in `PATH`
+- Whether a newer `cdp` version is available on PowerShell Gallery
 - Whether `jq` is installed for the bash/zsh version
 - Which config file is active
 - Whether JSON parsing works
@@ -299,6 +306,12 @@ choco install fzf -y
 
 # Reload the module
 Import-Module cdp -Force
+
+# Upgrade cdp when installed from PowerShell Gallery
+Update-Module -Name cdp -Scope CurrentUser -Force
+
+# If it was not installed with Install-Module, or Update-Module cannot find the old install record
+Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber
 
 # List current projects
 cdp-ls

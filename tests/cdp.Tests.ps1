@@ -20,7 +20,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '1.4.1'
+        $manifest.Version.ToString() | Should -Be '1.5.0'
     }
 }
 
@@ -37,6 +37,7 @@ Describe 'cdp public surface' {
         $commandNames | Should -Contain 'Edit-ProjectConfig'
         $commandNames | Should -Contain 'Set-ProjectConfig'
         $commandNames | Should -Contain 'Test-ProjectHealth'
+        $commandNames | Should -Contain 'Show-CdpAbout'
     }
 
     It 'exports the expected aliases' {
@@ -85,7 +86,7 @@ Describe 'project configuration helpers' {
             }
         ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
 
-        $health = Test-ProjectHealth -ConfigPath $configPath -PassThru
+        $health = Test-ProjectHealth -ConfigPath $configPath -PassThru -SkipUpdateCheck
 
         $health.ConfigPath | Should -Be $configPath
         $health.ProjectCount | Should -Be 2
@@ -97,7 +98,49 @@ Describe 'project configuration helpers' {
         $configPath = Join-Path $TestDrive 'projects.json'
         '[]' | Set-Content -Path $configPath -Encoding UTF8
 
-        { Invoke-Cdp doctor $configPath } | Should -Not -Throw
+        $previousSkipUpdateCheck = $env:CDP_SKIP_UPDATE_CHECK
+        $env:CDP_SKIP_UPDATE_CHECK = '1'
+        try {
+            { Invoke-Cdp doctor $configPath } | Should -Not -Throw
+        } finally {
+            $env:CDP_SKIP_UPDATE_CHECK = $previousSkipUpdateCheck
+        }
+    }
+
+    It 'shows about information through the version subcommand' {
+        $configPath = Join-Path $TestDrive 'about-projects.json'
+        $projectPath = Join-Path $TestDrive 'AboutProject'
+        New-Item -ItemType Directory -Path $projectPath | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                name = 'AboutProject'
+                rootPath = $projectPath
+                enabled = $true
+            }
+        ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
+
+        { Invoke-Cdp version $configPath } | Should -Not -Throw
+
+        $about = Show-CdpAbout -ConfigPath $configPath -PassThru
+        $about.Name | Should -Be 'cdp'
+        $about.Version | Should -Be '1.5.0'
+        $about.ConfigPath | Should -Be $configPath
+        $about.ProjectCount | Should -Be 1
+        $about.EnabledProjectCount | Should -Be 1
+        $about.UpgradeCommand | Should -Be 'Update-Module -Name cdp -Scope CurrentUser -Force'
+    }
+
+    It 'reports an upgrade command when a newer version is available' {
+        InModuleScope cdp {
+            $check = Get-CdpUpdateHealthChecks -CurrentVersion ([version]'1.4.1') -LatestVersion ([version]'1.5.0')
+
+            $check.Name | Should -Be 'updates'
+            $check.Passed | Should -BeFalse
+            $check.Level | Should -Be 'Warning'
+            $check.Message | Should -Match '1\.4\.1 -> 1\.5\.0'
+            $check.Message | Should -Match 'Update-Module -Name cdp -Scope CurrentUser -Force'
+        }
     }
 
     It 'switches directly when a query has one match' {
