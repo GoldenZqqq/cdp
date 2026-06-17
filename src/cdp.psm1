@@ -9,9 +9,12 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.4.0
+    Version: 1.4.1
     License: MIT
 #>
+
+$script:CdpProjectConfigCache = @{}
+$script:CdpFzfCommand = $null
 
 function Switch-Project {
     <#
@@ -84,11 +87,9 @@ function Switch-Project {
         return
     }
 
-    # Read and parse JSON
     try {
-        $jsonContent = Get-Content -Path $ConfigPath -Raw -Encoding UTF8
-        $allProjects = ConvertFrom-Json -InputObject $jsonContent
-        $enabledProjects = @($allProjects | Where-Object { $_.enabled })
+        $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
+        $enabledProjects = @($configData.EnabledProjects)
     } catch {
         Write-Host "Error: Failed to read or parse configuration file." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
@@ -120,7 +121,8 @@ function Switch-Project {
 
     if ([string]::IsNullOrWhiteSpace($selectedProjectName)) {
         # Check if fzf is installed only when interactive selection is needed.
-        if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+        $fzfCommand = Resolve-CdpFzfCommand
+        if (-not $fzfCommand) {
             Write-Host "Error: 'fzf' command not found." -ForegroundColor Red
             Write-Host "Please install fzf first: winget install fzf" -ForegroundColor Cyan
             Write-Host "Then restart your terminal." -ForegroundColor Cyan
@@ -144,7 +146,7 @@ function Switch-Project {
                 "Select project ($Query): "
             }
 
-            $selectedProjectName = $projectsForSelection.name | fzf `
+            $selectedProjectName = $projectsForSelection.name | & $fzfCommand `
                 --prompt=$prompt `
                 --height=60% `
                 --layout=reverse `
@@ -231,9 +233,8 @@ function Get-ProjectList {
     }
 
     try {
-        $jsonContent = Get-Content -Path $ConfigPath -Raw -Encoding UTF8
-        $allProjects = ConvertFrom-Json -InputObject $jsonContent
-        $enabledProjects = $allProjects | Where-Object { $_.enabled }
+        $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
+        $enabledProjects = @($configData.EnabledProjects)
 
         if ($null -eq $enabledProjects -or $enabledProjects.Count -eq 0) {
             Write-Host "No enabled projects found." -ForegroundColor Yellow
@@ -281,6 +282,87 @@ function Convert-WindowsPathToWSL {
 
     # If no drive letter found, return as-is (might already be WSL path)
     return $normalizedPath
+}
+
+function Resolve-CdpFzfCommand {
+    if (-not [string]::IsNullOrWhiteSpace($env:CDP_FZF_PATH)) {
+        $configuredPath = [Environment]::ExpandEnvironmentVariables($env:CDP_FZF_PATH)
+        if (Test-Path -LiteralPath $configuredPath -PathType Leaf) {
+            $script:CdpFzfCommand = (Get-Item -LiteralPath $configuredPath).FullName
+            return $script:CdpFzfCommand
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($script:CdpFzfCommand) -and
+        (Test-Path -LiteralPath $script:CdpFzfCommand -PathType Leaf)) {
+        return $script:CdpFzfCommand
+    }
+
+    $fzfCommand = Get-Command fzf -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($fzfCommand) {
+        $script:CdpFzfCommand = if ([string]::IsNullOrWhiteSpace($fzfCommand.Path)) {
+            $fzfCommand.Name
+        } else {
+            $fzfCommand.Path
+        }
+        return $script:CdpFzfCommand
+    }
+
+    return $null
+}
+
+function Clear-CdpProjectConfigCache {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$ConfigPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $script:CdpProjectConfigCache.Clear()
+        return
+    }
+
+    try {
+        $cacheKey = (Get-Item -LiteralPath $ConfigPath -ErrorAction Stop).FullName
+        [void]$script:CdpProjectConfigCache.Remove($cacheKey)
+    } catch {
+        $script:CdpProjectConfigCache.Clear()
+    }
+}
+
+function Get-CdpProjectConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigPath
+    )
+
+    $configItem = Get-Item -LiteralPath $ConfigPath -ErrorAction Stop
+    $cacheKey = $configItem.FullName
+    $cachedConfig = $script:CdpProjectConfigCache[$cacheKey]
+
+    if ($cachedConfig -and
+        $cachedConfig.Length -eq $configItem.Length -and
+        $cachedConfig.LastWriteTimeUtcTicks -eq $configItem.LastWriteTimeUtc.Ticks) {
+        return $cachedConfig
+    }
+
+    $jsonContent = Get-Content -LiteralPath $configItem.FullName -Raw -Encoding UTF8
+    $allProjects = ConvertFrom-Json -InputObject $jsonContent
+    $projects = @()
+    if ($null -ne $allProjects) {
+        $projects = @($allProjects)
+    }
+
+    $configData = [PSCustomObject]@{
+        Path = $configItem.FullName
+        Length = $configItem.Length
+        LastWriteTimeUtcTicks = $configItem.LastWriteTimeUtc.Ticks
+        Projects = $projects
+        EnabledProjects = @($projects | Where-Object { $_.enabled })
+    }
+
+    $script:CdpProjectConfigCache[$cacheKey] = $configData
+    return $configData
 }
 
 function Get-CdpProjectMatches {
@@ -486,6 +568,7 @@ function Initialize-ConfigFile {
 
         # Create empty project array
         '[]' | Out-File -FilePath $ConfigPath -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
         Write-Host "Created new config file at: $ConfigPath" -ForegroundColor Green
     }
 }
@@ -526,10 +609,10 @@ function Write-CdpHealthCheck {
 }
 
 function Get-CdpDependencyHealthChecks {
-    $fzfCommand = Get-Command fzf -ErrorAction SilentlyContinue
+    $fzfCommand = Resolve-CdpFzfCommand
 
     if ($fzfCommand) {
-        return @(New-CdpHealthCheck -Name "fzf" -Passed $true -Message "found at $($fzfCommand.Path)")
+        return @(New-CdpHealthCheck -Name "fzf" -Passed $true -Message "found at $fzfCommand")
     }
 
     return @(New-CdpHealthCheck -Name "fzf" -Passed $false -Level Error -Message "not found in PATH")
@@ -759,6 +842,7 @@ function Add-Project {
 
         # Save updated config
         $projects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
 
         Write-Host "Project added successfully!" -ForegroundColor Green
         Write-Host "  Name: $Name" -ForegroundColor Cyan
@@ -957,6 +1041,7 @@ function Import-GitProjects {
     if ($addedProjects.Count -gt 0) {
         ConvertTo-Json -InputObject @($projects) -Depth 10 |
             Out-File -FilePath $ConfigPath -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
     }
 
     Write-Host "Git repositories found: $($repos.Count)" -ForegroundColor Cyan
@@ -1029,7 +1114,8 @@ function Remove-Project {
 
         # If no name provided, use fzf to select
         if ([string]::IsNullOrWhiteSpace($Name)) {
-            if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+            $fzfCommand = Resolve-CdpFzfCommand
+            if (-not $fzfCommand) {
                 Write-Host "Error: Please provide project name or install fzf for interactive selection." -ForegroundColor Red
                 return
             }
@@ -1039,7 +1125,7 @@ function Remove-Project {
             try {
                 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
                 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-                $Name = $projects.name | fzf `
+                $Name = $projects.name | & $fzfCommand `
                     --prompt="Select project to remove: " `
                     --height=60% `
                     --layout=reverse `
@@ -1076,6 +1162,7 @@ function Remove-Project {
         # Remove project
         $updatedProjects = $projects | Where-Object { $_.name -ne $Name }
         $updatedProjects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
 
         Write-Host "`nProject removed successfully: $Name" -ForegroundColor Green
 

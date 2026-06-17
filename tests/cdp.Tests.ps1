@@ -20,7 +20,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '1.4.0'
+        $manifest.Version.ToString() | Should -Be '1.4.1'
     }
 }
 
@@ -125,6 +125,33 @@ Describe 'project configuration helpers' {
             Invoke-Cdp Api $configPath
 
             (Get-Location).Path | Should -Be $apiPath
+        } finally {
+            Pop-Location
+        }
+    }
+
+    It 'refreshes cached project config after adding a project' {
+        $configPath = Join-Path $TestDrive 'cached-projects.json'
+        $apiPath = Join-Path $TestDrive 'CachedApiProject'
+        $webPath = Join-Path $TestDrive 'CachedWebProject'
+        New-Item -ItemType Directory -Path $apiPath | Out-Null
+        New-Item -ItemType Directory -Path $webPath | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                name = 'CachedApiProject'
+                rootPath = $apiPath
+                enabled = $true
+            }
+        ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
+
+        Push-Location $TestDrive
+        try {
+            Invoke-Cdp CachedApi $configPath
+            Add-Project -Name 'CachedWebProject' -Path $webPath -ConfigPath $configPath
+            Invoke-Cdp CachedWeb $configPath
+
+            (Get-Location).Path | Should -Be $webPath
         } finally {
             Pop-Location
         }

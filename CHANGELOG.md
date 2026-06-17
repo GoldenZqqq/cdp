@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.1
+
+### Changed
+
+- Cached parsed PowerShell project configuration within a session to reduce repeated `cdp` and `cdp-ls` overhead.
+- Cached `fzf` command resolution and added `CDP_FZF_PATH` support for pinning the executable path.
+- Added performance guidance for Windows Terminal cold starts in both README files.
+
+### Fixed
+
+- Invalidated the project config cache after `cdp-add`, `cdp-scan`, and `cdp-rm` write changes.
+
 ## 1.4.0
 
 ### Added

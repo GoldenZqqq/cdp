@@ -18,7 +18,7 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Release polish checklist is complete. Next release step: publish version 1.4.0.
+Release polish checklist is complete. Current release step: publish version 1.4.1.
 
 ## Verification Log
 
@@ -40,3 +40,10 @@ Release polish checklist is complete. Next release step: publish version 1.4.0.
 - Release 1.4.0: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
 - Release 1.4.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
 - Release 1.4.0: `git diff --check` reported no whitespace errors.
+- Release 1.4.1: Added PowerShell session caches for project config parsing and `fzf` command resolution.
+- Release 1.4.1: PowerShell 7 direct switch timing improved from about 154.6 ms to 16.6 ms on the second same-session call.
+- Release 1.4.1: PowerShell 7 `Invoke-Pester -Path ./tests -CI` passed 10 tests.
+- Release 1.4.1: Windows PowerShell 5.1 `Invoke-Pester -Path ./tests -CI` passed 10 tests.
+- Release 1.4.1: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
+- Release 1.4.1: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
+- Release 1.4.1: `git diff --check` reported no whitespace errors.

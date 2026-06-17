@@ -254,6 +254,21 @@ Using `/` in JSON paths avoids escaping Windows backslashes.
 
 ---
 
+## Performance Tips
+
+If `cdp` takes a few seconds to show the picker right after opening Windows Terminal, the project count is usually not the main cause. PowerShell module autoloading, PATH lookup for `fzf`, and the cold start check for `fzf.exe` can all add latency before the first interactive panel appears.
+
+You can pin the active config and `fzf` executable in your PowerShell profile to reduce first-use discovery work:
+
+```powershell
+$env:CDP_CONFIG = "$HOME\.cdp\projects.json"
+$env:CDP_FZF_PATH = "C:\Users\you\AppData\Local\Microsoft\WinGet\Links\fzf.exe"
+```
+
+Set `CDP_FZF_PATH` to the actual path returned by `(Get-Command fzf).Path`. `cdp` also caches the parsed project config within the current PowerShell session and automatically invalidates that cache after `cdp-add`, `cdp-scan`, or `cdp-rm` changes the config file.
+
+---
+
 ## Diagnostics
 
 Start with:
