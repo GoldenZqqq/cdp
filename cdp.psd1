@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.4.1'
+ModuleVersion = '1.5.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth')
+FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -107,6 +107,14 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.5.0 - Brand Header and Update Reminder
+- Added: cdp about / cdp version shows the cdp logo, current version, config path, project counts, and upgrade command
+- Added: cdp doctor displays a compact brand header before diagnostics
+- Added: fzf picker header shows cdp version, visible project count, and active config path
+- Added: cdp doctor checks PowerShell Gallery for newer cdp releases
+- Added: upgrade guidance with Update-Module when a newer version is available
+- Improved: update check can be skipped for automation with -SkipUpdateCheck or CDP_SKIP_UPDATE_CHECK
+
 v1.4.1 - PowerShell Startup Performance
 - Improved: Cache parsed project configuration within a PowerShell session
 - Improved: Cache fzf command resolution and support CDP_FZF_PATH for a fixed fzf executable path

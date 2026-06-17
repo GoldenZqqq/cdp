@@ -9,12 +9,79 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.4.1
+    Version: 1.5.0
     License: MIT
 #>
 
 $script:CdpProjectConfigCache = @{}
 $script:CdpFzfCommand = $null
+
+function Get-CdpCurrentModule {
+    Get-Module -Name cdp |
+        Sort-Object -Property Version -Descending |
+        Select-Object -First 1
+}
+
+function Get-CdpCurrentModuleVersion {
+    $module = Get-CdpCurrentModule
+
+    if ($module -and $module.Version) {
+        return [version]$module.Version
+    }
+
+    return $null
+}
+
+function Get-CdpVersionText {
+    $version = Get-CdpCurrentModuleVersion
+    if ($version) {
+        return $version.ToString()
+    }
+
+    return "unknown"
+}
+
+function Write-CdpBrandHeader {
+    $versionText = Get-CdpVersionText
+    $logo = @(
+        '         _'
+        '  ___ __| |_ __'
+        ' / __/ _` | "_ \'
+        '| (_| (_| | |_) |'
+        ' \___\__,_| .__/'
+        '          |_|'
+    )
+
+    Write-Host ""
+    foreach ($line in $logo) {
+        Write-Host $line -ForegroundColor Cyan
+    }
+    Write-Host "cdp v$versionText" -ForegroundColor Green
+    Write-Host "fast project switching for PowerShell and WSL" -ForegroundColor Gray
+    Write-Host ""
+}
+
+function Get-CdpPickerHeader {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ShownProjectCount,
+
+        [Parameter(Mandatory = $true)]
+        [int]$TotalProjectCount,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigPath
+    )
+
+    $versionText = Get-CdpVersionText
+    $projectText = if ($ShownProjectCount -eq $TotalProjectCount) {
+        "$TotalProjectCount projects"
+    } else {
+        "$ShownProjectCount shown / $TotalProjectCount projects"
+    }
+
+    "cdp v$versionText | $projectText | $ConfigPath"
+}
 
 function Switch-Project {
     <#
@@ -145,9 +212,14 @@ function Switch-Project {
             } else {
                 "Select project ($Query): "
             }
+            $header = Get-CdpPickerHeader `
+                -ShownProjectCount $projectsForSelection.Count `
+                -TotalProjectCount $enabledProjects.Count `
+                -ConfigPath $ConfigPath
 
             $selectedProjectName = $projectsForSelection.name | & $fzfCommand `
                 --prompt=$prompt `
+                --header=$header `
                 --height=60% `
                 --layout=reverse `
                 --border `
@@ -616,6 +688,146 @@ function Get-CdpDependencyHealthChecks {
     }
 
     return @(New-CdpHealthCheck -Name "fzf" -Passed $false -Level Error -Message "not found in PATH")
+}
+
+function Get-CdpUpgradeCommand {
+    "Update-Module -Name cdp -Scope CurrentUser -Force"
+}
+
+function Get-CdpUpdateHealthChecks {
+    param(
+        [Parameter(Mandatory = $false)]
+        [version]$CurrentVersion,
+
+        [Parameter(Mandatory = $false)]
+        [version]$LatestVersion
+    )
+
+    if ($env:CDP_SKIP_UPDATE_CHECK -in @('1', 'true', 'TRUE', 'yes', 'YES')) {
+        return @(New-CdpHealthCheck -Name "updates" -Passed $true -Message "skipped by CDP_SKIP_UPDATE_CHECK")
+    }
+
+    if (-not $CurrentVersion) {
+        $CurrentVersion = Get-CdpCurrentModuleVersion
+    }
+
+    if (-not $CurrentVersion) {
+        return @(New-CdpHealthCheck -Name "updates" -Passed $true `
+            -Message "current module version unknown; install with: Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber")
+    }
+
+    if (-not $LatestVersion) {
+        if (-not (Get-Command Find-Module -ErrorAction SilentlyContinue)) {
+            return @(New-CdpHealthCheck -Name "updates" -Passed $true `
+                -Message "PowerShellGet not available; upgrade with: $(Get-CdpUpgradeCommand)")
+        }
+
+        try {
+            $galleryModule = Find-Module -Name cdp -Repository PSGallery -ErrorAction Stop
+            $LatestVersion = [version]$galleryModule.Version
+        } catch {
+            return @(New-CdpHealthCheck -Name "updates" -Passed $true `
+                -Message "could not check PowerShell Gallery: $($_.Exception.Message)")
+        }
+    }
+
+    if ($LatestVersion -gt $CurrentVersion) {
+        return @(New-CdpHealthCheck -Name "updates" -Passed $false -Level Warning `
+            -Message "new version available: $CurrentVersion -> $LatestVersion; upgrade with: $(Get-CdpUpgradeCommand)")
+    }
+
+    if ($CurrentVersion -gt $LatestVersion) {
+        return @(New-CdpHealthCheck -Name "updates" -Passed $true `
+            -Message "current version $CurrentVersion is newer than PowerShell Gallery $LatestVersion")
+    }
+
+    return @(New-CdpHealthCheck -Name "updates" -Passed $true `
+        -Message "current version $CurrentVersion is up to date")
+}
+
+function Get-CdpAboutInfo {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$ConfigPath
+    )
+
+    $module = Get-CdpCurrentModule
+    $versionText = Get-CdpVersionText
+    $modulePath = if ($module) { $module.Path } else { $null }
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $configResult = Resolve-CdpHealthConfigPath -ConfigPath $ConfigPath
+        $ConfigPath = $configResult.Path
+    }
+
+    $projectCount = 0
+    $enabledProjectCount = 0
+    if (-not [string]::IsNullOrWhiteSpace($ConfigPath) -and (Test-Path -LiteralPath $ConfigPath)) {
+        try {
+            $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
+            $projectCount = @($configData.Projects).Count
+            $enabledProjectCount = @($configData.EnabledProjects).Count
+        } catch {
+            $projectCount = 0
+            $enabledProjectCount = 0
+        }
+    }
+
+    [PSCustomObject]@{
+        Name = "cdp"
+        Version = $versionText
+        ModulePath = $modulePath
+        ConfigPath = $ConfigPath
+        ProjectCount = $projectCount
+        EnabledProjectCount = $enabledProjectCount
+        UpgradeCommand = Get-CdpUpgradeCommand
+    }
+}
+
+function Show-CdpAbout {
+    <#
+    .SYNOPSIS
+        Show cdp version and runtime information.
+
+    .DESCRIPTION
+        Displays a compact cdp brand header, module version, active config path,
+        project counts, and the recommended upgrade command.
+
+    .PARAMETER ConfigPath
+        Optional custom path to projects.json file.
+
+    .PARAMETER PassThru
+        Returns the about information object in addition to console output.
+
+    .EXAMPLE
+        cdp about
+        # Shows cdp version and runtime information
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    $about = Get-CdpAboutInfo -ConfigPath $ConfigPath
+
+    Write-CdpBrandHeader
+    Write-Host "Module: " -NoNewline -ForegroundColor Gray
+    Write-Host $about.ModulePath -ForegroundColor Cyan
+    Write-Host "Config: " -NoNewline -ForegroundColor Gray
+    Write-Host $about.ConfigPath -ForegroundColor Cyan
+    Write-Host "Projects: " -NoNewline -ForegroundColor Gray
+    Write-Host "$($about.EnabledProjectCount) enabled / $($about.ProjectCount) total" -ForegroundColor Green
+    Write-Host "Upgrade: " -NoNewline -ForegroundColor Gray
+    Write-Host $about.UpgradeCommand -ForegroundColor Cyan
+
+    if ($PassThru) {
+        return $about
+    }
 }
 
 function Resolve-CdpHealthConfigPath {
@@ -1329,14 +1541,17 @@ function Test-ProjectHealth {
         Diagnose the cdp runtime environment and project configuration.
 
     .DESCRIPTION
-        Checks fzf availability, active configuration discovery, JSON shape,
-        duplicate project names, enabled project count, and missing project paths.
+        Checks fzf availability, cdp update status, active configuration discovery,
+        JSON shape, duplicate project names, enabled project count, and missing paths.
 
     .PARAMETER ConfigPath
         Optional custom path to projects.json file.
 
     .PARAMETER PassThru
         Returns a structured health summary object in addition to console output.
+
+    .PARAMETER SkipUpdateCheck
+        Skips the PowerShell Gallery version check.
 
     .EXAMPLE
         Test-ProjectHealth
@@ -1353,13 +1568,20 @@ function Test-ProjectHealth {
         [string]$ConfigPath,
 
         [Parameter(Mandatory = $false)]
-        [switch]$PassThru
+        [switch]$PassThru,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$SkipUpdateCheck
     )
 
     $configResult = Resolve-CdpHealthConfigPath -ConfigPath $ConfigPath
     $parseResult = Get-CdpConfigParseResult -ConfigPath $configResult.Path -ConfigSource $configResult.Source
     $projects = @($parseResult.Projects)
     $checks = @(Get-CdpDependencyHealthChecks) + @($configResult.Checks) + @($parseResult.Checks)
+
+    if (-not $SkipUpdateCheck) {
+        $checks += Get-CdpUpdateHealthChecks
+    }
 
     if ($parseResult.Parsed) {
         $checks += Get-CdpProjectHealthChecks -Projects $projects
@@ -1368,6 +1590,7 @@ function Test-ProjectHealth {
     $errorCount = @($checks | Where-Object { -not $_.Passed -and $_.Level -eq 'Error' }).Count
     $warningCount = @($checks | Where-Object { -not $_.Passed -and $_.Level -eq 'Warning' }).Count
 
+    Write-CdpBrandHeader
     Write-CdpHealthSummary -Checks $checks
 
     if ($PassThru) {
@@ -1443,6 +1666,11 @@ function Invoke-Cdp {
         return
     }
 
+    if ($Command -in @('about', 'version', '--version', '-v')) {
+        Show-CdpAbout -ConfigPath $ConfigPath
+        return
+    }
+
     if ($Command -in @('scan', 'import')) {
         Import-GitProjects -RootPath $ConfigPath
         return
@@ -1472,5 +1700,5 @@ Set-Alias -Name cdp-doctor -Value Test-ProjectHealth
 Set-Alias -Name cdp-scan -Value Import-GitProjects
 
 Export-ModuleMember `
-    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth `
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout `
     -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan
