@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.4.0'
+ModuleVersion = '1.4.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.4.1 - PowerShell Startup Performance
+- Improved: Cache parsed project configuration within a PowerShell session
+- Improved: Cache fzf command resolution and support CDP_FZF_PATH for a fixed fzf executable path
+- Improved: Reuse cached config data for cdp and cdp-ls while invalidating after project list writes
+
 v1.4.0 - Fast Query Matching and Git Repository Import
 - Added: cdp <query> and Switch-Project -Query for direct project switching when one match is found
 - Added: Import-GitProjects / cdp-scan / cdp scan for bulk Git repository discovery and import

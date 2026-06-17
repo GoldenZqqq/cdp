@@ -254,6 +254,21 @@ cdp-scan E:\Projects
 
 ---
 
+## 性能建议
+
+如果第一次打开 Windows Terminal 后运行 `cdp` 需要等待几秒，通常不是项目数量本身造成的。PowerShell 首次自动加载模块、PATH 中查找 `fzf`，以及 Windows 对 `fzf.exe` 的冷启动检查都可能带来额外延迟。
+
+可以在 PowerShell profile 里固定常用配置和 `fzf` 路径，减少首次交互前的探测：
+
+```powershell
+$env:CDP_CONFIG = "$HOME\.cdp\projects.json"
+$env:CDP_FZF_PATH = "C:\Users\you\AppData\Local\Microsoft\WinGet\Links\fzf.exe"
+```
+
+`CDP_FZF_PATH` 应填写 `(Get-Command fzf).Path` 返回的实际路径。`cdp` 也会在同一个 PowerShell 会话中缓存已解析的项目配置，配置文件被 `cdp-add`、`cdp-scan`、`cdp-rm` 修改后会自动失效并重新读取。
+
+---
+
 ## 诊断与排错
 
 先运行：
