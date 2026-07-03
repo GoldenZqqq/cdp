@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.1
+
+### Fixed
+
+- Fixed PowerShell `fzf` picker color theme argument passing so `cdp` no longer reports `unknown option: fg:#...`.
+
 ## 1.6.0
 
 ### Added

@@ -138,7 +138,7 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
-cdp v1.6.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v1.6.1 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api

@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.6.0
+    Version: 1.6.1
     License: MIT
 #>
 
@@ -347,6 +347,7 @@ function Switch-Project {
                 -ConfigPath $ConfigPath
             $previewDir = New-CdpPickerPreviewDirectory -Projects $projectsForSelection
             $previewCommand = Get-CdpPickerPreviewCommand -PreviewDir $previewDir
+            $colorOption = "--color=$(Get-CdpFzfColorTheme)"
             $pickerLines = for ($i = 0; $i -lt $projectsForSelection.Count; $i++) {
                 New-CdpPickerLine -Project $projectsForSelection[$i] -Index ($i + 1)
             }
@@ -367,7 +368,7 @@ function Switch-Project {
                 --preview-window=right:50%:wrap `
                 --pointer=">" `
                 --marker="*" `
-                --color=(Get-CdpFzfColorTheme)
+                $colorOption
 
             if (-not [string]::IsNullOrWhiteSpace($selectedLine)) {
                 $selectedFields = $selectedLine -split "`t"
