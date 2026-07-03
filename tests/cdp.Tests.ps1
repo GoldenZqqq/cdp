@@ -20,7 +20,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '1.6.1'
+        $manifest.Version.ToString() | Should -Be '1.6.2'
     }
 }
 
@@ -124,7 +124,7 @@ Describe 'project configuration helpers' {
 
         $about = Show-CdpAbout -ConfigPath $configPath -PassThru
         $about.Name | Should -Be 'cdp'
-        $about.Version | Should -Be '1.6.1'
+        $about.Version | Should -Be '1.6.2'
         $about.ConfigPath | Should -Be $configPath
         $about.ProjectCount | Should -Be 1
         $about.EnabledProjectCount | Should -Be 1
@@ -133,12 +133,12 @@ Describe 'project configuration helpers' {
 
     It 'reports an upgrade command when a newer version is available' {
         InModuleScope cdp {
-            $check = Get-CdpUpdateHealthChecks -CurrentVersion ([version]'1.6.0') -LatestVersion ([version]'1.6.1')
+            $check = Get-CdpUpdateHealthChecks -CurrentVersion ([version]'1.6.1') -LatestVersion ([version]'1.6.2')
 
             $check.Name | Should -Be 'updates'
             $check.Passed | Should -BeFalse
             $check.Level | Should -Be 'Warning'
-            $check.Message | Should -Match '1\.6\.0 -> 1\.6\.1'
+            $check.Message | Should -Match '1\.6\.1 -> 1\.6\.2'
             $check.Message | Should -Match 'Update-Module -Name cdp -Scope CurrentUser -Force'
         }
     }

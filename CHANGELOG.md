@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2
+
+### Fixed
+
+- Fixed PowerShell `fzf` preview lookup by passing the selected row index as a preview script argument instead of embedding `{1}` inside a quoted file path.
+
 ## 1.6.1
 
 ### Fixed

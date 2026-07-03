@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.6.1'
+ModuleVersion = '1.6.2'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,9 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.6.2 - PowerShell Preview Hotfix
+- Fixed: PowerShell picker preview no longer embeds fzf placeholders inside quoted file paths
+
 v1.6.1 - PowerShell fzf Color Hotfix
 - Fixed: PowerShell picker now passes the fzf --color theme as one complete native argument
 

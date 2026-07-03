@@ -18,7 +18,7 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Release polish checklist is complete. Current release step: prepare version 1.6.1.
+Release polish checklist is complete. Current release step: prepare version 1.6.2.
 
 ## Verification Log
 
@@ -58,3 +58,4 @@ Release polish checklist is complete. Current release step: prepare version 1.6.
 - Release 1.5.0: `git diff --check` reported no whitespace errors.
 - Release 1.6.0: Added neon-themed fzf rows, right-side picker preview, and compact cdp-ls tables for PowerShell and WSL/bash.
 - Release 1.6.1: Fixed PowerShell fzf color theme native argument passing.
+- Release 1.6.2: Fixed PowerShell fzf preview placeholder handling on Windows.

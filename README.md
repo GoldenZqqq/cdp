@@ -138,7 +138,7 @@ cdp -WSL
 fzf 菜单里输入几个字母即可模糊匹配：
 
 ```text
-cdp v1.6.1 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v1.6.2 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api

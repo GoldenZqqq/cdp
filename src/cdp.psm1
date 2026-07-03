@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.6.1
+    Version: 1.6.2
     License: MIT
 #>
 
@@ -174,6 +174,32 @@ function New-CdpPickerPreviewDirectory {
         $index++
     }
 
+    @'
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$Index
+)
+
+$safeIndex = $Index -replace '[^0-9]', ''
+if ([string]::IsNullOrWhiteSpace($safeIndex)) {
+    "cdp project"
+    "-----------"
+    "preview unavailable"
+    return
+}
+
+$previewPath = Join-Path $PSScriptRoot "$safeIndex.txt"
+if (Test-Path -LiteralPath $previewPath) {
+    Get-Content -LiteralPath $previewPath
+    return
+}
+
+"cdp project"
+"-----------"
+"preview unavailable"
+"missing: $previewPath"
+'@ | Set-Content -Path (Join-Path $previewDir "preview.ps1") -Encoding UTF8
+
     $previewDir
 }
 
@@ -183,9 +209,9 @@ function Get-CdpPickerPreviewCommand {
         [string]$PreviewDir
     )
 
-    $previewPath = Join-Path $PreviewDir "{1}.txt"
-    $escapedPreviewPath = $previewPath -replace "'", "''"
-    "powershell -NoLogo -NoProfile -Command `"Get-Content -LiteralPath '$escapedPreviewPath'`""
+    $scriptPath = Join-Path $PreviewDir "preview.ps1"
+    $escapedScriptPath = $scriptPath -replace "'", "''"
+    "powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File '$escapedScriptPath' {1}"
 }
 
 function Get-CdpFzfColorTheme {
