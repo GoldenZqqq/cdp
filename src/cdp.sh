@@ -6,10 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 1.6.2
+# Version: 1.6.3
 # License: MIT
 
-CDP_VERSION="1.6.2"
+CDP_VERSION="1.6.3"
 
 # Colors
 RED='\033[0;31m'

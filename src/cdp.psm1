@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.6.2
+    Version: 1.6.3
     License: MIT
 #>
 
@@ -210,8 +210,8 @@ function Get-CdpPickerPreviewCommand {
     )
 
     $scriptPath = Join-Path $PreviewDir "preview.ps1"
-    $escapedScriptPath = $scriptPath -replace "'", "''"
-    "powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File '$escapedScriptPath' {1}"
+    $escapedScriptPath = $scriptPath -replace '"', '\"'
+    "powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$escapedScriptPath`" {1}"
 }
 
 function Get-CdpFzfColorTheme {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.3
+
+### Fixed
+
+- Fixed Windows PowerShell preview script launching by passing the `-File` path with double quotes instead of single quotes.
+
 ## 1.6.2
 
 ### Fixed

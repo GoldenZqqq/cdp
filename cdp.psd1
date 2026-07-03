@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.6.2'
+ModuleVersion = '1.6.3'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,9 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.6.3 - PowerShell Preview File Path Hotfix
+- Fixed: PowerShell picker preview now passes the preview script path to -File with Windows-safe double quotes
+
 v1.6.2 - PowerShell Preview Hotfix
 - Fixed: PowerShell picker preview no longer embeds fzf placeholders inside quoted file paths
 
