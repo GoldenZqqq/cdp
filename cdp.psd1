@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.5.0'
+ModuleVersion = '1.6.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,12 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.6.0 - Neon TUI Picker
+- Added: The fzf picker now uses ANSI-colored rows, a neon color theme, rounded border, and pointer/marker styling
+- Added: The fzf picker shows a right-side project preview with path and Git repository status
+- Improved: cdp-ls / Get-ProjectList now displays a compact aligned project table
+- Improved: PowerShell and WSL/bash picker styling stay consistent without adding new required dependencies
+
 v1.5.0 - Brand Header and Update Reminder
 - Added: cdp about / cdp version shows the cdp logo, current version, config path, project counts, and upgrade command
 - Added: cdp doctor displays a compact brand header before diagnostics

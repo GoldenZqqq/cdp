@@ -6,10 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 1.5.0
+# Version: 1.6.0
 # License: MIT
 
-CDP_VERSION="1.5.0"
+CDP_VERSION="1.6.0"
 
 # Colors
 RED='\033[0;31m'
@@ -17,6 +17,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 GRAY='\033[0;90m'
+BOLD_CYAN='\033[1;36m'
 NC='\033[0m' # No Color
 
 cdp_brand_header() {
@@ -48,7 +49,88 @@ cdp_picker_header() {
         project_text="$shown_count shown / $total_count projects"
     fi
 
-    echo "cdp v$CDP_VERSION | $project_text | $config_path"
+    echo "cdp v$CDP_VERSION | $project_text | enter to warp | $config_path"
+}
+
+truncate_text() {
+    local value="$1"
+    local max_length="$2"
+
+    if (( ${#value} <= max_length )); then
+        echo "$value"
+        return
+    fi
+
+    echo "${value:0:$((max_length - 3))}..."
+}
+
+sanitize_picker_field() {
+    local value="$1"
+    value="${value//$'\t'/ }"
+    value="${value//$'\r'/ }"
+    value="${value//$'\n'/ }"
+    echo "$value"
+}
+
+cdp_picker_preview() {
+    local name="$1"
+    local raw_path="$2"
+    local target_path="$3"
+    local preview_file="$4"
+    local path_state="path missing"
+    local git_state="git repo not detected"
+
+    if [[ -d "$target_path" ]]; then
+        path_state="path exists"
+    fi
+
+    if [[ -e "$target_path/.git" ]]; then
+        git_state="git repo detected"
+    fi
+
+    {
+        echo "cdp project"
+        echo "-----------"
+        echo "name   $name"
+        echo "path   $raw_path"
+        echo ""
+        echo "state  $path_state"
+        echo "git    $git_state"
+        echo ""
+        echo "Enter  switch to this project"
+        echo "Esc    cancel"
+    } > "$preview_file"
+}
+
+cdp_picker_rows() {
+    local projects="$1"
+    local config_path="$2"
+    local preview_dir="$3"
+    local index=1
+    local name
+
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+
+        local raw_path
+        local display_path
+        local safe_name
+        local safe_path
+        raw_path=$(jq -r --arg name "$name" \
+            '.[] | select(.name == $name and .enabled == true) | .rootPath' \
+            "$config_path" 2>/dev/null | head -n1)
+        display_path=$(convert_windows_to_wsl "$raw_path")
+        safe_name=$(sanitize_picker_field "$name")
+        safe_path=$(sanitize_picker_field "$display_path")
+
+        cdp_picker_preview "$safe_name" "$safe_path" "$display_path" "$preview_dir/$index.txt"
+        printf "%s\t%s\t%s\t%b%3d%b\t%b%s%b\t%b%s%b\n" \
+            "$index" "$safe_name" "$raw_path" \
+            "$GRAY" "$index" "$NC" \
+            "$BOLD_CYAN" "$safe_name" "$NC" \
+            "$GRAY" "$safe_path" "$NC"
+        ((index++))
+    done <<< "$projects"
 }
 
 # Function to convert Windows path to WSL path
@@ -514,26 +596,47 @@ cdp() {
         fi
 
         # Note: --no-mouse prevents IME mouse click conflicts with candidate selection
-        # Height increased to 60% for better visibility
         local prompt="Select project: "
         if [[ -n "$query" ]]; then
-            prompt="Select project ($query): "
+            prompt="cdp ($query) > "
+        else
+            prompt="cdp > "
         fi
         local total_count
         local shown_count
         local header
+        local preview_dir
+        local selected_line
         total_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path" 2>/dev/null || echo 0)
         shown_count=$(line_count "$projects")
         header=$(cdp_picker_header "$shown_count" "$total_count" "$config_path")
+        preview_dir=$(mktemp -d "${TMPDIR:-/tmp}/cdp-fzf.XXXXXX")
 
-        selected=$(echo "$projects" | fzf \
+        selected_line=$(cdp_picker_rows "$projects" "$config_path" "$preview_dir" | fzf \
             --prompt="$prompt" \
             --header="$header" \
-            --height=60% \
+            --height=70% \
             --layout=reverse \
-            --border \
+            --border=rounded \
+            --border-label=" cdp warp " \
+            --ansi \
+            --delimiter=$'\t' \
+            --with-nth=4,5,6 \
+            --nth=2,3 \
             --no-mouse \
-            --preview-window=hidden)
+            --preview="cat '$preview_dir/{1}.txt'" \
+            --preview-window=right:50%:wrap \
+            --pointer=">" \
+            --marker="*" \
+            --color="fg:#cdd6f4,bg:-1,hl:#89dceb,fg+:#ffffff,bg+:#313244,hl+:#f5c2e7,prompt:#94e2d5,pointer:#f38ba8,marker:#a6e3a1,border:#89b4fa,header:#bac2de,info:#fab387")
+
+        if [[ -n "$preview_dir" && -d "$preview_dir" ]]; then
+            rm -rf "$preview_dir"
+        fi
+
+        if [[ -n "$selected_line" ]]; then
+            selected=$(printf '%s' "$selected_line" | cut -f2)
+        fi
     fi
 
     # Process selection
@@ -608,23 +711,33 @@ cdp-ls() {
 
     # Count projects
     local count=$(echo "$enabled_projects" | wc -l)
+    local name_width=14
+    while IFS='|' read -r name path; do
+        if (( ${#name} > name_width )); then
+            name_width=${#name}
+        fi
+    done <<< "$enabled_projects"
+    if (( name_width > 30 )); then
+        name_width=30
+    fi
 
-    echo -e "\n${CYAN}Enabled Projects ($count):${NC}"
-    echo -e "${GRAY}$(printf '=%.0s' {1..80})${NC}"
-    echo ""
+    echo -e "\n${CYAN}cdp projects${NC} ${GRAY}($count enabled)${NC}"
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
+    printf "  ${GRAY}%-4s${NC} ${CYAN}%-*s${NC} ${GRAY}%s${NC}\n" "#" "$name_width" "Project" "Path"
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
 
     local index=1
     while IFS='|' read -r name path; do
-        printf "  ${GRAY}[%-3s]${NC} ${GREEN}%s${NC}\n" "$index" "$name"
-
-        # Convert Windows path for display
-        local display_path=$(convert_windows_to_wsl "$path")
-        printf "         ${GRAY}%s${NC}\n" "$display_path"
+        local display_path
+        local display_name
+        display_path=$(convert_windows_to_wsl "$path")
+        display_name=$(truncate_text "$name" "$name_width")
+        printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_path"
         ((index++))
     done <<< "$enabled_projects"
 
-    echo ""
-    echo -e "${GRAY}Config file: $config_path${NC}"
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
+    echo -e "${GRAY}config: $config_path${NC}"
 }
 
 # Function to add current directory as a project

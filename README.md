@@ -138,13 +138,18 @@ cdp -WSL
 fzf 菜单里输入几个字母即可模糊匹配：
 
 ```text
-cdp v1.5.0 | 56 projects | C:\Users\you\.cdp\projects.json
-Select project: api
+cdp v1.6.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp > api
 
-> my-api
-  company-admin
-  personal-blog
-  cdp
+  01  my-api          C:\Work\my-api
+> 02  company-admin   C:\Work\company-admin
+  03  personal-blog   C:\Work\personal-blog
+
+Preview
+-------
+name   company-admin
+state  path exists
+git    git repo detected
 ```
 
 选择后：
@@ -174,6 +179,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 ## 核心特性
 
 - **模糊搜索切换项目**：由 `fzf` 驱动，键盘优先，不需要记路径
+- **Neon 风格 TUI**：彩色候选行、右侧项目预览、路径/Git 状态一眼可见
 - **快速 query 跳转**：`cdp api` 唯一匹配时直接进入项目，多匹配时只在候选中选择
 - **兼容 Project Manager**：自动读取 VS Code/Cursor Project Manager 配置
 - **自带项目管理命令**：`cdp-add`、`cdp-rm`、`cdp-ls`、`cdp-config`

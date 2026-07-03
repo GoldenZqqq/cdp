@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.5.0
+    Version: 1.6.0
     License: MIT
 #>
 
@@ -80,7 +80,136 @@ function Get-CdpPickerHeader {
         "$ShownProjectCount shown / $TotalProjectCount projects"
     }
 
-    "cdp v$versionText | $projectText | $ConfigPath"
+    "cdp v$versionText | $projectText | enter to warp | $ConfigPath"
+}
+
+function Format-CdpAnsiText {
+    param(
+        [AllowNull()]
+        [string]$Text,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Code
+    )
+
+    $escape = [char]27
+    "${escape}[${Code}m$Text${escape}[0m"
+}
+
+function ConvertTo-CdpPickerField {
+    param(
+        [AllowNull()]
+        [string]$Value
+    )
+
+    if ($null -eq $Value) {
+        return ""
+    }
+
+    $Value -replace "[`r`n`t]+", " "
+}
+
+function New-CdpPickerLine {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project,
+
+        [Parameter(Mandatory = $true)]
+        [int]$Index
+    )
+
+    $rawName = ConvertTo-CdpPickerField -Value $Project.name
+    $rawPath = ConvertTo-CdpPickerField -Value $Project.rootPath
+    $displayIndex = Format-CdpAnsiText -Text ("{0,3}" -f $Index) -Code "38;5;242"
+    $displayName = Format-CdpAnsiText -Text $rawName -Code "1;38;5;81"
+    $displayPath = Format-CdpAnsiText -Text $rawPath -Code "38;5;245"
+
+    "{0}`t{1}`t{2}`t{3}`t{4}`t{5}" -f $Index, $rawName, $rawPath, $displayIndex, $displayName, $displayPath
+}
+
+function Get-CdpPickerPreviewContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project
+    )
+
+    $rootPath = [string]$Project.rootPath
+    $pathExists = Test-Path -LiteralPath $rootPath
+    $pathState = if ($pathExists) { "path exists" } else { "path missing" }
+    $gitPath = Join-Path $rootPath ".git"
+    $gitState = if ($pathExists -and (Test-Path -LiteralPath $gitPath)) {
+        "git repo detected"
+    } else {
+        "git repo not detected"
+    }
+
+    @(
+        "cdp project"
+        "-----------"
+        "name   $($Project.name)"
+        "path   $rootPath"
+        ""
+        "state  $pathState"
+        "git    $gitState"
+        ""
+        "Enter  switch to this project"
+        "Esc    cancel"
+    )
+}
+
+function New-CdpPickerPreviewDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Projects
+    )
+
+    $previewDir = Join-Path ([System.IO.Path]::GetTempPath()) "cdp-fzf-$PID-$([guid]::NewGuid().ToString('N'))"
+    New-Item -ItemType Directory -Path $previewDir -Force | Out-Null
+
+    $index = 1
+    foreach ($project in $Projects) {
+        $previewPath = Join-Path $previewDir "$index.txt"
+        Get-CdpPickerPreviewContent -Project $project |
+            Set-Content -Path $previewPath -Encoding UTF8
+        $index++
+    }
+
+    $previewDir
+}
+
+function Get-CdpPickerPreviewCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PreviewDir
+    )
+
+    $previewPath = Join-Path $PreviewDir "{1}.txt"
+    $escapedPreviewPath = $previewPath -replace "'", "''"
+    "powershell -NoLogo -NoProfile -Command `"Get-Content -LiteralPath '$escapedPreviewPath'`""
+}
+
+function Get-CdpFzfColorTheme {
+    "fg:#cdd6f4,bg:-1,hl:#89dceb,fg+:#ffffff,bg+:#313244,hl+:#f5c2e7,prompt:#94e2d5,pointer:#f38ba8,marker:#a6e3a1,border:#89b4fa,header:#bac2de,info:#fab387"
+}
+
+function Limit-CdpText {
+    param(
+        [AllowNull()]
+        [string]$Text,
+
+        [Parameter(Mandatory = $true)]
+        [int]$MaxLength
+    )
+
+    if ($null -eq $Text) {
+        return ""
+    }
+
+    if ($Text.Length -le $MaxLength) {
+        return $Text
+    }
+
+    $Text.Substring(0, [Math]::Max(0, $MaxLength - 3)) + "..."
 }
 
 function Switch-Project {
@@ -200,35 +329,59 @@ function Switch-Project {
         # CRITICAL: Must set BOTH InputEncoding and OutputEncoding for IME to work
         $originalOutputEncoding = [Console]::OutputEncoding
         $originalInputEncoding = [Console]::InputEncoding
+        $previewDir = $null
         try {
             [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
             [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
-            # Launch fzf with enhanced options
+            # Launch fzf with themed ANSI rows and a lightweight project preview.
             # Note: --no-mouse prevents IME mouse click conflicts
-            # Height increased to 60% for better visibility
             $prompt = if ([string]::IsNullOrWhiteSpace($Query)) {
-                "Select project: "
+                "cdp > "
             } else {
-                "Select project ($Query): "
+                "cdp ($Query) > "
             }
             $header = Get-CdpPickerHeader `
                 -ShownProjectCount $projectsForSelection.Count `
                 -TotalProjectCount $enabledProjects.Count `
                 -ConfigPath $ConfigPath
+            $previewDir = New-CdpPickerPreviewDirectory -Projects $projectsForSelection
+            $previewCommand = Get-CdpPickerPreviewCommand -PreviewDir $previewDir
+            $pickerLines = for ($i = 0; $i -lt $projectsForSelection.Count; $i++) {
+                New-CdpPickerLine -Project $projectsForSelection[$i] -Index ($i + 1)
+            }
 
-            $selectedProjectName = $projectsForSelection.name | & $fzfCommand `
+            $selectedLine = $pickerLines | & $fzfCommand `
                 --prompt=$prompt `
                 --header=$header `
-                --height=60% `
+                --height=70% `
                 --layout=reverse `
-                --border `
+                --border=rounded `
+                --border-label=" cdp warp " `
+                --ansi `
+                --delimiter="$([char]9)" `
+                --with-nth=4,5,6 `
+                --nth=2,3 `
                 --no-mouse `
-                --preview-window=hidden
+                --preview=$previewCommand `
+                --preview-window=right:50%:wrap `
+                --pointer=">" `
+                --marker="*" `
+                --color=(Get-CdpFzfColorTheme)
+
+            if (-not [string]::IsNullOrWhiteSpace($selectedLine)) {
+                $selectedFields = $selectedLine -split "`t"
+                if ($selectedFields.Count -ge 2) {
+                    $selectedProjectName = $selectedFields[1]
+                }
+            }
         }
         finally {
             [Console]::OutputEncoding = $originalOutputEncoding
             [Console]::InputEncoding = $originalInputEncoding
+            if (-not [string]::IsNullOrWhiteSpace($previewDir) -and (Test-Path -LiteralPath $previewDir)) {
+                Remove-Item -LiteralPath $previewDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
     }
 
@@ -313,21 +466,33 @@ function Get-ProjectList {
             return
         }
 
-        Write-Host "`nEnabled Projects ($($enabledProjects.Count)):" -ForegroundColor Cyan
-        Write-Host ("=" * 80) -ForegroundColor Gray
-        Write-Host ""
+        $nameWidth = 14
+        foreach ($project in $enabledProjects) {
+            $projectName = [string]$project.name
+            $nameWidth = [Math]::Max($nameWidth, $projectName.Length)
+        }
+        $nameWidth = [Math]::Min($nameWidth, 30)
+
+        Write-Host "`ncdp projects " -ForegroundColor Cyan -NoNewline
+        Write-Host "($($enabledProjects.Count) enabled)" -ForegroundColor DarkGray
+        Write-Host ("-" * 96) -ForegroundColor DarkGray
+        Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
+        Write-Host (("{0,-$nameWidth} " -f "Project")) -ForegroundColor Cyan -NoNewline
+        Write-Host "Path" -ForegroundColor DarkGray
+        Write-Host ("-" * 96) -ForegroundColor DarkGray
 
         $index = 1
         foreach ($project in $enabledProjects) {
-            $number = "[$index]".PadRight(5)
-            Write-Host "  $number" -ForegroundColor Gray -NoNewline
-            Write-Host "$($project.name)" -ForegroundColor Green
-            Write-Host "         $($project.rootPath)" -ForegroundColor DarkGray
+            $number = "{0:00}" -f $index
+            $projectName = Limit-CdpText -Text ([string]$project.name) -MaxLength $nameWidth
+            Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
+            Write-Host (("{0,-$nameWidth} " -f $projectName)) -ForegroundColor Green -NoNewline
+            Write-Host "$($project.rootPath)" -ForegroundColor DarkGray
             $index++
         }
 
-        Write-Host ""
-        Write-Host "Config file: $ConfigPath" -ForegroundColor DarkGray
+        Write-Host ("-" * 96) -ForegroundColor DarkGray
+        Write-Host "config: $ConfigPath" -ForegroundColor DarkGray
     } catch {
         Write-Host "Error: Failed to read configuration." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray

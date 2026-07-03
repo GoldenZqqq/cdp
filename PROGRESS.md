@@ -18,7 +18,7 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Release polish checklist is complete. Current release step: prepare version 1.5.0.
+Release polish checklist is complete. Current release step: prepare version 1.6.0.
 
 ## Verification Log
 
@@ -56,3 +56,4 @@ Release polish checklist is complete. Current release step: prepare version 1.5.
 - Release 1.5.0: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
 - Release 1.5.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
 - Release 1.5.0: `git diff --check` reported no whitespace errors.
+- Release 1.6.0: Added neon-themed fzf rows, right-side picker preview, and compact cdp-ls tables for PowerShell and WSL/bash.

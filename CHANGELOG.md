@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.6.0
+
+### Added
+
+- Added a neon-styled `fzf` picker with ANSI-colored project rows, rounded border, pointer/marker styling, and a right-side project preview.
+- Added project preview details for path availability and Git repository detection.
+
+### Changed
+
+- `cdp-ls` / `Get-ProjectList` now renders a compact aligned table instead of the previous two-line-per-project list.
+- PowerShell and WSL/bash picker styling now stay visually consistent without adding new required dependencies.
+
 ## 1.5.0
 
 ### Added

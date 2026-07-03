@@ -138,13 +138,18 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
-cdp v1.5.0 | 56 projects | C:\Users\you\.cdp\projects.json
-Select project: api
+cdp v1.6.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp > api
 
-> my-api
-  company-admin
-  personal-blog
-  cdp
+  01  my-api          C:\Work\my-api
+> 02  company-admin   C:\Work\company-admin
+  03  personal-blog   C:\Work\personal-blog
+
+Preview
+-------
+name   company-admin
+state  path exists
+git    git repo detected
 ```
 
 After selection:
@@ -174,6 +179,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 ## Features
 
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
+- **Neon TUI**: colored candidates, right-side project preview, and visible path/Git status
 - **Fast query jumps**: `cdp api` switches directly on one match, or filters fzf to matching projects
 - **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
 - **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
