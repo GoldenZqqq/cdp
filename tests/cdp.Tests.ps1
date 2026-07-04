@@ -147,6 +147,7 @@ Describe 'project configuration helpers' {
 
     It 'switches directly when a query has one match' {
         $configPath = Join-Path $TestDrive 'projects.json'
+        $statePath = Join-Path $TestDrive 'direct-state.json'
         $apiPath = Join-Path $TestDrive 'ApiProject'
         $webPath = Join-Path $TestDrive 'WebProject'
         New-Item -ItemType Directory -Path $apiPath | Out-Null
@@ -165,6 +166,8 @@ Describe 'project configuration helpers' {
             }
         ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
 
+        $previousStatePath = $env:CDP_STATE_PATH
+        $env:CDP_STATE_PATH = $statePath
         Push-Location $TestDrive
         try {
             Invoke-Cdp Api $configPath
@@ -172,6 +175,7 @@ Describe 'project configuration helpers' {
             (Get-Location).Path | Should -Be $apiPath
         } finally {
             Pop-Location
+            $env:CDP_STATE_PATH = $previousStatePath
         }
     }
 
@@ -238,6 +242,7 @@ Describe 'project configuration helpers' {
 
     It 'refreshes cached project config after adding a project' {
         $configPath = Join-Path $TestDrive 'cached-projects.json'
+        $statePath = Join-Path $TestDrive 'cached-state.json'
         $apiPath = Join-Path $TestDrive 'CachedApiProject'
         $webPath = Join-Path $TestDrive 'CachedWebProject'
         New-Item -ItemType Directory -Path $apiPath | Out-Null
@@ -251,6 +256,8 @@ Describe 'project configuration helpers' {
             }
         ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
 
+        $previousStatePath = $env:CDP_STATE_PATH
+        $env:CDP_STATE_PATH = $statePath
         Push-Location $TestDrive
         try {
             Invoke-Cdp CachedApi $configPath
@@ -260,6 +267,7 @@ Describe 'project configuration helpers' {
             (Get-Location).Path | Should -Be $webPath
         } finally {
             Pop-Location
+            $env:CDP_STATE_PATH = $previousStatePath
         }
     }
 
