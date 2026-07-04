@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+### Added
+
+- Added `cdp recent` / `cdp-recent` for listing recently visited projects.
+- Added recent project tracking in `~/.cdp/state.json` after successful PowerShell and WSL/bash switches.
+- Added `CDP_STATE_PATH` override for isolated automation and tests.
+
 ## 1.6.3
 
 ### Fixed

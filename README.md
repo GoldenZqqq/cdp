@@ -131,6 +131,9 @@ cdp doctor
 # 查看当前版本、配置和升级命令
 cdp version
 
+# 查看最近访问过的项目
+cdp recent
+
 # 从 PowerShell 直接启动 WSL 并进入项目
 cdp -WSL
 ```
@@ -138,7 +141,7 @@ cdp -WSL
 fzf 菜单里输入几个字母即可模糊匹配：
 
 ```text
-cdp v1.6.3 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v1.7.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -184,6 +187,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 - **兼容 Project Manager**：自动读取 VS Code/Cursor Project Manager 配置
 - **自带项目管理命令**：`cdp-add`、`cdp-rm`、`cdp-ls`、`cdp-config`
 - **批量 Git 扫描**：`cdp-scan` 可把目录下的 Git 仓库批量导入配置
+- **最近访问项目**：`cdp recent` / `cdp-recent` 按最后访问时间列出最近切换过的项目
 - **配置健康检查**：`cdp doctor` 检查依赖、JSON、重复项目名、失效路径
 - **Windows + WSL/Linux**：PowerShell 和 bash/zsh 版本共享同一类配置
 - **终端标签同步**：切换后自动把 tab title 改为项目名
@@ -203,6 +207,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | `Switch-Project -WSL` | `cdp -WSL` | 选择项目并启动 WSL 进入目录 |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | 诊断 cdp 环境和配置 |
 | `Show-CdpAbout` | `cdp about`, `cdp version` | 显示 cdp Logo、版本、配置路径、项目数量和升级命令 |
+| `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | 列出最近访问过的项目 |
 | `Add-Project` | `cdp-add` | 添加当前目录或指定路径 |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | 扫描 Git 仓库并批量导入配置 |
 | `Remove-Project` | `cdp-rm` | 删除项目，支持交互选择 |
@@ -218,6 +223,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
 | `cdp about` / `cdp version` | 显示版本、配置路径、项目数量和升级命令 |
+| `cdp recent` / `cdp-recent` | 列出最近访问过的项目 |
 | `cdp-add` | 添加当前目录或指定路径 |
 | `cdp-scan ~/code` / `cdp scan ~/code` | 扫描 Git 仓库并批量导入配置 |
 | `cdp-ls` | 列出已启用项目 |
@@ -263,6 +269,8 @@ cdp-scan E:\Projects
 ```
 
 建议在 JSON 中使用 `/`，避免 Windows 反斜杠转义。
+
+最近访问记录保存在独立状态文件 `~/.cdp/state.json`，不会写回 `projects.json`。自动化或测试场景可以用 `CDP_STATE_PATH` 指向临时状态文件。
 
 ---
 
@@ -373,7 +381,7 @@ CI 覆盖：
 - [x] PowerShell + WSL/Linux 支持
 - [x] `cdp doctor` 诊断命令
 - [x] GitHub Actions 基础 CI
-- [ ] 最近访问项目
+- [x] 最近访问项目
 - [ ] 项目置顶 / 收藏
 - [x] `cdp <query>` 非交互快速匹配
 - [x] 批量扫描 Git 仓库生成配置

@@ -131,6 +131,9 @@ cdp doctor
 # Show the current version, config, and upgrade command
 cdp version
 
+# Show recently visited projects
+cdp recent
+
 # Launch WSL directly into a selected project
 cdp -WSL
 ```
@@ -138,7 +141,7 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
-cdp v1.6.3 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v1.7.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -184,6 +187,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 - **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
 - **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
 - **Bulk Git scanning**: `cdp-scan` imports Git repositories under a directory into your config
+- **Recent projects**: `cdp recent` / `cdp-recent` lists projects ordered by last visit
 - **Health checks**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths
 - **Windows + WSL/Linux**: PowerShell and bash/zsh versions share the same config shape
 - **Terminal tab titles**: selected project names become visible in terminal tabs
@@ -203,6 +207,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | `Switch-Project -WSL` | `cdp -WSL` | Selects a project and launches WSL in that directory |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | Diagnoses the cdp environment and config |
 | `Show-CdpAbout` | `cdp about`, `cdp version` | Shows the cdp logo, version, config path, project count, and upgrade command |
+| `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | Lists recently visited projects |
 | `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | Scans Git repositories and imports them into the config |
 | `Remove-Project` | `cdp-rm` | Removes a project, with interactive selection support |
@@ -218,6 +223,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
 | `cdp about` / `cdp version` | Shows the version, config path, project count, and upgrade command |
+| `cdp recent` / `cdp-recent` | Lists recently visited projects |
 | `cdp-add` | Adds the current directory or a specific path |
 | `cdp-scan ~/code` / `cdp scan ~/code` | Scans Git repositories and imports them into the config |
 | `cdp-ls` | Lists enabled projects |
@@ -263,6 +269,8 @@ Custom config format:
 ```
 
 Using `/` in JSON paths avoids escaping Windows backslashes.
+
+Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
 
 ---
 
@@ -373,7 +381,7 @@ CI covers:
 - [x] PowerShell + WSL/Linux support
 - [x] `cdp doctor` diagnostics
 - [x] GitHub Actions baseline CI
-- [ ] Recent projects
+- [x] Recent projects
 - [ ] Pinned / favorite projects
 - [x] `cdp <query>` non-interactive matching
 - [x] Bulk scan Git repositories into config

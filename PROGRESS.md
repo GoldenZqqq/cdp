@@ -18,7 +18,20 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Release polish checklist is complete. Current release step: prepare version 1.6.3.
+Release polish checklist is complete. Version 1.6.3 has been published to GitHub Releases and PowerShell Gallery.
+
+Current release step: build and publish version 1.7.0 with recent project tracking.
+
+## 1.7.0 Recent Projects Checklist
+
+- [x] Mark 1.6.3 release work as complete.
+- [x] Record recently visited projects after successful PowerShell switches.
+- [x] Record recently visited projects after successful WSL/bash switches.
+- [x] Add `cdp recent` / `cdp-recent` listing commands.
+- [x] Keep recent state separate from project configuration in `~/.cdp/state.json`.
+- [x] Run full release validation.
+- [ ] Publish v1.7.0 to GitHub Releases and PowerShell Gallery.
+- [ ] Upgrade local cdp installation to v1.7.0.
 
 ## Verification Log
 
@@ -60,3 +73,10 @@ Release polish checklist is complete. Current release step: prepare version 1.6.
 - Release 1.6.1: Fixed PowerShell fzf color theme native argument passing.
 - Release 1.6.2: Fixed PowerShell fzf preview placeholder handling on Windows.
 - Release 1.6.3: Fixed Windows PowerShell preview script -File path quoting.
+- Release 1.7.0: Added recent project tracking for PowerShell and WSL/bash.
+- Release 1.7.0: Windows PowerShell 5.1 `Invoke-Pester -Path ./tests -CI` passed 14 tests.
+- Release 1.7.0: PowerShell 7 `Invoke-Pester -Path ./tests -CI` passed 14 tests.
+- Release 1.7.0: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
+- Release 1.7.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
+- Release 1.7.0: `git diff --check` reported no whitespace errors.
+- Release 1.7.0: Local WSL recent smoke was not run end-to-end because this Arch distro does not have `jq`; CI installs `jq` and now covers `cdp recent`.

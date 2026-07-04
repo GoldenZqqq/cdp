@@ -20,7 +20,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '1.6.3'
+        $manifest.Version.ToString() | Should -Be '1.7.0'
     }
 }
 
@@ -38,6 +38,7 @@ Describe 'cdp public surface' {
         $commandNames | Should -Contain 'Set-ProjectConfig'
         $commandNames | Should -Contain 'Test-ProjectHealth'
         $commandNames | Should -Contain 'Show-CdpAbout'
+        $commandNames | Should -Contain 'Get-CdpRecentProjects'
     }
 
     It 'exports the expected aliases' {
@@ -49,6 +50,7 @@ Describe 'cdp public surface' {
         (Get-Alias cdp-config).Definition | Should -Be 'Set-ProjectConfig'
         (Get-Alias cdp-doctor).Definition | Should -Be 'Test-ProjectHealth'
         (Get-Alias cdp-scan).Definition | Should -Be 'Import-GitProjects'
+        (Get-Alias cdp-recent).Definition | Should -Be 'Get-CdpRecentProjects'
     }
 }
 
@@ -124,7 +126,7 @@ Describe 'project configuration helpers' {
 
         $about = Show-CdpAbout -ConfigPath $configPath -PassThru
         $about.Name | Should -Be 'cdp'
-        $about.Version | Should -Be '1.6.3'
+        $about.Version | Should -Be '1.7.0'
         $about.ConfigPath | Should -Be $configPath
         $about.ProjectCount | Should -Be 1
         $about.EnabledProjectCount | Should -Be 1
@@ -133,12 +135,12 @@ Describe 'project configuration helpers' {
 
     It 'reports an upgrade command when a newer version is available' {
         InModuleScope cdp {
-            $check = Get-CdpUpdateHealthChecks -CurrentVersion ([version]'1.6.2') -LatestVersion ([version]'1.6.3')
+            $check = Get-CdpUpdateHealthChecks -CurrentVersion ([version]'1.6.3') -LatestVersion ([version]'1.7.0')
 
             $check.Name | Should -Be 'updates'
             $check.Passed | Should -BeFalse
             $check.Level | Should -Be 'Warning'
-            $check.Message | Should -Match '1\.6\.2 -> 1\.6\.3'
+            $check.Message | Should -Match '1\.6\.3 -> 1\.7\.0'
             $check.Message | Should -Match 'Update-Module -Name cdp -Scope CurrentUser -Force'
         }
     }
@@ -170,6 +172,67 @@ Describe 'project configuration helpers' {
             (Get-Location).Path | Should -Be $apiPath
         } finally {
             Pop-Location
+        }
+    }
+
+    It 'records recent projects after a successful switch' {
+        $configPath = Join-Path $TestDrive 'recent-projects.json'
+        $statePath = Join-Path $TestDrive 'state.json'
+        $apiPath = Join-Path $TestDrive 'RecentApiProject'
+        New-Item -ItemType Directory -Path $apiPath | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                name = 'RecentApiProject'
+                rootPath = $apiPath
+                enabled = $true
+            }
+        ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
+
+        $previousStatePath = $env:CDP_STATE_PATH
+        $env:CDP_STATE_PATH = $statePath
+        Push-Location $TestDrive
+        try {
+            Invoke-Cdp RecentApi $configPath
+            Invoke-Cdp RecentApi $configPath
+
+            $recent = @(Get-CdpRecentProjects -PassThru)
+            $recent.Count | Should -Be 1
+            $recent[0].name | Should -Be 'RecentApiProject'
+            $recent[0].rootPath | Should -Be $apiPath
+            $recent[0].visitCount | Should -Be 2
+        } finally {
+            Pop-Location
+            $env:CDP_STATE_PATH = $previousStatePath
+        }
+    }
+
+    It 'routes cdp recent through Invoke-Cdp' {
+        $statePath = Join-Path $TestDrive 'state-route.json'
+        $projectPath = Join-Path $TestDrive 'RouteRecentProject'
+        New-Item -ItemType Directory -Path $projectPath | Out-Null
+
+        [PSCustomObject]@{
+            recentProjects = @(
+                [PSCustomObject]@{
+                    name = 'RouteRecentProject'
+                    rootPath = $projectPath
+                    lastVisitedAt = '2026-07-04T00:00:00Z'
+                    visitCount = 1
+                }
+            )
+        } | ConvertTo-Json -Depth 4 | Set-Content -Path $statePath -Encoding UTF8
+
+        $previousStatePath = $env:CDP_STATE_PATH
+        $env:CDP_STATE_PATH = $statePath
+        try {
+            { Invoke-Cdp recent 1 } | Should -Not -Throw
+
+            $recent = @(Get-CdpRecentProjects -Count 1 -PassThru)
+            $recent.Count | Should -Be 1
+            $recent[0].name | Should -Be 'RouteRecentProject'
+        } finally {
+            $env:CDP_STATE_PATH = $previousStatePath
         }
     }
 

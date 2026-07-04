@@ -110,11 +110,14 @@ jobs:
           ]
           JSON
 
+          export CDP_STATE_PATH="$tmpdir/state.json"
           source ./src/cdp.sh
           cdp-doctor "$tmpdir/projects.json"
           cdp doctor "$tmpdir/projects.json"
           cdp SmokeProject "$tmpdir/projects.json"
           test "$PWD" = "$tmpdir/project"
+          cdp recent 1
+          test "$(jq -r '.recentProjects[0].name' "$CDP_STATE_PATH")" = "SmokeProject"
 
           scanroot="$tmpdir/repos"
           mkdir -p "$scanroot/alpha/.git" "$scanroot/nested/beta/.git"

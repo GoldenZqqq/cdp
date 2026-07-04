@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.6.3'
+ModuleVersion = '1.7.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout')
+FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -76,7 +76,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config', 'cdp-doctor', 'cdp-scan')
+AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config', 'cdp-doctor', 'cdp-scan', 'cdp-recent')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -107,6 +107,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
+v1.7.0 - Recent Projects
+- Added: cdp recent / cdp-recent shows recently visited projects ordered by last use
+- Added: Successful project switches are tracked in ~/.cdp/state.json without changing projects.json
+- Added: CDP_STATE_PATH override for automation and isolated tests
+
 v1.6.3 - PowerShell Preview File Path Hotfix
 - Fixed: PowerShell picker preview now passes the preview script path to -File with Windows-safe double quotes
 

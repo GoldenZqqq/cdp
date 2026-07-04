@@ -6,10 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 1.6.3
+# Version: 1.7.0
 # License: MIT
 
-CDP_VERSION="1.6.3"
+CDP_VERSION="1.7.0"
 
 # Colors
 RED='\033[0;31m'
@@ -171,6 +171,61 @@ save_config_choice() {
 
     mkdir -p "$config_dir"
     echo -n "$config_path" > "$config_choice_file"
+}
+
+cdp_state_path() {
+    if [[ -n "$CDP_STATE_PATH" ]]; then
+        echo "$CDP_STATE_PATH"
+    else
+        echo "$HOME/.cdp/state.json"
+    fi
+}
+
+initialize_state() {
+    local state_path="$1"
+    local state_dir
+    state_dir=$(dirname "$state_path")
+    mkdir -p "$state_dir"
+
+    if [[ ! -f "$state_path" ]] || ! jq -e 'type == "object"' "$state_path" >/dev/null 2>&1; then
+        echo '{"recentProjects":[]}' > "$state_path"
+    fi
+}
+
+cdp_record_recent() {
+    local name="$1"
+    local root_path="$2"
+
+    [[ -z "$name" || -z "$root_path" ]] && return 0
+    command -v jq >/dev/null 2>&1 || return 0
+
+    local state_path
+    local temp_file
+    local now
+    state_path=$(cdp_state_path)
+    initialize_state "$state_path"
+    temp_file=$(mktemp)
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    if jq --arg name "$name" --arg path "$root_path" --arg now "$now" '
+        .recentProjects as $recent |
+        .recentProjects = (
+            (($recent // []) | map(select(.rootPath != $path))) +
+            [{
+                "name": $name,
+                "rootPath": $path,
+                "lastVisitedAt": $now,
+                "visitCount": (((($recent // []) | map(select(.rootPath == $path)) | .[0].visitCount) // 0) + 1)
+            }]
+            | sort_by(.lastVisitedAt)
+            | reverse
+            | .[:20]
+        )
+    ' "$state_path" > "$temp_file" 2>/dev/null; then
+        mv "$temp_file" "$state_path"
+    else
+        rm -f "$temp_file"
+    fi
 }
 
 # Function to find all available config files
@@ -507,6 +562,11 @@ cdp() {
             cdp_about "$@"
             return
             ;;
+        recent|recents|history)
+            shift
+            cdp-recent "$@"
+            return
+            ;;
         scan|import)
             shift
             cdp-scan "$@"
@@ -648,17 +708,19 @@ cdp() {
     fi
 
     # Get the rootPath for selected project
-    local project_path=$(jq -r --arg name "$selected" \
+    local raw_project_path=$(jq -r --arg name "$selected" \
         '.[] | select(.name == $name and .enabled == true) | .rootPath' \
         "$config_path" 2>/dev/null | head -n1)
 
-    if [[ -n "$project_path" ]]; then
+    if [[ -n "$raw_project_path" ]]; then
         # Convert Windows path to WSL path if needed
-        project_path=$(convert_windows_to_wsl "$project_path")
+        local project_path
+        project_path=$(convert_windows_to_wsl "$raw_project_path")
 
         # Check if path exists
         if [[ -d "$project_path" ]]; then
             cd "$project_path" || return 1
+            cdp_record_recent "$selected" "$raw_project_path"
             echo -e "${GREEN}Switched to project: $selected${NC}"
             echo -e "${GRAY}Path: $project_path${NC}"
 
@@ -738,6 +800,77 @@ cdp-ls() {
 
     echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
     echo -e "${GRAY}config: $config_path${NC}"
+}
+
+cdp-recent() {
+    local count="${1:-10}"
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if ! [[ "$count" =~ ^[0-9]+$ ]] || [[ "$count" -le 0 ]]; then
+        count=10
+    fi
+
+    local state_path
+    state_path=$(cdp_state_path)
+
+    if [[ ! -f "$state_path" ]]; then
+        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
+        return 0
+    fi
+
+    local recent_projects
+    recent_projects=$(jq -r --argjson count "$count" '
+        (.recentProjects // [])
+        | sort_by(.lastVisitedAt)
+        | reverse
+        | .[:$count]
+        | .[]
+        | [.name, .lastVisitedAt, ((.visitCount // 1) | tostring), .rootPath]
+        | @tsv
+    ' "$state_path" 2>/dev/null)
+
+    if [[ -z "$recent_projects" ]]; then
+        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
+        return 0
+    fi
+
+    local name_width=14
+    local name
+    local last_used
+    local visits
+    local path
+    while IFS=$'\t' read -r name last_used visits path; do
+        if (( ${#name} > name_width )); then
+            name_width=${#name}
+        fi
+    done <<< "$recent_projects"
+    if (( name_width > 30 )); then
+        name_width=30
+    fi
+
+    echo -e "\n${CYAN}cdp recent${NC} ${GRAY}($(line_count "$recent_projects") shown)${NC}"
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
+    printf "  ${GRAY}%-4s${NC} ${CYAN}%-*s${NC} ${GRAY}%-24s %-7s %s${NC}\n" "#" "$name_width" "Project" "Last used" "Visits" "Path"
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
+
+    local index=1
+    while IFS=$'\t' read -r name last_used visits path; do
+        local display_name
+        local display_last
+        local display_path
+        display_name=$(truncate_text "$name" "$name_width")
+        display_last=$(truncate_text "$last_used" 24)
+        display_path=$(convert_windows_to_wsl "$path")
+        printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%-24s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_last" "$visits" "$display_path"
+        ((index++))
+    done <<< "$recent_projects"
+
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
+    echo -e "${GRAY}state: $state_path${NC}"
 }
 
 # Function to add current directory as a project
@@ -1094,5 +1227,6 @@ if [[ -n "$BASH_VERSION" ]]; then
     export -f cdp-add
     export -f cdp-config
     export -f cdp-doctor
+    export -f cdp-recent
     export -f cdp-scan
 fi

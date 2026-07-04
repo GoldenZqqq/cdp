@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.6.3
+    Version: 1.7.0
     License: MIT
 #>
 
@@ -431,10 +431,13 @@ function Switch-Project {
             Write-Host "Launching WSL in project: $($selectedProject.name)" -ForegroundColor Green
             Write-Host "WSL path: $wslPath" -ForegroundColor Gray
 
+            Add-CdpRecentProject -Project $selectedProject
+
             # Launch WSL with cd command
             wsl --cd $wslPath
         } else {
             Set-Location -Path $selectedProject.rootPath
+            Add-CdpRecentProject -Project $selectedProject
             Write-Host "Switched to project: $($selectedProject.name)" -ForegroundColor Green
 
             # Update Windows Terminal tab title
@@ -835,6 +838,209 @@ function Initialize-ConfigFile {
         Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
         Write-Host "Created new config file at: $ConfigPath" -ForegroundColor Green
     }
+}
+
+function Get-CdpStatePath {
+    if (-not [string]::IsNullOrWhiteSpace($env:CDP_STATE_PATH)) {
+        return [Environment]::ExpandEnvironmentVariables($env:CDP_STATE_PATH)
+    }
+
+    Join-Path $env:USERPROFILE ".cdp\state.json"
+}
+
+function New-CdpState {
+    [PSCustomObject]@{
+        recentProjects = @()
+    }
+}
+
+function Get-CdpState {
+    $statePath = Get-CdpStatePath
+    if (-not (Test-Path -LiteralPath $statePath)) {
+        return New-CdpState
+    }
+
+    try {
+        $jsonContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+        $state = ConvertFrom-Json -InputObject $jsonContent
+
+        if ($null -eq $state -or $state -is [array]) {
+            return New-CdpState
+        }
+
+        if ($state.PSObject.Properties.Name -notcontains 'recentProjects') {
+            $state | Add-Member -MemberType NoteProperty -Name recentProjects -Value @()
+        }
+
+        $state.recentProjects = @($state.recentProjects)
+        return $state
+    } catch {
+        return New-CdpState
+    }
+}
+
+function Save-CdpState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$State
+    )
+
+    $statePath = Get-CdpStatePath
+    $stateDir = Split-Path -Parent $statePath
+    if (-not [string]::IsNullOrWhiteSpace($stateDir) -and -not (Test-Path -LiteralPath $stateDir)) {
+        New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+    }
+
+    ConvertTo-Json -InputObject $State -Depth 10 |
+        Out-File -FilePath $statePath -Encoding UTF8
+}
+
+function Add-CdpRecentProject {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project,
+
+        [Parameter(Mandatory = $false)]
+        [int]$MaxCount = 20
+    )
+
+    try {
+        $name = [string]$Project.name
+        $rootPath = [string]$Project.rootPath
+        if ([string]::IsNullOrWhiteSpace($name) -or [string]::IsNullOrWhiteSpace($rootPath)) {
+            return
+        }
+
+        $state = Get-CdpState
+        $recentProjects = @($state.recentProjects)
+        $existing = @($recentProjects | Where-Object {
+            [string]::Equals([string]$_.rootPath, $rootPath, [StringComparison]::OrdinalIgnoreCase)
+        }) | Select-Object -First 1
+
+        $visitCount = 1
+        if ($existing -and $null -ne $existing.visitCount) {
+            $visitCount = [int]$existing.visitCount + 1
+        }
+
+        $newEntry = [PSCustomObject]@{
+            name = $name
+            rootPath = $rootPath
+            lastVisitedAt = [DateTimeOffset]::UtcNow.ToString("o")
+            visitCount = $visitCount
+        }
+
+        $state.recentProjects = @(
+            @($recentProjects | Where-Object {
+                -not [string]::Equals([string]$_.rootPath, $rootPath, [StringComparison]::OrdinalIgnoreCase)
+            }) + $newEntry |
+                Sort-Object -Property @{
+                    Expression = {
+                        try {
+                            [DateTimeOffset]::Parse([string]$_.lastVisitedAt)
+                        } catch {
+                            [DateTimeOffset]::MinValue
+                        }
+                    }
+                } -Descending |
+                Select-Object -First $MaxCount
+        )
+
+        Save-CdpState -State $state
+    } catch {
+        Write-Verbose "Failed to record recent project: $($_.Exception.Message)"
+    }
+}
+
+function Get-CdpRecentProjects {
+    <#
+    .SYNOPSIS
+        Show recently visited cdp projects.
+
+    .DESCRIPTION
+        Lists projects successfully opened through cdp, ordered by most recent
+        visit. Recent state is stored separately from project configuration at
+        ~/.cdp/state.json.
+
+    .PARAMETER Count
+        Maximum number of recent projects to display. Defaults to 10.
+
+    .PARAMETER PassThru
+        Returns recent project objects instead of only writing the table.
+
+    .EXAMPLE
+        cdp recent
+        # Shows recently visited projects
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [int]$Count = 10,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    if ($Count -le 0) {
+        $Count = 10
+    }
+
+    $state = Get-CdpState
+    $recentProjects = @($state.recentProjects |
+        Sort-Object -Property @{
+            Expression = {
+                try {
+                    [DateTimeOffset]::Parse([string]$_.lastVisitedAt)
+                } catch {
+                    [DateTimeOffset]::MinValue
+                }
+            }
+        } -Descending |
+        Select-Object -First $Count)
+
+    if ($PassThru) {
+        return $recentProjects
+    }
+
+    if ($recentProjects.Count -eq 0) {
+        Write-Host "No recent projects yet. Switch with cdp first." -ForegroundColor Yellow
+        return
+    }
+
+    $nameWidth = 14
+    foreach ($project in $recentProjects) {
+        $projectName = [string]$project.name
+        $nameWidth = [Math]::Max($nameWidth, $projectName.Length)
+    }
+    $nameWidth = [Math]::Min($nameWidth, 30)
+
+    Write-Host "`ncdp recent " -ForegroundColor Cyan -NoNewline
+    Write-Host "($($recentProjects.Count) shown)" -ForegroundColor DarkGray
+    Write-Host ("-" * 110) -ForegroundColor DarkGray
+    Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
+    Write-Host (("{0,-$nameWidth} " -f "Project")) -ForegroundColor Cyan -NoNewline
+    Write-Host ("{0,-24} " -f "Last used") -ForegroundColor DarkGray -NoNewline
+    Write-Host ("{0,-7} " -f "Visits") -ForegroundColor DarkGray -NoNewline
+    Write-Host "Path" -ForegroundColor DarkGray
+    Write-Host ("-" * 110) -ForegroundColor DarkGray
+
+    $index = 1
+    foreach ($project in $recentProjects) {
+        $number = "{0:00}" -f $index
+        $projectName = Limit-CdpText -Text ([string]$project.name) -MaxLength $nameWidth
+        $lastVisited = [string]$project.lastVisitedAt
+        $visitCount = if ($null -eq $project.visitCount) { 1 } else { [int]$project.visitCount }
+
+        Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
+        Write-Host (("{0,-$nameWidth} " -f $projectName)) -ForegroundColor Green -NoNewline
+        Write-Host ("{0,-24} " -f (Limit-CdpText -Text $lastVisited -MaxLength 24)) -ForegroundColor DarkGray -NoNewline
+        Write-Host ("{0,-7} " -f $visitCount) -ForegroundColor Cyan -NoNewline
+        Write-Host "$($project.rootPath)" -ForegroundColor DarkGray
+        $index++
+    }
+
+    Write-Host ("-" * 110) -ForegroundColor DarkGray
+    Write-Host "state: $(Get-CdpStatePath)" -ForegroundColor DarkGray
 }
 
 function New-CdpHealthCheck {
@@ -1863,6 +2069,18 @@ function Invoke-Cdp {
         return
     }
 
+    if ($Command -in @('recent', 'recents', 'history')) {
+        $recentCount = 10
+        if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) {
+            $parsedRecentCount = 0
+            if ([int]::TryParse($ConfigPath, [ref]$parsedRecentCount) -and $parsedRecentCount -gt 0) {
+                $recentCount = $parsedRecentCount
+            }
+        }
+        Get-CdpRecentProjects -Count $recentCount
+        return
+    }
+
     if ($Command -in @('scan', 'import')) {
         Import-GitProjects -RootPath $ConfigPath
         return
@@ -1890,7 +2108,8 @@ Set-Alias -Name cdp-edit -Value Edit-ProjectConfig
 Set-Alias -Name cdp-config -Value Set-ProjectConfig
 Set-Alias -Name cdp-doctor -Value Test-ProjectHealth
 Set-Alias -Name cdp-scan -Value Import-GitProjects
+Set-Alias -Name cdp-recent -Value Get-CdpRecentProjects
 
 Export-ModuleMember `
-    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout `
-    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects `
+    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent
