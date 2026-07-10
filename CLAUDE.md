@@ -221,6 +221,15 @@ Before committing ANY change, verify:
    git tag -a v1.x.x -m "Release v1.x.x: Brief description"
    git push origin v1.x.x
    ```
+8. Create GitHub Release (MANDATORY — do not skip):
+   ```bash
+   gh release create v1.x.x --title "v1.x.x — Title" --notes "changelog content"
+   ```
+
+**Release Checklist (all three are mandatory)**:
+- [ ] PowerShell Gallery published
+- [ ] Git tag created and pushed
+- [ ] GitHub Release created with changelog
 
 **API Key Management**:
 - Store API key in environment variable: `$env:PS_GALLERY_API_KEY`
