@@ -9,7 +9,7 @@
 # Version: 1.8.0
 # License: MIT
 
-CDP_VERSION="1.8.0"
+CDP_VERSION="2.0.0"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then

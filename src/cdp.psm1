@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.8.0
+    Version: 2.0.0
     License: MIT
 #>
 

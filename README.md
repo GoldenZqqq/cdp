@@ -24,16 +24,11 @@
 
 ## 演示视频
 
-![cdp v1.8.0 中文演示：切换项目并启动 AI CLI 工作区](./docs/assets/cdp-demo-short-zh.gif)
+https://github.com/user-attachments/assets/cdp-v2-promo.mp4
 
-[观看中文 28 秒 MP4](./docs/assets/cdp-demo-short-zh.mp4) · [English GIF](./docs/assets/cdp-demo-short-en.gif) · [English MP4](./docs/assets/cdp-demo-short-en.mp4)
+[观看 v2.0 演示 MP4](./docs/assets/cdp-v2-promo.mp4) · [v1.8 中文 GIF](./docs/assets/cdp-demo-short-zh.gif) · [v1.8 English GIF](./docs/assets/cdp-demo-short-en.gif)
 
-这支 v1.8.0 短版演示展示：`cdp api -Open codex` 如何一步切换并启动 AI CLI，项目置顶 / 别名 / 标签如何整理工作区，以及 `cdp init`、`cdp doctor --fix`、PowerShell / WSL 如何组成一套稳定的终端工作流。
-
-视频脚本、设计规范与 HyperFrames composition：
-[docs/video/cdp-intro-script.md](./docs/video/cdp-intro-script.md)、
-[docs/video/cdp-intro/frame.md](./docs/video/cdp-intro/frame.md)、
-[docs/video/cdp-intro/index.html](./docs/video/cdp-intro/index.html)。
+这支 v2.0 演示展示了 cdp 的核心功能：`cdp status` 多项目 Git 仪表盘、`cdp api -Open codex` 一步切换并启动 AI CLI、`cdp workspace` 多项目工作区、onEnter 环境自动激活、智能 Tab 补全，以及 Windows / macOS / Linux 全平台支持。
 
 ---
 

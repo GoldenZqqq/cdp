@@ -24,16 +24,11 @@ A fast **project workbench** for the Vibe Coding era — one command to see all 
 
 ## Intro Video
 
-![cdp v1.8.0 demo: switch projects and launch an AI CLI workspace](./docs/assets/cdp-demo-short-en.gif)
+https://github.com/user-attachments/assets/cdp-v2-promo.mp4
 
-[Open the English 28-second MP4](./docs/assets/cdp-demo-short-en.mp4) · [中文 GIF](./docs/assets/cdp-demo-short-zh.gif) · [中文 MP4](./docs/assets/cdp-demo-short-zh.mp4)
+[Watch the v2.0 demo MP4](./docs/assets/cdp-v2-promo.mp4) · [v1.8 中文 GIF](./docs/assets/cdp-demo-short-zh.gif) · [v1.8 English GIF](./docs/assets/cdp-demo-short-en.gif)
 
-This v1.8.0 demo shows how `cdp api -Open codex` switches and launches an AI CLI in one move, how pinning / aliases / tags organize the workspace map, and how `cdp init`, `cdp doctor --fix`, PowerShell, and WSL form one stable terminal workflow.
-
-Video script, frame spec, and HyperFrames composition:
-[docs/video/cdp-intro-script.md](./docs/video/cdp-intro-script.md),
-[docs/video/cdp-intro/frame.md](./docs/video/cdp-intro/frame.md),
-[docs/video/cdp-intro/index.html](./docs/video/cdp-intro/index.html).
+This v2.0 demo showcases cdp's core features: `cdp status` multi-project Git dashboard, `cdp api -Open codex` one-step switch and AI CLI launch, `cdp workspace` multi-project workspaces, onEnter environment hooks, intelligent tab completion, and full Windows / macOS / Linux support.
 
 ---
 

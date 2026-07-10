@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.8.0'
+ModuleVersion = '2.0.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,21 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.0.0 - Project Workbench
+- Added: cdp status multi-project Git dashboard with branch, dirty/clean, ahead/behind, and last commit
+- Added: cdp status --dirty to filter repos needing attention
+- Added: cdp status @tag to filter by project tag
+- Added: cdp workspace for multi-project launching (Windows Terminal tabs / tmux)
+- Added: cdp workspace --add and cdp workspace --list for workspace management
+- Added: onEnter hooks for automatic environment activation on project switch
+- Added: Intelligent tab completion for PowerShell, bash, and zsh
+- Added: Native macOS support (zsh + bash, Homebrew install, Application Support config discovery)
+- Added: macOS CI runner with zsh smoke test
+- Fixed: PowerShell 5.1 ConvertFrom-Json array wrapping in Set-ProjectPin, Add-ProjectAlias, Repair-ProjectConfig
+- Fixed: bash 3.2 compatibility (lowercase operator, realpath, negative array index)
+- Fixed: zsh compatibility (BASH_REMATCH, BASH_SOURCE, read -p, status variable)
+- Improved: README repositioned as project workbench with cdp status showcase and updated comparison table
+
 v1.8.0 - AI CLI Workspace Launcher
 - Added: PowerShell cdp can start a workspace command after switching, for example cdp api -Open codex
 - Added: WSL/Linux cdp supports cdp api --open codex with the same launcher presets
