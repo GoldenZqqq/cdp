@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 2.0.1
+    Version: 2.0.2
     License: MIT
 #>
 
@@ -2428,12 +2428,51 @@ function Show-CdpProjectStatus {
     }
     Write-Host "`r                              `r" -NoNewline
 
-    if ($DirtyOnly) {
-        $statusList = @($statusList | Where-Object { $_.NeedsAttention })
-    }
-
     if ($PassThru) {
         return $statusList
+    }
+
+    if ($Fix) {
+        $missingProjects = @($statusList | Where-Object { -not $_.PathExists })
+        if ($missingProjects.Count -eq 0) {
+            Write-Host "`nNo path-missing projects to remove." -ForegroundColor Green
+            return
+        }
+        Write-Host "`nRemoving $($missingProjects.Count) path-missing projects:" -ForegroundColor Yellow
+        foreach ($proj in $missingProjects) {
+            Write-Host "  x $($proj.Name)" -ForegroundColor DarkGray -NoNewline
+            Write-Host "  $($proj.RootPath)" -ForegroundColor DarkGray
+        }
+        $resolvedConfig = if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $ConfigPath } else { Get-DefaultConfigPath }
+        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $resolvedConfig -Raw -Encoding UTF8)
+        $cleaned = @(@($allProjects) | Where-Object { Test-Path -LiteralPath ([string]$_.rootPath) })
+        ConvertTo-Json -InputObject $cleaned -Depth 10 | Out-File -FilePath $resolvedConfig -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $resolvedConfig
+        Write-Host "`nRemoved $($missingProjects.Count) projects. $($cleaned.Count) projects remain." -ForegroundColor Green
+        return
+    }
+
+    if ($Push) {
+        $aheadProjects = @($statusList | Where-Object { $_.AheadCount -gt 0 -and $_.IsGitRepo })
+        if ($aheadProjects.Count -eq 0) {
+            Write-Host "`nNo repos ahead of remote." -ForegroundColor Green
+            return
+        }
+        Write-Host "`nPushing $($aheadProjects.Count) repos ahead of remote:" -ForegroundColor Yellow
+        foreach ($proj in $aheadProjects) {
+            Write-Host "  $($proj.Name) (^$($proj.AheadCount))... " -ForegroundColor Cyan -NoNewline
+            try {
+                $result = & git -C $proj.RootPath push 2>&1
+                Write-Host "done" -ForegroundColor Green
+            } catch {
+                Write-Host "failed: $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
+        return
+    }
+
+    if ($DirtyOnly) {
+        $statusList = @($statusList | Where-Object { $_.NeedsAttention })
     }
 
     $nameWidth = 14
@@ -2509,43 +2548,6 @@ function Show-CdpProjectStatus {
         Write-Host ($summaryParts -join " | ") -ForegroundColor Yellow
     } else {
         Write-Host "All projects clean." -ForegroundColor Green
-    }
-
-    if ($Fix) {
-        $missingProjects = @($statusList | Where-Object { -not $_.PathExists })
-        if ($missingProjects.Count -eq 0) {
-            Write-Host "No path-missing projects to remove." -ForegroundColor Green
-            return
-        }
-        $resolvedConfig = if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $ConfigPath } else { Get-DefaultConfigPath }
-        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $resolvedConfig -Raw -Encoding UTF8)
-        $cleaned = @($allProjects) | Where-Object {
-            $path = [string]$_.rootPath
-            $isMissing = -not (Test-Path -LiteralPath $path)
-            -not $isMissing
-        }
-        ConvertTo-Json -InputObject @($cleaned) -Depth 10 | Out-File -FilePath $resolvedConfig -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $resolvedConfig
-        Write-Host "Removed $($missingProjects.Count) path-missing projects from config." -ForegroundColor Green
-        return
-    }
-
-    if ($Push) {
-        $aheadProjects = @($statusList | Where-Object { $_.AheadCount -gt 0 -and $_.IsGitRepo })
-        if ($aheadProjects.Count -eq 0) {
-            Write-Host "No repos ahead of remote." -ForegroundColor Green
-            return
-        }
-        foreach ($proj in $aheadProjects) {
-            Write-Host "  Pushing $($proj.Name) (^$($proj.AheadCount))... " -ForegroundColor Cyan -NoNewline
-            try {
-                $result = & git -C $proj.RootPath push 2>&1
-                Write-Host "done" -ForegroundColor Green
-            } catch {
-                Write-Host "failed: $($_.Exception.Message)" -ForegroundColor Red
-            }
-        }
-        return
     }
 
     if ($summaryParts.Count -gt 0) {
@@ -3266,6 +3268,11 @@ function Invoke-Cdp {
             } else {
                 $statusConfigPath = $ConfigPath
             }
+        }
+
+        # A flag can carry a trailing config path in RemainingArgs
+        if (($statusDirty -or $statusFix -or $statusPush) -and $RemainingArgs.Count -ge 1) {
+            $statusConfigPath = $RemainingArgs[0]
         }
 
         Show-CdpProjectStatus -ConfigPath $statusConfigPath -DirtyOnly:$statusDirty -TagFilter $statusTag -Fix:$statusFix -Push:$statusPush

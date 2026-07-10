@@ -9,7 +9,7 @@
 # Version: 1.8.0
 # License: MIT
 
-CDP_VERSION="2.0.1"
+CDP_VERSION="2.0.2"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
@@ -867,6 +867,66 @@ cdp-status() {
     done <<< "$projects"
     printf "\r                          \r" >&2
 
+    # --fix: remove path-missing projects (skip table render)
+    if $do_fix; then
+        if [[ $missing_count -eq 0 ]]; then
+            echo -e "${GREEN}No path-missing projects to remove.${NC}"
+            return
+        fi
+        echo -e "\n${YELLOW}Removing $missing_count path-missing projects:${NC}"
+        for ((i=0; i<total; i++)); do
+            if [[ "${statuses[$i]}" == "path missing" ]]; then
+                echo -e "  ${GRAY}x ${names[$i]}  ${paths[$i]}${NC}"
+            fi
+        done
+        local raw_config
+        raw_config=$(cat "$config_path")
+        local kept_count=0
+        local new_json="[]"
+        new_json=$(echo "$raw_config" | jq '[.[] | select((.rootPath // "") != "")]')
+        # Filter out entries whose path does not exist on disk
+        local filtered="[]"
+        local len
+        len=$(echo "$new_json" | jq 'length')
+        local out_items=()
+        for ((j=0; j<len; j++)); do
+            local rp
+            rp=$(echo "$new_json" | jq -r ".[$j].rootPath")
+            local wsl_rp
+            wsl_rp=$(convert_windows_to_wsl "$rp")
+            if [[ -d "$wsl_rp" ]]; then
+                out_items+=("$(echo "$new_json" | jq -c ".[$j]")")
+                kept_count=$((kept_count + 1))
+            fi
+        done
+        if [[ ${#out_items[@]} -gt 0 ]]; then
+            printf '%s\n' "${out_items[@]}" | jq -s '.' > "$config_path"
+        else
+            echo "[]" > "$config_path"
+        fi
+        echo -e "\n${GREEN}Removed $missing_count projects. $kept_count projects remain.${NC}"
+        return
+    fi
+
+    # --push: push all repos ahead of remote (skip table render)
+    if $do_push; then
+        local push_count=0
+        for ((i=0; i<total; i++)); do
+            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
+                [[ $push_count -eq 0 ]] && echo -e "\n${YELLOW}Pushing repos ahead of remote:${NC}"
+                printf "  %s... " "${names[$i]}"
+                if git -C "${paths[$i]}" push 2>/dev/null; then
+                    echo -e "${GREEN}done${NC}"
+                else
+                    echo -e "${RED}failed${NC}"
+                fi
+                push_count=$((push_count + 1))
+            fi
+        done
+        [[ $push_count -eq 0 ]] && echo -e "${GREEN}No repos ahead of remote.${NC}"
+        return
+    fi
+
     [[ $max_name_len -gt 24 ]] && max_name_len=24
     [[ $max_branch_len -gt 20 ]] && max_branch_len=20
 
@@ -916,37 +976,6 @@ cdp-status() {
         echo -e "${YELLOW}${joined}${NC}"
     else
         echo -e "${GREEN}All projects clean.${NC}"
-    fi
-
-    if $do_fix; then
-        if [[ $missing_count -eq 0 ]]; then
-            echo -e "${GREEN}No path-missing projects to remove.${NC}"
-            return
-        fi
-        jq '[.[] | select(.enabled == true) | select(.rootPath as $p | ($p | length) > 0 and ([$p | test(".")] | .[0]))]' "$config_path" > "${config_path}.tmp" 2>/dev/null
-        local kept
-        kept=$(jq '[.[] | select(.rootPath as $p | $p != null and ($p | length) > 0)]' "$config_path" 2>/dev/null)
-        local cleaned
-        cleaned=$(echo "$kept" | jq --argjson missing "$missing_count" '[.[] | . as $proj | if (try (["test", "-d", $proj.rootPath] | debug | false) catch true) then . else empty end]' 2>/dev/null || echo "$kept")
-        echo -e "${GREEN}Removed path-missing projects. Run 'cdp clean' to finalize.${NC}"
-        return
-    fi
-
-    if $do_push; then
-        local push_count=0
-        for ((i=0; i<total; i++)); do
-            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
-                printf "  Pushing %s... " "${names[$i]}"
-                if git -C "${paths[$i]}" push 2>/dev/null; then
-                    echo -e "${GREEN}done${NC}"
-                else
-                    echo -e "${RED}failed${NC}"
-                fi
-                push_count=$((push_count + 1))
-            fi
-        done
-        [[ $push_count -eq 0 ]] && echo -e "${GREEN}No repos ahead of remote.${NC}"
-        return
     fi
 
     if [[ ${#summary_parts[@]} -gt 0 ]]; then

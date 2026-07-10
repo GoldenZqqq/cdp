@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.0.1'
+ModuleVersion = '2.0.2'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.0.2 - Status Action Mode
+- Changed: cdp status --fix now shows only the projects being removed, not the full table
+- Changed: cdp status --push now shows only the repos being pushed, not the full table
+- Fixed: --fix and --push accept a trailing config path argument
+
 v2.0.1 - Status Dashboard UX
 - Added: Progress indicator while scanning projects (Scanning 3/58...)
 - Added: cdp status --fix to remove path-missing projects from config
