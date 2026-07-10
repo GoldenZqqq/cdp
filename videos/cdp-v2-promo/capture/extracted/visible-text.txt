@@ -1,0 +1,21 @@
+cdp — Your project workbench in the terminal
+
+终端里的项目工作台 — 一个命令看所有仓库状态、切换项目、启动 AI CLI
+
+cdp is more than a project switcher — it knows whether each of your repos is clean, has unpushed commits, and can switch and launch an AI CLI in one move.
+
+Key features:
+- cdp status: Multi-project Git dashboard showing branch, dirty/clean, ahead/behind, last commit
+- cdp <query>: Fuzzy search + direct query switching
+- cdp -Open codex: Launch AI CLI after switching
+- cdp workspace: One command to open multiple related projects
+- onEnter hooks: Auto-activate virtualenv/nvm on project switch
+- Tab completion: PowerShell + bash + zsh
+- Cross-platform: Windows + macOS + Linux + WSL
+- Install in 30 seconds
+
+Install:
+  PowerShell: Install-Module -Name cdp -Scope CurrentUser
+  macOS/Linux: bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
+
+GitHub: https://github.com/GoldenZqqq/cdp
