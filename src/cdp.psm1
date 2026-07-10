@@ -288,6 +288,37 @@ function Limit-CdpText {
     $Text.Substring(0, [Math]::Max(0, $MaxLength - 3)) + "..."
 }
 
+function Invoke-CdpOnEnter {
+    param([object]$Project)
+
+    if (-not $Project.PSObject.Properties['onEnter'] -or $null -eq $Project.onEnter) {
+        return
+    }
+
+    $onEnter = $Project.onEnter
+
+    try {
+        if ($onEnter -is [string]) {
+            if (-not [string]::IsNullOrWhiteSpace($onEnter)) {
+                Invoke-Expression $onEnter
+            }
+        } elseif ($onEnter.PSObject.Properties['env']) {
+            $onEnter.env.PSObject.Properties | ForEach-Object {
+                [System.Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
+            }
+        }
+
+        if ($onEnter -isnot [string] -and $onEnter.PSObject.Properties['powershell']) {
+            $psCmd = [string]$onEnter.powershell
+            if (-not [string]::IsNullOrWhiteSpace($psCmd)) {
+                Invoke-Expression $psCmd
+            }
+        }
+    } catch {
+        Write-Host "  onEnter warning: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
 function Switch-Project {
     <#
     .SYNOPSIS
@@ -514,6 +545,8 @@ function Switch-Project {
             # Update Windows Terminal tab title
             $newTitle = $selectedProject.name
             Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
+
+            Invoke-CdpOnEnter -Project $selectedProject
 
             if (-not [string]::IsNullOrWhiteSpace($Open)) {
                 Invoke-CdpWorkspaceLauncher -Project $selectedProject -Open $Open

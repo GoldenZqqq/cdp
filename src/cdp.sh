@@ -1294,6 +1294,27 @@ cdp() {
             # Update terminal title (works in most terminals)
             echo -ne "\033]0;$selected\007"
 
+            # Execute onEnter hook if defined
+            local on_enter
+            on_enter=$(jq -r --arg name "$selected" '.[] | select(.name == $name) | .onEnter // empty' "$config_path" 2>/dev/null)
+            on_enter="${on_enter%$'\r'}"
+            if [[ -n "$on_enter" && "$on_enter" != "null" ]]; then
+                if echo "$on_enter" | jq -e 'type == "object"' &>/dev/null 2>&1; then
+                    local bash_cmd
+                    bash_cmd=$(echo "$on_enter" | jq -r '.bash // empty' 2>/dev/null)
+                    bash_cmd="${bash_cmd%$'\r'}"
+                    [[ -n "$bash_cmd" ]] && eval "$bash_cmd" 2>/dev/null || echo -e "${YELLOW}  onEnter warning: $bash_cmd${NC}"
+                    local env_keys
+                    env_keys=$(echo "$on_enter" | jq -r '.env // {} | to_entries[] | "\(.key)=\(.value)"' 2>/dev/null)
+                    while IFS= read -r kv; do
+                        kv="${kv%$'\r'}"
+                        [[ -n "$kv" ]] && export "$kv"
+                    done <<< "$env_keys"
+                else
+                    eval "$on_enter" 2>/dev/null || echo -e "${YELLOW}  onEnter warning: command failed${NC}"
+                fi
+            fi
+
             if [[ -n "$opener" ]]; then
                 cdp_open_workspace "$opener" "$selected" "$project_path"
             fi
