@@ -74,3 +74,38 @@ Fixed 11 macOS/zsh/bash 3.2 compatibility issues in cdp.sh. Added macOS CI runne
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Add tab completion for PowerShell and bash/zsh
+
+**Date**: 2026-07-10
+**Task**: Add tab completion for PowerShell and bash/zsh
+**Branch**: `main`
+
+### Summary
+
+Added intelligent tab completion for all platforms. PowerShell uses Register-ArgumentCompleter, bash uses complete -F, zsh uses compdef. Context-aware: subcommands+projects for first arg, launchers after --open.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `85c45b3` | (see git log) |
+| `ad2f69a` | (see git log) |
+| `063f009` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
