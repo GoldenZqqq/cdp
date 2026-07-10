@@ -2055,6 +2055,268 @@ function Repair-ProjectConfig {
     }
 }
 
+function Get-CdpGitProjectInfo {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project
+    )
+
+    $rootPath = [string]$Project.rootPath
+    $info = [PSCustomObject]@{
+        Name = [string]$Project.name
+        RootPath = $rootPath
+        PathExists = $false
+        IsGitRepo = $false
+        Branch = ""
+        DirtyCount = 0
+        UntrackedCount = 0
+        AheadCount = 0
+        BehindCount = 0
+        LastCommitRelative = ""
+        StatusLabel = ""
+        NeedsAttention = $false
+    }
+
+    if (-not (Test-Path -LiteralPath $rootPath)) {
+        $info.StatusLabel = "path missing"
+        $info.NeedsAttention = $true
+        return $info
+    }
+
+    $info.PathExists = $true
+
+    $gitDir = Join-Path $rootPath ".git"
+    if (-not (Test-Path -LiteralPath $gitDir)) {
+        $info.StatusLabel = "not a git repo"
+        return $info
+    }
+
+    $info.IsGitRepo = $true
+
+    try {
+        $info.Branch = (& git -C $rootPath branch --show-current 2>$null)
+        if ([string]::IsNullOrWhiteSpace($info.Branch)) {
+            $info.Branch = (& git -C $rootPath rev-parse --short HEAD 2>$null)
+        }
+    } catch {}
+
+    try {
+        $porcelain = @(& git -C $rootPath status --porcelain 2>$null)
+        foreach ($line in $porcelain) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            if ($line.Length -ge 2 -and $line.Substring(0, 2) -eq "??") {
+                $info.UntrackedCount++
+            } else {
+                $info.DirtyCount++
+            }
+        }
+    } catch {}
+
+    try {
+        $ahead = (& git -C $rootPath rev-list --count "@{u}..HEAD" 2>$null)
+        if ($null -ne $ahead) { $info.AheadCount = [int]$ahead }
+    } catch {}
+
+    try {
+        $behind = (& git -C $rootPath rev-list --count "HEAD..@{u}" 2>$null)
+        if ($null -ne $behind) { $info.BehindCount = [int]$behind }
+    } catch {}
+
+    try {
+        $info.LastCommitRelative = (& git -C $rootPath log -1 --format="%cr" 2>$null)
+    } catch {}
+
+    if ($info.DirtyCount -gt 0) {
+        $info.StatusLabel = "$($info.DirtyCount) dirty"
+        $info.NeedsAttention = $true
+    } elseif ($info.UntrackedCount -gt 0) {
+        $info.StatusLabel = "$($info.UntrackedCount) untracked"
+        $info.NeedsAttention = $true
+    } else {
+        $info.StatusLabel = "clean"
+    }
+
+    if ($info.BehindCount -gt 0) {
+        $info.NeedsAttention = $true
+    }
+
+    return $info
+}
+
+function Show-CdpProjectStatus {
+    <#
+    .SYNOPSIS
+        Show Git status of all configured projects.
+
+    .DESCRIPTION
+        Displays a dashboard view of all enabled projects showing current branch,
+        working tree status, ahead/behind counts, and last commit time. Quickly
+        answers: which repos have uncommitted changes? Which are behind remote?
+
+    .PARAMETER ConfigPath
+        Optional custom path to projects.json file.
+
+    .PARAMETER DirtyOnly
+        Only show projects that need attention (dirty, untracked, or behind remote).
+
+    .PARAMETER TagFilter
+        Only show projects matching a tag (e.g. '@work').
+
+    .PARAMETER PassThru
+        Returns project status objects for scripting.
+
+    .EXAMPLE
+        cdp status
+        # Shows Git status of all projects
+
+    .EXAMPLE
+        cdp status --dirty
+        # Only shows projects with uncommitted changes
+
+    .EXAMPLE
+        cdp status @work
+        # Shows status of projects tagged 'work'
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [Alias('d')]
+        [switch]$DirtyOnly,
+
+        [Parameter(Mandatory = $false)]
+        [string]$TagFilter,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Get-DefaultConfigPath
+    }
+
+    if (-not (Test-Path $ConfigPath)) {
+        Write-Host "Error: Configuration file not found at: $ConfigPath" -ForegroundColor Red
+        return
+    }
+
+    try {
+        $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
+        $enabledProjects = @($configData.EnabledProjects)
+    } catch {
+        Write-Host "Error: Failed to read configuration." -ForegroundColor Red
+        return
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($TagFilter)) {
+        $tagQuery = $TagFilter
+        if ($tagQuery.StartsWith('@')) {
+            $tagQuery = $tagQuery.Substring(1)
+        }
+        $comparison = [StringComparison]::OrdinalIgnoreCase
+        $enabledProjects = @($enabledProjects | Where-Object {
+            @(Get-CdpProjectStringList -Project $_ -PropertyName 'tags') |
+                Where-Object { [string]::Equals($_, $tagQuery, $comparison) }
+        })
+    }
+
+    if ($enabledProjects.Count -eq 0) {
+        Write-Host "No projects to check." -ForegroundColor Yellow
+        return
+    }
+
+    $statusList = @()
+    foreach ($project in $enabledProjects) {
+        $statusList += Get-CdpGitProjectInfo -Project $project
+    }
+
+    if ($DirtyOnly) {
+        $statusList = @($statusList | Where-Object { $_.NeedsAttention })
+    }
+
+    if ($PassThru) {
+        return $statusList
+    }
+
+    $nameWidth = 14
+    foreach ($item in $statusList) {
+        $nameWidth = [Math]::Max($nameWidth, $item.Name.Length)
+    }
+    $nameWidth = [Math]::Min($nameWidth, 24)
+
+    $branchWidth = 12
+    foreach ($item in $statusList) {
+        if ($item.Branch.Length -gt $branchWidth) {
+            $branchWidth = [Math]::Min($item.Branch.Length, 20)
+        }
+    }
+
+    $filterLabel = if ($DirtyOnly) { " (dirty only)" } elseif (-not [string]::IsNullOrWhiteSpace($TagFilter)) { " ($TagFilter)" } else { "" }
+    Write-Host "`ncdp project status " -ForegroundColor Cyan -NoNewline
+    Write-Host "($($statusList.Count) projects$filterLabel)" -ForegroundColor DarkGray
+    Write-Host ("-" * 100) -ForegroundColor DarkGray
+
+    Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
+    Write-Host ("{0,-$nameWidth} " -f "Project") -ForegroundColor Cyan -NoNewline
+    Write-Host ("{0,-$branchWidth} " -f "Branch") -ForegroundColor DarkGray -NoNewline
+    Write-Host ("{0,-14} " -f "Status") -ForegroundColor DarkGray -NoNewline
+    Write-Host ("{0,-10} " -f "Sync") -ForegroundColor DarkGray -NoNewline
+    Write-Host "Last Commit" -ForegroundColor DarkGray
+    Write-Host ("-" * 100) -ForegroundColor DarkGray
+
+    $index = 1
+    foreach ($item in $statusList) {
+        $number = "{0:00}" -f $index
+        $displayName = Limit-CdpText -Text $item.Name -MaxLength $nameWidth
+        $displayBranch = Limit-CdpText -Text $item.Branch -MaxLength $branchWidth
+
+        Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
+        Write-Host ("{0,-$nameWidth} " -f $displayName) -ForegroundColor Green -NoNewline
+
+        if (-not $item.IsGitRepo) {
+            Write-Host ("{0,-$branchWidth} " -f "-") -ForegroundColor DarkGray -NoNewline
+            $labelColor = if ($item.PathExists) { "DarkGray" } else { "Red" }
+            Write-Host $item.StatusLabel -ForegroundColor $labelColor
+            $index++
+            continue
+        }
+
+        Write-Host ("{0,-$branchWidth} " -f $displayBranch) -ForegroundColor DarkCyan -NoNewline
+
+        $statusIcon = if ($item.DirtyCount -gt 0) { "x" } elseif ($item.UntrackedCount -gt 0) { "!" } else { "+" }
+        $statusColor = if ($item.DirtyCount -gt 0) { "Red" } elseif ($item.UntrackedCount -gt 0) { "Yellow" } else { "Green" }
+        $statusText = "$statusIcon $($item.StatusLabel)"
+        Write-Host ("{0,-14} " -f $statusText) -ForegroundColor $statusColor -NoNewline
+
+        $syncParts = @()
+        if ($item.AheadCount -gt 0) { $syncParts += "^$($item.AheadCount)" }
+        if ($item.BehindCount -gt 0) { $syncParts += "v$($item.BehindCount)" }
+        $syncText = if ($syncParts.Count -gt 0) { $syncParts -join " " } else { "" }
+        $syncColor = if ($item.BehindCount -gt 0) { "Yellow" } elseif ($item.AheadCount -gt 0) { "Cyan" } else { "DarkGray" }
+        Write-Host ("{0,-10} " -f $syncText) -ForegroundColor $syncColor -NoNewline
+
+        Write-Host $item.LastCommitRelative -ForegroundColor DarkGray
+        $index++
+    }
+
+    Write-Host ("-" * 100) -ForegroundColor DarkGray
+
+    $attentionCount = @($statusList | Where-Object { $_.NeedsAttention -and $_.IsGitRepo }).Count
+    $missingCount = @($statusList | Where-Object { -not $_.PathExists }).Count
+    $summaryParts = @()
+    if ($attentionCount -gt 0) { $summaryParts += "$attentionCount repos need attention" }
+    if ($missingCount -gt 0) { $summaryParts += "$missingCount path missing" }
+
+    if ($summaryParts.Count -gt 0) {
+        Write-Host ($summaryParts -join " | ") -ForegroundColor Yellow
+    } else {
+        Write-Host "All projects clean." -ForegroundColor Green
+    }
+}
+
 function Initialize-Cdp {
     <#
     .SYNOPSIS
@@ -2748,6 +3010,23 @@ function Invoke-Cdp {
         return
     }
 
+    if ($Command -in @('status', 'st')) {
+        $statusDirty = $ConfigPath -in @('--dirty', '-dirty', '-d')
+        $statusTag = $null
+        $statusConfigPath = $null
+
+        if (-not $statusDirty -and -not [string]::IsNullOrWhiteSpace($ConfigPath)) {
+            if ($ConfigPath.StartsWith('@')) {
+                $statusTag = $ConfigPath
+            } else {
+                $statusConfigPath = $ConfigPath
+            }
+        }
+
+        Show-CdpProjectStatus -ConfigPath $statusConfigPath -DirtyOnly:$statusDirty -TagFilter $statusTag
+        return
+    }
+
     if ($Command -in @('doctor', 'health', 'check')) {
         if ($ConfigPath -in @('--fix', '-fix')) {
             Repair-ProjectConfig
@@ -2845,6 +3124,7 @@ Set-Alias -Name cdp-recent -Value Get-CdpRecentProjects
 Set-Alias -Name cdp-pin -Value Set-ProjectPin
 Set-Alias -Name cdp-unpin -Value Clear-ProjectPin
 Set-Alias -Name cdp-clean -Value Repair-ProjectConfig
+Set-Alias -Name cdp-status -Value Show-CdpProjectStatus
 Set-Alias -Name cdp-init -Value Initialize-Cdp
 Set-Alias -Name cdp-alias -Value Add-ProjectAlias
 Set-Alias -Name cdp-unalias -Value Remove-ProjectAlias
@@ -2852,5 +3132,5 @@ Set-Alias -Name cdp-tag -Value Add-ProjectTag
 Set-Alias -Name cdp-untag -Value Remove-ProjectTag
 
 Export-ModuleMember `
-    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects `
-    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent, cdp-pin, cdp-unpin, cdp-clean, cdp-init, cdp-alias, cdp-unalias, cdp-tag, cdp-untag
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects, Show-CdpProjectStatus `
+    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent, cdp-pin, cdp-unpin, cdp-clean, cdp-init, cdp-alias, cdp-unalias, cdp-tag, cdp-untag, cdp-status

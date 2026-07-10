@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Set-ProjectPin', 'Clear-ProjectPin', 'Repair-ProjectConfig', 'Initialize-Cdp', 'Add-ProjectAlias', 'Remove-ProjectAlias', 'Add-ProjectTag', 'Remove-ProjectTag', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects')
+FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Set-ProjectPin', 'Clear-ProjectPin', 'Repair-ProjectConfig', 'Initialize-Cdp', 'Add-ProjectAlias', 'Remove-ProjectAlias', 'Add-ProjectTag', 'Remove-ProjectTag', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects', 'Show-CdpProjectStatus')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -76,7 +76,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config', 'cdp-doctor', 'cdp-scan', 'cdp-recent', 'cdp-pin', 'cdp-unpin', 'cdp-clean', 'cdp-init', 'cdp-alias', 'cdp-unalias', 'cdp-tag', 'cdp-untag')
+AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config', 'cdp-doctor', 'cdp-scan', 'cdp-recent', 'cdp-pin', 'cdp-unpin', 'cdp-clean', 'cdp-init', 'cdp-alias', 'cdp-unalias', 'cdp-tag', 'cdp-untag', 'cdp-status')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
