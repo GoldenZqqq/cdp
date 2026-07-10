@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  #root { width: 1920px; height: 1080px; background: #0A0E17; overflow: hidden; position: relative; font-family: 'JetBrains Mono', monospace; display: flex; }
+  .panel { width: 50%; height: 100%; padding: 60px 40px; position: relative; }
+  .panel:first-child { border-right: 1px solid rgba(0,212,170,0.15); }
+  .panel-label { font-family: 'Inter', sans-serif; font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 16px; opacity: 0; }
+  .terminal { background: #0D1117; border: 1px solid rgba(0,212,170,0.2); border-radius: 12px; overflow: hidden; }
+  .terminal-header { height: 32px; background: #161B22; display: flex; align-items: center; padding: 0 12px; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #FF6B6B; } .dot-y { background: #FFD93D; } .dot-g { background: #00D4AA; }
+  .terminal-body { padding: 16px 20px; color: #E8E8E8; font-size: 15px; line-height: 1.7; }
+  .line { opacity: 0; }
+  .prompt { color: #00D4AA; }
+  .output { color: #3FB950; }
+  .highlight { color: #FFD93D; }
+  .completion { background: #1A1F2E; border: 1px solid rgba(0,212,170,0.3); border-radius: 6px; padding: 8px 12px; margin-top: 8px; opacity: 0; }
+  .comp-item { padding: 4px 8px; font-size: 14px; color: #E8E8E8; }
+  .comp-item.active { background: rgba(0,212,170,0.15); color: #00D4AA; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="root" data-width="1920" data-height="1080" data-composition-id="05-smart" data-duration="4">
+  <div class="clip panel" data-start="0" data-duration="4" data-track-index="0">
+    <div class="panel-label" id="label1">onEnter Hook</div>
+    <div class="terminal">
+      <div class="terminal-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <div class="terminal-body">
+        <div class="line" id="a1"><span class="prompt">$</span> cdp ml-project</div>
+        <div class="line" id="a2"><span class="output">Switched to project: ml-project</span></div>
+        <div class="line" id="a3"><span class="highlight">(.venv) activated</span></div>
+        <div class="line" id="a4" style="margin-top: 8px; color: #6B7280; font-size: 13px;">auto-runs: source .venv/bin/activate</div>
+      </div>
+    </div>
+  </div>
+  <div class="clip panel" data-start="0" data-duration="4" data-track-index="1">
+    <div class="panel-label" id="label2">Tab Completion</div>
+    <div class="terminal">
+      <div class="terminal-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <div class="terminal-body">
+        <div class="line" id="b1"><span class="prompt">$</span> cdp s<span style="color:#6B7280;">⇥</span></div>
+        <div class="completion" id="b2">
+          <div class="comp-item active">status</div>
+          <div class="comp-item">scan</div>
+          <div class="comp-item">stackprism</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+tl.to('#label1', { opacity: 1, duration: 0.3 }, 0);
+tl.to('#a1', { opacity: 1, duration: 0.2 }, 0.3);
+tl.to('#a2', { opacity: 1, duration: 0.2 }, 0.8);
+tl.to('#a3', { opacity: 1, duration: 0.3 }, 1.2);
+tl.to('#a4', { opacity: 1, duration: 0.3 }, 1.6);
+
+tl.to('#label2', { opacity: 1, duration: 0.3 }, 2.0);
+tl.to('#b1', { opacity: 1, duration: 0.2 }, 2.3);
+tl.to('#b2', { opacity: 1, duration: 0.3 }, 2.8);
+
+window.__timelines['05-smart'] = tl;
+</script>
+</body>
+</html>

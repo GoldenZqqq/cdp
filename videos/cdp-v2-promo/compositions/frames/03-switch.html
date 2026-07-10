@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  #root { width: 1920px; height: 1080px; background: #0A0E17; overflow: hidden; position: relative; font-family: 'JetBrains Mono', monospace; }
+  .terminal { position: absolute; inset: 60px 80px; background: #0D1117; border: 1px solid rgba(0,212,170,0.2); border-radius: 12px; overflow: hidden; }
+  .terminal-header { height: 40px; background: #161B22; display: flex; align-items: center; padding: 0 16px; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #FF6B6B; } .dot-y { background: #FFD93D; } .dot-g { background: #00D4AA; }
+  .terminal-body { padding: 20px 24px; color: #E8E8E8; font-size: 18px; line-height: 1.8; }
+  .line { opacity: 0; }
+  .prompt { color: #00D4AA; }
+  .output { color: #3FB950; }
+  .accent { color: #00D4AA; font-weight: 700; }
+  .dim { color: #6B7280; }
+  .highlight { color: #FFD93D; }
+  .tab-title { position: absolute; top: 60px; left: 80px; right: 80px; height: 40px; display: flex; gap: 2px; }
+  .tab { background: #161B22; color: #6B7280; padding: 0 20px; display: flex; align-items: center; font-size: 14px; border-radius: 8px 8px 0 0; opacity: 0; }
+  .tab.active { background: #0D1117; color: #00D4AA; }
+</style>
+</head>
+<body>
+<div id="root" data-width="1920" data-height="1080" data-composition-id="03-switch" data-duration="5">
+  <div class="clip tab-title" data-start="0" data-duration="5" data-track-index="1">
+    <div class="tab active" id="tab1">my-api</div>
+  </div>
+  <div class="clip terminal" data-start="0" data-duration="5" data-track-index="0" style="top: 100px;">
+    <div class="terminal-header">
+      <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+    </div>
+    <div class="terminal-body">
+      <div class="line" id="l1"><span class="prompt">$</span> cdp api</div>
+      <div class="line" id="l2"><span class="output">Switched to project: my-api</span></div>
+      <div class="line" id="l3"><span class="dim">Path: E:\Projects\my-api</span></div>
+      <div class="line" id="l4" style="margin-top: 24px;"><span class="prompt">$</span> cdp api <span class="highlight">-Open codex</span></div>
+      <div class="line" id="l5"><span class="output">Switched to project: my-api</span></div>
+      <div class="line" id="l6"><span class="accent">Launching: codex</span></div>
+      <div class="line" id="l7"><span class="dim">╭─────────────────────────────────╮</span></div>
+      <div class="line" id="l8"><span class="dim">│</span> <span class="accent">Codex</span> <span class="dim">is running in my-api...  │</span></div>
+      <div class="line" id="l9"><span class="dim">╰─────────────────────────────────╯</span></div>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+tl.to('#l1', { opacity: 1, duration: 0.3 }, 0);
+tl.to('#l2', { opacity: 1, duration: 0.2 }, 0.5);
+tl.to('#l3', { opacity: 1, duration: 0.2 }, 0.7);
+tl.to('#tab1', { opacity: 1, duration: 0.3 }, 0.5);
+tl.to('#l4', { opacity: 1, duration: 0.3 }, 2.0);
+tl.to('#l5', { opacity: 1, duration: 0.2 }, 2.5);
+tl.to('#l6', { opacity: 1, duration: 0.2 }, 2.7);
+tl.to('#l7', { opacity: 1, duration: 0.15 }, 3.2);
+tl.to('#l8', { opacity: 1, duration: 0.15 }, 3.4);
+tl.to('#l9', { opacity: 1, duration: 0.15 }, 3.6);
+
+window.__timelines['03-switch'] = tl;
+</script>
+</body>
+</html>

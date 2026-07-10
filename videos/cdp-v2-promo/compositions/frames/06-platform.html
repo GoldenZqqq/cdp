@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  #root { width: 1920px; height: 1080px; background: #0A0E17; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; gap: 40px; }
+  .platform { width: 540px; background: #0D1117; border: 1px solid rgba(0,212,170,0.2); border-radius: 12px; overflow: hidden; opacity: 0; transform: translateY(30px); }
+  .platform-header { height: 36px; background: #161B22; display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #FF6B6B; } .dot-y { background: #FFD93D; } .dot-g { background: #00D4AA; }
+  .platform-label { font-family: 'Inter', sans-serif; font-size: 12px; color: #6B7280; margin-left: auto; }
+  .platform-body { padding: 14px 18px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #E8E8E8; line-height: 1.6; }
+  .prompt { color: #00D4AA; }
+  .output { color: #3FB950; font-size: 12px; }
+  .title-text { position: absolute; bottom: 80px; left: 0; right: 0; text-align: center; font-family: 'Inter', sans-serif; font-size: 32px; color: #00D4AA; font-weight: 700; opacity: 0; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+<div id="root" data-width="1920" data-height="1080" data-composition-id="06-platform" data-duration="3">
+  <div class="clip platform" id="p1" data-start="0" data-duration="3" data-track-index="0">
+    <div class="platform-header">
+      <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+      <span class="platform-label">Windows PowerShell</span>
+    </div>
+    <div class="platform-body">
+      <div><span class="prompt">PS&gt;</span> cdp status</div>
+      <div class="output">+ clean  x 3 dirty</div>
+    </div>
+  </div>
+  <div class="clip platform" id="p2" data-start="0" data-duration="3" data-track-index="1">
+    <div class="platform-header">
+      <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+      <span class="platform-label">macOS zsh</span>
+    </div>
+    <div class="platform-body">
+      <div><span class="prompt">%</span> cdp status</div>
+      <div class="output">+ clean  x 3 dirty</div>
+    </div>
+  </div>
+  <div class="clip platform" id="p3" data-start="0" data-duration="3" data-track-index="2">
+    <div class="platform-header">
+      <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+      <span class="platform-label">Linux bash</span>
+    </div>
+    <div class="platform-body">
+      <div><span class="prompt">$</span> cdp status</div>
+      <div class="output">+ clean  x 3 dirty</div>
+    </div>
+  </div>
+  <div class="clip title-text" id="tagline" data-start="0" data-duration="3" data-track-index="3">
+    SAME TOOL, EVERYWHERE
+  </div>
+</div>
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+tl.to('#p1', { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 0);
+tl.to('#p2', { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 0.3);
+tl.to('#p3', { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 0.6);
+tl.to('#tagline', { opacity: 1, duration: 0.5 }, 1.5);
+
+window.__timelines['06-platform'] = tl;
+</script>
+</body>
+</html>

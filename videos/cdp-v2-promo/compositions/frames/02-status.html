@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  #root { width: 1920px; height: 1080px; background: #0A0E17; overflow: hidden; position: relative; font-family: 'JetBrains Mono', monospace; }
+  .terminal { position: absolute; inset: 60px 80px; background: #0D1117; border: 1px solid rgba(0,212,170,0.2); border-radius: 12px; overflow: hidden; }
+  .terminal-header { height: 40px; background: #161B22; display: flex; align-items: center; padding: 0 16px; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #FF6B6B; } .dot-y { background: #FFD93D; } .dot-g { background: #00D4AA; }
+  .terminal-body { padding: 20px 24px; color: #E8E8E8; font-size: 16px; line-height: 1.6; }
+  .prompt-line { color: #00D4AA; font-size: 18px; margin-bottom: 16px; opacity: 0; }
+  .prompt-line .cursor { display: inline-block; width: 10px; height: 20px; background: #00D4AA; animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+  .header-bar { color: #00D4AA; font-size: 14px; margin-bottom: 8px; opacity: 0; }
+  .divider { color: #3B4252; font-size: 14px; margin-bottom: 4px; opacity: 0; }
+  .col-header { color: #6B7280; font-size: 14px; margin-bottom: 8px; opacity: 0; }
+  .row { font-size: 15px; margin-bottom: 4px; opacity: 0; white-space: nowrap; }
+  .row .num { color: #6B7280; display: inline-block; width: 40px; }
+  .row .name { color: #00D4AA; display: inline-block; width: 220px; }
+  .row .branch { color: #58A6FF; display: inline-block; width: 140px; }
+  .row .status-clean { color: #3FB950; display: inline-block; width: 160px; }
+  .row .status-dirty { color: #FF6B6B; display: inline-block; width: 160px; }
+  .row .status-untrack { color: #FFD93D; display: inline-block; width: 160px; }
+  .row .sync { color: #58A6FF; display: inline-block; width: 80px; }
+  .row .time { color: #6B7280; display: inline-block; width: 140px; }
+  .summary { color: #FFD93D; font-size: 16px; margin-top: 12px; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="root" data-width="1920" data-height="1080" data-composition-id="02-status" data-duration="6">
+  <div class="clip terminal" data-start="0" data-duration="6" data-track-index="0">
+    <div class="terminal-header">
+      <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+    </div>
+    <div class="terminal-body">
+      <div class="prompt-line" id="prompt">$ cdp status<span class="cursor"></span></div>
+      <div class="header-bar" id="hbar">cdp project status (12 projects)</div>
+      <div class="divider" id="div1">────────────────────────────────────────────────────────────────────────</div>
+      <div class="col-header" id="colh">  #   Project              Branch       Status          Sync    Last Commit</div>
+      <div class="divider" id="div2">────────────────────────────────────────────────────────────────────────</div>
+      <div class="row" id="r1"><span class="num">01</span><span class="name">my-api</span><span class="branch">main</span><span class="status-dirty">x 3 dirty</span><span class="sync">^1</span><span class="time">2 hours ago</span></div>
+      <div class="row" id="r2"><span class="num">02</span><span class="name">frontend-app</span><span class="branch">develop</span><span class="status-clean">+ clean</span><span class="sync"></span><span class="time">1 day ago</span></div>
+      <div class="row" id="r3"><span class="num">03</span><span class="name">admin-panel</span><span class="branch">feature/auth</span><span class="status-untrack">! 2 untracked</span><span class="sync"></span><span class="time">3 hours ago</span></div>
+      <div class="row" id="r4"><span class="num">04</span><span class="name">ml-pipeline</span><span class="branch">main</span><span class="status-clean">+ clean</span><span class="sync"></span><span class="time">5 days ago</span></div>
+      <div class="row" id="r5"><span class="num">05</span><span class="name">data-service</span><span class="branch">main</span><span class="status-dirty">x 1 dirty</span><span class="sync">v2</span><span class="time">1 hour ago</span></div>
+      <div class="row" id="r6"><span class="num">06</span><span class="name">docs</span><span class="branch">main</span><span class="status-clean">+ clean</span><span class="sync"></span><span class="time">2 weeks ago</span></div>
+      <div class="row" id="r7"><span class="num">07</span><span class="name">mobile-app</span><span class="branch">release/2.0</span><span class="status-clean">+ clean</span><span class="sync">^3</span><span class="time">6 hours ago</span></div>
+      <div class="row" id="r8"><span class="num">08</span><span class="name">infra</span><span class="branch">main</span><span class="status-dirty">x 5 dirty</span><span class="sync"></span><span class="time">30 min ago</span></div>
+      <div class="summary" id="summary">3 repos need attention | 1 behind remote</div>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+tl.to('#prompt', { opacity: 1, duration: 0.3 }, 0);
+tl.to('#hbar', { opacity: 1, duration: 0.3 }, 1.0);
+tl.to('#div1', { opacity: 1, duration: 0.2 }, 1.2);
+tl.to('#colh', { opacity: 1, duration: 0.2 }, 1.4);
+tl.to('#div2', { opacity: 1, duration: 0.2 }, 1.5);
+
+const rows = ['#r1','#r2','#r3','#r4','#r5','#r6','#r7','#r8'];
+rows.forEach((r, i) => {
+  tl.to(r, { opacity: 1, duration: 0.15 }, 1.8 + i * 0.25);
+});
+
+tl.to('#summary', { opacity: 1, duration: 0.4 }, 4.5);
+
+window.__timelines['02-status'] = tl;
+</script>
+</body>
+</html>
