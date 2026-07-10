@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 4
+- **Total Sessions**: 5
 - **Last Active**: 2026-07-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~144 | Active |
+| `journal-1.md` | ~178 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 5 | 2026-07-10 | Add workspace mode and onEnter hooks | `cb08ceb`, `a1ab6f2` | `main` |
 | 4 | 2026-07-10 | Rewrite bilingual READMEs as project workbench | `953ce5d` | `main` |
 | 3 | 2026-07-10 | Add tab completion for PowerShell and bash/zsh | `85c45b3`, `ad2f69a`, `063f009` | `main` |
 | 2 | 2026-07-10 | Add macOS native support and fix PS 5.1 JSON parsing | `e2d8145`, `68cea01` | `main` |

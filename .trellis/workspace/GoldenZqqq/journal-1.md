@@ -142,3 +142,37 @@ Repositioned cdp from directory switcher to project workbench. Added cdp status 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Add workspace mode and onEnter hooks
+
+**Date**: 2026-07-10
+**Task**: Add workspace mode and onEnter hooks
+**Branch**: `main`
+
+### Summary
+
+Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and tmux integration. Added onEnter hook for automatic environment activation on project switch. Both features work on PowerShell and bash/zsh.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cb08ceb` | (see git log) |
+| `a1ab6f2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
