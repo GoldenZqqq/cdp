@@ -20,7 +20,7 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 Release polish checklist is complete. Version 1.6.3 has been published to GitHub Releases and PowerShell Gallery.
 
-Current release step: build and publish version 1.7.0 with recent project tracking.
+Current release step: build version 1.8.0 with AI CLI workspace launching.
 
 ## 1.7.0 Recent Projects Checklist
 
@@ -30,8 +30,25 @@ Current release step: build and publish version 1.7.0 with recent project tracki
 - [x] Add `cdp recent` / `cdp-recent` listing commands.
 - [x] Keep recent state separate from project configuration in `~/.cdp/state.json`.
 - [x] Run full release validation.
-- [ ] Publish v1.7.0 to GitHub Releases and PowerShell Gallery.
-- [ ] Upgrade local cdp installation to v1.7.0.
+- [ ] Publish v1.7.0 to GitHub Releases and PowerShell Gallery. Superseded by 1.8.0 release preparation.
+- [ ] Upgrade local cdp installation to v1.7.0. Superseded by 1.8.0 release preparation.
+
+## 1.8.0 AI CLI Workspace Launcher Checklist
+
+- [x] Decide the next public submission angle: cdp as an AI CLI workspace launcher, not only a directory switcher.
+- [x] Add PowerShell `-Open` support so `cdp api -Open codex` switches into a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command.
+- [x] Add WSL/Linux `--open` support so `cdp api --open codex` mirrors the PowerShell workflow.
+- [x] Document the workspace-launching workflow in both README files.
+- [x] Add tests for launcher parsing and dry-run execution.
+- [x] Add project pinning/favorites so frequent projects can stay at the top of the picker.
+- [x] Add `cdp doctor --fix` / `cdp clean` for stale paths, duplicates, and safe config cleanup.
+- [x] Add `cdp init` first-run setup for dependency checks, project scanning, and config selection.
+- [x] Add tags or aliases such as `@work`, `@ai`, and short project nicknames.
+- [x] Run PowerShell, ScriptAnalyzer, bash syntax, and whitespace validation.
+
+## Post-1.8 Public Submission Backlog
+
+- [ ] Improve the public demo around the AI CLI workflow and the difference from zoxide/autojump.
 
 ## Verification Log
 
@@ -80,3 +97,13 @@ Current release step: build and publish version 1.7.0 with recent project tracki
 - Release 1.7.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
 - Release 1.7.0: `git diff --check` reported no whitespace errors.
 - Release 1.7.0: Local WSL recent smoke was not run end-to-end because this Arch distro does not have `jq`; CI installs `jq` and now covers `cdp recent`.
+- Release 1.8.0: Added PowerShell `-Open` and WSL/Linux `--open` workspace launchers.
+- Release 1.8.0: Added PowerShell and WSL/Linux project pinning with `cdp pin` / `cdp unpin`.
+- Release 1.8.0: Added safe config repair with `cdp clean` / `cdp doctor --fix`.
+- Release 1.8.0: Added first-run setup with `cdp init`.
+- Release 1.8.0: Added aliases and tags with `cdp alias` / `cdp tag`.
+- Release 1.8.0: PowerShell 7 `Invoke-Pester -Path ./tests -CI` passed 24 tests.
+- Release 1.8.0: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
+- Release 1.8.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
+- Release 1.8.0: `git diff --check` reported no whitespace errors.
+- Release 1.8.0: Local WSL `--open` smoke was not run end-to-end because this Arch distro did not return a `jq` path; CI now includes a dry-run `cdp --open` smoke.

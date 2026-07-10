@@ -116,11 +116,18 @@ cdp
 cd E:\Projects\my-api
 cdp-add
 
+# 首次使用：创建配置并可扫描 Git 仓库
+cdp init E:\Projects
+
 # 从任意位置打开项目选择器
 cdp
 
 # 只有一个匹配时直接进入项目；多个匹配时再打开 fzf
 cdp api
+
+# 进入项目并启动 AI CLI 或编辑器
+cdp api -Open codex
+cdp api -Open code
 
 # 批量导入某个目录下的 Git 仓库
 cdp-scan E:\Projects
@@ -128,11 +135,25 @@ cdp-scan E:\Projects
 # 查看当前配置健康状态
 cdp doctor
 
+# 安全修复失效路径、重复项目和缺失字段
+cdp clean
+cdp doctor --fix
+
 # 查看当前版本、配置和升级命令
 cdp version
 
 # 查看最近访问过的项目
 cdp recent
+
+# 将常用项目固定在列表顶部
+cdp pin api
+cdp unpin api
+
+# 添加短别名和标签；PowerShell 查询标签时需要引号
+cdp alias api backend
+cdp tag api work
+cdp backend
+cdp '@work'
 
 # 从 PowerShell 直接启动 WSL 并进入项目
 cdp -WSL
@@ -141,7 +162,7 @@ cdp -WSL
 fzf 菜单里输入几个字母即可模糊匹配：
 
 ```text
-cdp v1.7.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v1.8.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -160,6 +181,7 @@ git    git repo detected
 - 当前 shell 进入项目根目录
 - Windows Terminal / 常见终端标签标题更新为项目名
 - WSL 模式会自动把 `C:\path` 转为 `/mnt/c/path`
+- 使用 `-Open` 时，会在项目根目录继续启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令
 
 ---
 
@@ -173,6 +195,8 @@ git    git repo detected
 
 使用 Claude Code、Codex、Gemini CLI 等工具时，终端通常是主工作台。`cdp` 会把项目根目录切换、终端标签标题和项目列表放在一起，减少在多个 AI 会话、多个仓库之间反复复制长路径的时间。
 
+需要直接启动 AI CLI 时，可以用 `cdp api -Open codex`、`cdp web -Open claude` 或 `cdp tool -Open gemini`。如果想打开编辑器，可以用 `cdp api -Open code` 或 `cdp api -Open cursor`。
+
 ### Windows + WSL 混合环境
 
 Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Linux 版也能使用同类 JSON 项目列表。需要从 PowerShell 进入 WSL 项目时，用 `cdp -WSL` 选择项目，Windows 路径会自动转换为 `/mnt/c/...`。
@@ -184,11 +208,14 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 - **模糊搜索切换项目**：由 `fzf` 驱动，键盘优先，不需要记路径
 - **Neon 风格 TUI**：彩色候选行、右侧项目预览、路径/Git 状态一眼可见
 - **快速 query 跳转**：`cdp api` 唯一匹配时直接进入项目，多匹配时只在候选中选择
+- **AI CLI 工作区启动**：`cdp api -Open codex` 先进入项目根目录，再启动 Codex、Claude、Gemini、VS Code 或 Cursor
 - **兼容 Project Manager**：自动读取 VS Code/Cursor Project Manager 配置
 - **自带项目管理命令**：`cdp-add`、`cdp-rm`、`cdp-ls`、`cdp-config`
 - **批量 Git 扫描**：`cdp-scan` 可把目录下的 Git 仓库批量导入配置
 - **最近访问项目**：`cdp recent` / `cdp-recent` 按最后访问时间列出最近切换过的项目
-- **配置健康检查**：`cdp doctor` 检查依赖、JSON、重复项目名、失效路径
+- **项目置顶 / 收藏**：`cdp pin api` 把常用项目固定在选择器和列表顶部
+- **标签与短别名**：`cdp alias api backend` 添加短别名；`cdp tag api work` 后可用 `cdp '@work'` 过滤项目
+- **配置健康检查与修复**：`cdp doctor` 检查依赖、JSON、重复项目名、失效路径；`cdp clean` 安全修复项目配置
 - **Windows + WSL/Linux**：PowerShell 和 bash/zsh 版本共享同一类配置
 - **终端标签同步**：切换后自动把 tab title 改为项目名
 
@@ -202,12 +229,22 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
 | `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
+| `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `Switch-Project` | - | 打开 fzf 菜单并切换项目 |
 | `Switch-Project -Query api` | - | 只在匹配 `api` 的项目中切换 |
+| `Switch-Project -Query api -Open code` | - | 切换到项目并打开 VS Code |
 | `Switch-Project -WSL` | `cdp -WSL` | 选择项目并启动 WSL 进入目录 |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | 诊断 cdp 环境和配置 |
+| `Repair-ProjectConfig` | `cdp clean`, `cdp-clean` | 安全修复配置：禁用失效路径、去重、补齐 `pinned` 字段 |
+| `Initialize-Cdp` | `cdp init`, `cdp-init` | 首次使用初始化：创建配置、保存选择、可扫描 Git 仓库 |
+| `Add-ProjectAlias` | `cdp alias`, `cdp-alias` | 给项目添加短别名，之后可直接用别名匹配 |
+| `Remove-ProjectAlias` | `cdp unalias`, `cdp-unalias` | 移除项目短别名 |
+| `Add-ProjectTag` | `cdp tag`, `cdp-tag` | 给项目添加标签，PowerShell 中用 `cdp '@work'` 查询 |
+| `Remove-ProjectTag` | `cdp untag`, `cdp-untag` | 移除项目标签 |
 | `Show-CdpAbout` | `cdp about`, `cdp version` | 显示 cdp Logo、版本、配置路径、项目数量和升级命令 |
 | `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | 列出最近访问过的项目 |
+| `Set-ProjectPin` | `cdp pin`, `cdp-pin` | 将项目固定在选择器和列表顶部 |
+| `Clear-ProjectPin` | `cdp unpin`, `cdp-unpin` | 取消项目置顶 |
 | `Add-Project` | `cdp-add` | 添加当前目录或指定路径 |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | 扫描 Git 仓库并批量导入配置 |
 | `Remove-Project` | `cdp-rm` | 删除项目，支持交互选择 |
@@ -221,9 +258,16 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | --- | --- |
 | `cdp` | 打开 fzf 菜单并切换项目 |
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
+| `cdp api --open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
+| `cdp clean` / `cdp-clean` | 安全修复配置：禁用失效路径、去重、补齐 `pinned` 字段 |
+| `cdp init ~/code` / `cdp-init ~/code` | 首次使用初始化：创建配置、保存选择、可扫描 Git 仓库 |
+| `cdp alias api backend` / `cdp-alias api backend` | 给项目添加短别名 |
+| `cdp tag api work` / `cdp-tag api work` | 给项目添加标签，bash/zsh 中可用 `cdp @work` 查询 |
 | `cdp about` / `cdp version` | 显示版本、配置路径、项目数量和升级命令 |
 | `cdp recent` / `cdp-recent` | 列出最近访问过的项目 |
+| `cdp pin api` / `cdp-pin api` | 将项目固定在选择器和列表顶部 |
+| `cdp unpin api` / `cdp-unpin api` | 取消项目置顶 |
 | `cdp-add` | 添加当前目录或指定路径 |
 | `cdp-scan ~/code` / `cdp scan ~/code` | 扫描 Git 仓库并批量导入配置 |
 | `cdp-ls` | 列出已启用项目 |
@@ -258,17 +302,23 @@ cdp-scan E:\Projects
   {
     "name": "my-api",
     "rootPath": "E:/Projects/my-api",
-    "enabled": true
+    "enabled": true,
+    "pinned": false,
+    "aliases": ["backend"],
+    "tags": ["work", "api"]
   },
   {
     "name": "personal-blog",
     "rootPath": "D:/Code/blog",
-    "enabled": true
+    "enabled": true,
+    "pinned": true,
+    "aliases": [],
+    "tags": ["writing"]
   }
 ]
 ```
 
-建议在 JSON 中使用 `/`，避免 Windows 反斜杠转义。
+`pinned`、`aliases`、`tags` 都是可选字段；旧配置没有这些字段时会按未置顶、无别名、无标签处理。建议在 JSON 中使用 `/`，避免 Windows 反斜杠转义。
 
 最近访问记录保存在独立状态文件 `~/.cdp/state.json`，不会写回 `projects.json`。自动化或测试场景可以用 `CDP_STATE_PATH` 指向临时状态文件。
 
@@ -330,6 +380,10 @@ Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber
 # 查看当前项目列表
 cdp-ls
 
+# 安全修复配置
+cdp clean
+cdp doctor --fix
+
 # 切换配置文件
 cdp-config
 ```
@@ -382,10 +436,13 @@ CI 覆盖：
 - [x] `cdp doctor` 诊断命令
 - [x] GitHub Actions 基础 CI
 - [x] 最近访问项目
-- [ ] 项目置顶 / 收藏
+- [x] 项目置顶 / 收藏
 - [x] `cdp <query>` 非交互快速匹配
 - [x] 批量扫描 Git 仓库生成配置
-- [ ] 切换项目后自动执行脚本
+- [x] 切换项目后启动 AI CLI / 编辑器
+- [x] `cdp doctor --fix` / `cdp clean` 自动修复失效路径和重复项
+- [x] `cdp init` 首次使用向导
+- [x] 项目标签 / 别名
 
 ---
 

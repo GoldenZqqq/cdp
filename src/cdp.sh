@@ -6,10 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 1.7.0
+# Version: 1.8.0
 # License: MIT
 
-CDP_VERSION="1.7.0"
+CDP_VERSION="1.8.0"
 
 # Colors
 RED='\033[0;31m'
@@ -114,20 +114,29 @@ cdp_picker_rows() {
 
         local raw_path
         local display_path
+        local pinned
+        local name_label
         local safe_name
         local safe_path
         raw_path=$(jq -r --arg name "$name" \
             '.[] | select(.name == $name and .enabled == true) | .rootPath' \
             "$config_path" 2>/dev/null | head -n1)
+        pinned=$(jq -r --arg name "$name" \
+            '.[] | select(.name == $name and .enabled == true) | (.pinned == true)' \
+            "$config_path" 2>/dev/null | head -n1)
         display_path=$(convert_windows_to_wsl "$raw_path")
         safe_name=$(sanitize_picker_field "$name")
         safe_path=$(sanitize_picker_field "$display_path")
+        name_label="$safe_name"
+        if [[ "$pinned" == "true" ]]; then
+            name_label="[pin] $safe_name"
+        fi
 
         cdp_picker_preview "$safe_name" "$safe_path" "$display_path" "$preview_dir/$index.txt"
         printf "%s\t%s\t%s\t%b%3d%b\t%b%s%b\t%b%s%b\n" \
             "$index" "$safe_name" "$raw_path" \
             "$GRAY" "$index" "$NC" \
-            "$BOLD_CYAN" "$safe_name" "$NC" \
+            "$BOLD_CYAN" "$name_label" "$NC" \
             "$GRAY" "$safe_path" "$NC"
         ((index++))
     done <<< "$projects"
@@ -446,11 +455,26 @@ find_project_matches() {
     local query="$2"
     local exact_matches
 
+    if [[ "$query" == @* ]]; then
+        local tag_query="${query#@}"
+        jq -r --arg query "$tag_query" '
+            ($query | ascii_downcase) as $needle |
+            .[] |
+            select(.enabled == true) |
+            select(((.tags // []) | map(ascii_downcase) | index($needle)) != null) |
+            .name
+        ' "$config_path" 2>/dev/null
+        return
+    fi
+
     exact_matches=$(jq -r --arg query "$query" '
         ($query | ascii_downcase) as $needle |
         .[] |
         select(.enabled == true) |
-        select(((.name // "") | ascii_downcase) == $needle) |
+        select(
+            ((.name // "") | ascii_downcase) == $needle or
+            (((.aliases // []) | map(ascii_downcase) | index($needle)) != null)
+        ) |
         .name
     ' "$config_path" 2>/dev/null)
 
@@ -465,9 +489,35 @@ find_project_matches() {
         select(.enabled == true) |
         select(
             ((.name // "") | ascii_downcase | contains($needle)) or
-            ((.rootPath // "") | ascii_downcase | contains($needle))
+            ((.rootPath // "") | ascii_downcase | contains($needle)) or
+            (((.aliases // []) | map(ascii_downcase) | map(contains($needle)) | any)) or
+            (((.tags // []) | map(ascii_downcase) | map(contains($needle)) | any))
         ) |
         .name
+    ' "$config_path" 2>/dev/null
+}
+
+sorted_enabled_project_names() {
+    local config_path="$1"
+
+    jq -r '
+        to_entries
+        | map(select(.value.enabled == true))
+        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
+        | .[].value.name
+    ' "$config_path" 2>/dev/null
+}
+
+sorted_enabled_project_rows() {
+    local config_path="$1"
+
+    jq -r '
+        to_entries
+        | map(select(.value.enabled == true))
+        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
+        | .[]
+        | [.value.name, ((.value.pinned == true) | tostring), .value.rootPath]
+        | @tsv
     ' "$config_path" 2>/dev/null
 }
 
@@ -549,12 +599,103 @@ cdp_about() {
     echo -e "${GRAY}Upgrade:${NC} ${CYAN}$(cdp_upgrade_command)${NC}"
 }
 
+cdp-init() {
+    local root_path="$1"
+    local config_path="$2"
+    local max_depth="${3:-4}"
+
+    if [[ -z "$config_path" ]]; then
+        config_path="$HOME/.cdp/projects.json"
+    fi
+
+    initialize_config "$config_path"
+    save_config_choice "$config_path"
+
+    cdp_brand_header
+    echo -e "${GRAY}Config:${NC} ${CYAN}$config_path${NC}"
+    echo -e "${GREEN}Saved active config choice.${NC}"
+
+    if command -v fzf &> /dev/null; then
+        echo -e "${GREEN}fzf: found${NC}"
+    else
+        echo -e "${YELLOW}fzf: not found. Install it with your package manager.${NC}"
+    fi
+
+    if command -v jq &> /dev/null; then
+        echo -e "${GREEN}jq: found${NC}"
+    else
+        echo -e "${YELLOW}jq: not found. Install jq before using the bash/zsh version.${NC}"
+    fi
+
+    if [[ -n "$root_path" ]]; then
+        cdp-scan "$root_path" "$config_path" "$max_depth"
+    fi
+}
+
+resolve_workspace_launcher() {
+    local opener="$1"
+
+    case "${opener,,}" in
+        code|vscode)
+            printf "code\t.\tVS Code\n"
+            ;;
+        cursor)
+            printf "cursor\t.\tCursor\n"
+            ;;
+        codex)
+            printf "codex\t\tCodex\n"
+            ;;
+        claude)
+            printf "claude\t\tClaude\n"
+            ;;
+        gemini)
+            printf "gemini\t\tGemini\n"
+            ;;
+        *)
+            printf "%s\t\t%s\n" "$opener" "$opener"
+            ;;
+    esac
+}
+
+cdp_open_workspace() {
+    local opener="$1"
+    local project_name="$2"
+    local project_path="$3"
+    local command_name
+    local command_arg
+    local label
+
+    IFS=$'\t' read -r command_name command_arg label < <(resolve_workspace_launcher "$opener")
+
+    if [[ -n "$CDP_OPEN_DRY_RUN" ]]; then
+        echo -e "${GRAY}Would open $project_name with $label.${NC}"
+        return 0
+    fi
+
+    if ! command -v "$command_name" &> /dev/null; then
+        echo -e "${RED}Error: '$command_name' command not found.${NC}"
+        return 1
+    fi
+
+    echo -e "${CYAN}Opening with $label...${NC}"
+    if [[ -n "$command_arg" ]]; then
+        "$command_name" "$command_arg"
+    else
+        "$command_name"
+    fi
+}
+
 # Main cdp function
 cdp() {
     case "$1" in
         doctor|health|check)
             shift
-            cdp-doctor "$@"
+            if [[ "${1:-}" == "--fix" || "${1:-}" == "-f" ]]; then
+                shift
+                cdp-clean "$@"
+            else
+                cdp-doctor "$@"
+            fi
             return
             ;;
         about|version|--version|-v)
@@ -567,6 +708,46 @@ cdp() {
             cdp-recent "$@"
             return
             ;;
+        pin|pinned|favorite|star)
+            shift
+            cdp-pin "$@"
+            return
+            ;;
+        unpin|unfavorite|unstar)
+            shift
+            cdp-unpin "$@"
+            return
+            ;;
+        clean|repair|fix)
+            shift
+            cdp-clean "$@"
+            return
+            ;;
+        alias|add-alias)
+            shift
+            cdp-alias "$@"
+            return
+            ;;
+        unalias|remove-alias)
+            shift
+            cdp-unalias "$@"
+            return
+            ;;
+        tag|add-tag)
+            shift
+            cdp-tag "$@"
+            return
+            ;;
+        untag|remove-tag)
+            shift
+            cdp-untag "$@"
+            return
+            ;;
+        init|setup)
+            shift
+            cdp-init "$@"
+            return
+            ;;
         scan|import)
             shift
             cdp-scan "$@"
@@ -576,13 +757,34 @@ cdp() {
 
     local query=""
     local config_path=""
+    local opener=""
+    local -a positional_args=()
 
-    if [[ -n "$1" ]]; then
-        if is_config_path_arg "$1"; then
-            config_path="$1"
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --open|-o)
+                if [[ -z "${2:-}" ]]; then
+                    echo -e "${RED}Error: missing launcher after $1.${NC}"
+                    return 1
+                fi
+                opener="$2"
+                shift 2
+                ;;
+            *)
+                positional_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if [[ ${#positional_args[@]} -gt 0 ]]; then
+        if is_config_path_arg "${positional_args[0]}"; then
+            config_path="${positional_args[0]}"
         else
-            query="$1"
-            config_path="$2"
+            query="${positional_args[0]}"
+            if [[ ${#positional_args[@]} -gt 1 ]]; then
+                config_path="${positional_args[1]}"
+            fi
         fi
     fi
 
@@ -615,7 +817,8 @@ cdp() {
     fi
 
     # Read and parse JSON, filter enabled projects
-    local projects=$(jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null)
+    local projects
+    projects=$(sorted_enabled_project_names "$config_path")
 
     if [[ -z "$projects" ]]; then
         echo -e "${YELLOW}No enabled projects found in configuration.${NC}"
@@ -726,6 +929,10 @@ cdp() {
 
             # Update terminal title (works in most terminals)
             echo -ne "\033]0;$selected\007"
+
+            if [[ -n "$opener" ]]; then
+                cdp_open_workspace "$opener" "$selected" "$project_path"
+            fi
         else
             echo -e "${RED}Error: Directory not found: $project_path${NC}"
             return 1
@@ -764,7 +971,8 @@ cdp-ls() {
     fi
 
     # Read enabled projects
-    local enabled_projects=$(jq -r '.[] | select(.enabled == true) | "\(.name)|\(.rootPath)"' "$config_path" 2>/dev/null)
+    local enabled_projects
+    enabled_projects=$(sorted_enabled_project_rows "$config_path")
 
     if [[ -z "$enabled_projects" ]]; then
         echo -e "${YELLOW}No enabled projects found.${NC}"
@@ -774,7 +982,7 @@ cdp-ls() {
     # Count projects
     local count=$(echo "$enabled_projects" | wc -l)
     local name_width=14
-    while IFS='|' read -r name path; do
+    while IFS=$'\t' read -r name pinned path; do
         if (( ${#name} > name_width )); then
             name_width=${#name}
         fi
@@ -785,16 +993,20 @@ cdp-ls() {
 
     echo -e "\n${CYAN}cdp projects${NC} ${GRAY}($count enabled)${NC}"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
-    printf "  ${GRAY}%-4s${NC} ${CYAN}%-*s${NC} ${GRAY}%s${NC}\n" "#" "$name_width" "Project" "Path"
+    printf "  ${GRAY}%-4s${NC} ${GRAY}%-5s${NC} ${CYAN}%-*s${NC} ${GRAY}%s${NC}\n" "#" "Pin" "$name_width" "Project" "Path"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
 
     local index=1
-    while IFS='|' read -r name path; do
+    while IFS=$'\t' read -r name pinned path; do
         local display_path
         local display_name
+        local pin_text=""
         display_path=$(convert_windows_to_wsl "$path")
         display_name=$(truncate_text "$name" "$name_width")
-        printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_path"
+        if [[ "$pinned" == "true" ]]; then
+            pin_text="*"
+        fi
+        printf "  ${GRAY}%02d  ${NC} ${YELLOW}%-5s${NC} ${GREEN}%-*s${NC} ${GRAY}%s${NC}\n" "$index" "$pin_text" "$name_width" "$display_name" "$display_path"
         ((index++))
     done <<< "$enabled_projects"
 
@@ -918,7 +1130,7 @@ cdp-add() {
     # Add new project
     local temp_file=$(mktemp)
     jq --arg name "$name" --arg path "$path" \
-        '. += [{"name": $name, "rootPath": $path, "enabled": true}]' \
+        '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
         "$config_path" > "$temp_file"
 
     mv "$temp_file" "$config_path"
@@ -927,6 +1139,196 @@ cdp-add() {
     echo -e "  ${CYAN}Name:${NC} $name"
     echo -e "  ${GRAY}Path:${NC} $path"
     echo -e "  ${GRAY}Config:${NC} $config_path"
+}
+
+set_project_pin() {
+    local name="$1"
+    local pinned="$2"
+    local config_path="$3"
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    initialize_config "$config_path"
+
+    local matches
+    if [[ -z "$name" ]]; then
+        matches=$(jq -r --arg path "$PWD" '.[] | select(.rootPath == $path) | .name' "$config_path" 2>/dev/null)
+    else
+        matches=$(find_project_matches "$config_path" "$name")
+    fi
+
+    local match_count
+    match_count=$(line_count "$matches")
+    if [[ "$match_count" -eq 0 ]]; then
+        echo -e "${YELLOW}No project matched for pin update.${NC}"
+        return 1
+    fi
+
+    if [[ "$match_count" -gt 1 ]]; then
+        echo -e "${YELLOW}Multiple projects matched. Please use a more specific name.${NC}"
+        printf '%s\n' "$matches" | sed 's/^/  /'
+        return 1
+    fi
+
+    local target
+    local temp_file
+    local state_text="Pinned"
+    target="$matches"
+    temp_file=$(mktemp)
+    if [[ "$pinned" != "true" ]]; then
+        state_text="Unpinned"
+    fi
+
+    jq --arg name "$target" --argjson pinned "$pinned" '
+        map(if .name == $name then . + {"pinned": $pinned} else . end)
+    ' "$config_path" > "$temp_file"
+    mv "$temp_file" "$config_path"
+
+    echo -e "${GREEN}$state_text project: $target${NC}"
+}
+
+cdp-pin() {
+    set_project_pin "$1" true "$2"
+}
+
+cdp-unpin() {
+    set_project_pin "$1" false "$2"
+}
+
+cdp-clean() {
+    local config_path="$1"
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    initialize_config "$config_path"
+
+    local temp_file
+    temp_file=$(mktemp)
+    jq '
+        def valid_project:
+            (.name | type == "string") and
+            (.rootPath | type == "string") and
+            ((.name | length) > 0) and
+            ((.rootPath | length) > 0);
+        reduce .[] as $project (
+            {projects: [], paths: {}, names: {}};
+            if (($project | valid_project) | not) then
+                .
+            elif .paths[$project.rootPath] then
+                .
+            else
+                (.names[$project.name] // 0) as $seen |
+                ($project + {
+                    "name": (if $seen == 0 then $project.name else "\($project.name)-\($seen + 1)" end),
+                    "enabled": (if ($project.enabled | type) == "boolean" then $project.enabled else false end),
+                    "pinned": (if ($project.pinned | type) == "boolean" then $project.pinned else false end),
+                    "aliases": (if ($project.aliases | type) == "array" then $project.aliases else [] end),
+                    "tags": (if ($project.tags | type) == "array" then $project.tags else [] end)
+                }) as $cleanProject |
+                .projects += [$cleanProject] |
+                .paths[$project.rootPath] = true |
+                .names[$project.name] = ($seen + 1)
+            end
+        ) | .projects
+    ' "$config_path" > "$temp_file"
+    mv "$temp_file" "$config_path"
+
+    local missing_count=0
+    while IFS=$'\t' read -r name path; do
+        [[ -z "$name" && -z "$path" ]] && continue
+        local resolved_path
+        resolved_path=$(convert_windows_to_wsl "$path")
+        if [[ ! -d "$resolved_path" ]]; then
+            temp_file=$(mktemp)
+            jq --arg path "$path" 'map(if .rootPath == $path then .enabled = false else . end)' \
+                "$config_path" > "$temp_file"
+            mv "$temp_file" "$config_path"
+            ((missing_count += 1))
+        fi
+    done < <(jq -r '.[] | select(.enabled == true) | [.name, .rootPath] | @tsv' "$config_path")
+
+    echo -e "${GREEN}cdp config repaired:${NC} $config_path"
+    echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
+}
+
+update_project_list_value() {
+    local name="$1"
+    local value="$2"
+    local property="$3"
+    local remove="$4"
+    local config_path="$5"
+
+    if [[ -z "$name" || -z "$value" ]]; then
+        echo -e "${YELLOW}Project name and metadata value are required.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    initialize_config "$config_path"
+
+    local matches
+    local match_count
+    matches=$(find_project_matches "$config_path" "$name")
+    match_count=$(line_count "$matches")
+    if [[ "$match_count" -ne 1 ]]; then
+        echo -e "${YELLOW}Expected one project match, found $match_count.${NC}"
+        return 1
+    fi
+
+    local target
+    local temp_file
+    target="$matches"
+    temp_file=$(mktemp)
+    jq --arg name "$target" --arg value "$value" --arg property "$property" --argjson remove "$remove" '
+        map(if .name == $name then
+            .[$property] = (
+                ((.[$property] // []) | map(tostring)) as $values |
+                if $remove then
+                    ($values | map(select((ascii_downcase) != ($value | ascii_downcase))))
+                elif (($values | map(ascii_downcase) | index($value | ascii_downcase)) == null) then
+                    $values + [$value]
+                else
+                    $values
+                end
+            )
+        else . end)
+    ' "$config_path" > "$temp_file"
+    mv "$temp_file" "$config_path"
+
+    echo -e "${GREEN}Updated $property for project: $target${NC}"
+}
+
+cdp-alias() {
+    update_project_list_value "$1" "$2" "aliases" false "$3"
+}
+
+cdp-unalias() {
+    update_project_list_value "$1" "$2" "aliases" true "$3"
+}
+
+cdp-tag() {
+    update_project_list_value "$1" "$2" "tags" false "$3"
+}
+
+cdp-untag() {
+    update_project_list_value "$1" "$2" "tags" true "$3"
 }
 
 cdp-scan() {
@@ -978,7 +1380,7 @@ cdp-scan() {
             name=$(unique_project_name "$repo" "$config_path")
             temp_file=$(mktemp)
             jq --arg name "$name" --arg path "$repo" \
-                '. += [{"name": $name, "rootPath": $path, "enabled": true}]' \
+                '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
                 "$config_path" > "$temp_file"
             mv "$temp_file" "$config_path"
             ((added_count += 1))
@@ -1228,5 +1630,13 @@ if [[ -n "$BASH_VERSION" ]]; then
     export -f cdp-config
     export -f cdp-doctor
     export -f cdp-recent
+    export -f cdp-pin
+    export -f cdp-unpin
+    export -f cdp-clean
+    export -f cdp-init
+    export -f cdp-alias
+    export -f cdp-unalias
+    export -f cdp-tag
+    export -f cdp-untag
     export -f cdp-scan
 fi

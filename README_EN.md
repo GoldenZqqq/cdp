@@ -116,11 +116,18 @@ cdp
 cd E:\Projects\my-api
 cdp-add
 
+# First run: create config and optionally scan Git repositories
+cdp init E:\Projects
+
 # Open the project picker from anywhere
 cdp
 
 # Jump directly when one project matches; fall back to fzf for multiple matches
 cdp api
+
+# Enter a project and start an AI CLI or editor
+cdp api -Open codex
+cdp api -Open code
 
 # Bulk import Git repositories under a directory
 cdp-scan E:\Projects
@@ -128,11 +135,25 @@ cdp-scan E:\Projects
 # Check your setup
 cdp doctor
 
+# Safely repair missing paths, duplicates, and missing fields
+cdp clean
+cdp doctor --fix
+
 # Show the current version, config, and upgrade command
 cdp version
 
 # Show recently visited projects
 cdp recent
+
+# Keep frequent projects at the top
+cdp pin api
+cdp unpin api
+
+# Add short aliases and tags; quote tag queries in PowerShell
+cdp alias api backend
+cdp tag api work
+cdp backend
+cdp '@work'
 
 # Launch WSL directly into a selected project
 cdp -WSL
@@ -141,7 +162,7 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
-cdp v1.7.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v1.8.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -160,6 +181,7 @@ After selection:
 - The current shell changes to the project root
 - Windows Terminal and common terminals update the tab title
 - WSL mode converts `C:\path` to `/mnt/c/path`
+- With `-Open`, cdp starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command from the project root
 
 ---
 
@@ -173,6 +195,8 @@ When you maintain a backend, frontend, scripts, and personal projects side by si
 
 When using Claude Code, Codex, Gemini CLI, or similar tools, the terminal becomes the main workspace. `cdp` keeps project-root switching, terminal tab titles, and a shared project list together, reducing the time spent copying long paths across AI sessions and repositories.
 
+When you want to start an AI CLI immediately, use `cdp api -Open codex`, `cdp web -Open claude`, or `cdp tool -Open gemini`. For editors, use `cdp api -Open code` or `cdp api -Open cursor`.
+
 ### Windows + WSL
 
 Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WSL/Linux version can use the same JSON shape. When you need to enter a WSL project from PowerShell, run `cdp -WSL`; Windows paths are converted to `/mnt/c/...` automatically.
@@ -184,11 +208,14 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
 - **Neon TUI**: colored candidates, right-side project preview, and visible path/Git status
 - **Fast query jumps**: `cdp api` switches directly on one match, or filters fzf to matching projects
+- **AI CLI workspace launching**: `cdp api -Open codex` enters the project root and starts Codex, Claude, Gemini, VS Code, or Cursor
 - **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
 - **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
 - **Bulk Git scanning**: `cdp-scan` imports Git repositories under a directory into your config
 - **Recent projects**: `cdp recent` / `cdp-recent` lists projects ordered by last visit
-- **Health checks**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths
+- **Pinned / favorite projects**: `cdp pin api` keeps frequent projects at the top of pickers and lists
+- **Tags and short aliases**: `cdp alias api backend` adds a short alias; after `cdp tag api work`, PowerShell can query it with `cdp '@work'`
+- **Health checks and repair**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths; `cdp clean` safely repairs project config
 - **Windows + WSL/Linux**: PowerShell and bash/zsh versions share the same config shape
 - **Terminal tab titles**: selected project names become visible in terminal tabs
 
@@ -202,12 +229,22 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
+| `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `Switch-Project` | - | Opens the fzf menu and switches projects |
 | `Switch-Project -Query api` | - | Switches within projects matching `api` |
+| `Switch-Project -Query api -Open code` | - | Switches to a project and opens VS Code |
 | `Switch-Project -WSL` | `cdp -WSL` | Selects a project and launches WSL in that directory |
 | `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | Diagnoses the cdp environment and config |
+| `Repair-ProjectConfig` | `cdp clean`, `cdp-clean` | Safely repairs config by disabling missing paths, deduping projects, and filling `pinned` |
+| `Initialize-Cdp` | `cdp init`, `cdp-init` | First-run setup: creates config, saves the choice, and can scan Git repositories |
+| `Add-ProjectAlias` | `cdp alias`, `cdp-alias` | Adds a short project alias for faster matching |
+| `Remove-ProjectAlias` | `cdp unalias`, `cdp-unalias` | Removes a project alias |
+| `Add-ProjectTag` | `cdp tag`, `cdp-tag` | Adds a project tag; query with `cdp '@work'` in PowerShell |
+| `Remove-ProjectTag` | `cdp untag`, `cdp-untag` | Removes a project tag |
 | `Show-CdpAbout` | `cdp about`, `cdp version` | Shows the cdp logo, version, config path, project count, and upgrade command |
 | `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | Lists recently visited projects |
+| `Set-ProjectPin` | `cdp pin`, `cdp-pin` | Keeps a project at the top of pickers and lists |
+| `Clear-ProjectPin` | `cdp unpin`, `cdp-unpin` | Removes a project pin |
 | `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | Scans Git repositories and imports them into the config |
 | `Remove-Project` | `cdp-rm` | Removes a project, with interactive selection support |
@@ -221,9 +258,16 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
+| `cdp api --open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
+| `cdp clean` / `cdp-clean` | Safely repairs config by disabling missing paths, deduping projects, and filling `pinned` |
+| `cdp init ~/code` / `cdp-init ~/code` | First-run setup: creates config, saves the choice, and can scan Git repositories |
+| `cdp alias api backend` / `cdp-alias api backend` | Adds a short project alias |
+| `cdp tag api work` / `cdp-tag api work` | Adds a project tag; query with `cdp @work` in bash/zsh |
 | `cdp about` / `cdp version` | Shows the version, config path, project count, and upgrade command |
 | `cdp recent` / `cdp-recent` | Lists recently visited projects |
+| `cdp pin api` / `cdp-pin api` | Keeps a project at the top of pickers and lists |
+| `cdp unpin api` / `cdp-unpin api` | Removes a project pin |
 | `cdp-add` | Adds the current directory or a specific path |
 | `cdp-scan ~/code` / `cdp scan ~/code` | Scans Git repositories and imports them into the config |
 | `cdp-ls` | Lists enabled projects |
@@ -258,17 +302,23 @@ Custom config format:
   {
     "name": "my-api",
     "rootPath": "E:/Projects/my-api",
-    "enabled": true
+    "enabled": true,
+    "pinned": false,
+    "aliases": ["backend"],
+    "tags": ["work", "api"]
   },
   {
     "name": "personal-blog",
     "rootPath": "D:/Code/blog",
-    "enabled": true
+    "enabled": true,
+    "pinned": true,
+    "aliases": [],
+    "tags": ["writing"]
   }
 ]
 ```
 
-Using `/` in JSON paths avoids escaping Windows backslashes.
+`pinned`, `aliases`, and `tags` are optional; old configs without these fields are treated as unpinned and without metadata. Using `/` in JSON paths avoids escaping Windows backslashes.
 
 Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
 
@@ -330,6 +380,10 @@ Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber
 # List current projects
 cdp-ls
 
+# Safely repair config
+cdp clean
+cdp doctor --fix
+
 # Change config file
 cdp-config
 ```
@@ -382,10 +436,13 @@ CI covers:
 - [x] `cdp doctor` diagnostics
 - [x] GitHub Actions baseline CI
 - [x] Recent projects
-- [ ] Pinned / favorite projects
+- [x] Pinned / favorite projects
 - [x] `cdp <query>` non-interactive matching
 - [x] Bulk scan Git repositories into config
-- [ ] Run scripts after switching projects
+- [x] Start an AI CLI / editor after switching projects
+- [x] `cdp doctor --fix` / `cdp clean` for stale paths and duplicates
+- [x] `cdp init` first-run setup wizard
+- [x] Project tags / aliases
 
 ---
 

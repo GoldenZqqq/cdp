@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 1.7.0
+    Version: 1.8.0
     License: MIT
 #>
 
@@ -109,6 +109,52 @@ function ConvertTo-CdpPickerField {
     $Value -replace "[`r`n`t]+", " "
 }
 
+function Test-CdpProjectPinned {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project
+    )
+
+    $pinnedProperty = $Project.PSObject.Properties['pinned']
+    return $null -ne $pinnedProperty -and $Project.pinned -eq $true
+}
+
+function Get-CdpProjectStringList {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PropertyName
+    )
+
+    $property = $Project.PSObject.Properties[$PropertyName]
+    if ($null -eq $property -or $null -eq $property.Value) {
+        return @()
+    }
+
+    @($property.Value | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
+}
+
+function Sort-CdpProjectsForDisplay {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Projects
+    )
+
+    $indexedProjects = for ($i = 0; $i -lt $Projects.Count; $i++) {
+        [PSCustomObject]@{
+            Project = $Projects[$i]
+            Index = $i
+            PinRank = if (Test-CdpProjectPinned -Project $Projects[$i]) { 0 } else { 1 }
+        }
+    }
+
+    @($indexedProjects |
+        Sort-Object -Property PinRank, Index |
+        ForEach-Object { $_.Project })
+}
+
 function New-CdpPickerLine {
     param(
         [Parameter(Mandatory = $true)]
@@ -121,7 +167,8 @@ function New-CdpPickerLine {
     $rawName = ConvertTo-CdpPickerField -Value $Project.name
     $rawPath = ConvertTo-CdpPickerField -Value $Project.rootPath
     $displayIndex = Format-CdpAnsiText -Text ("{0,3}" -f $Index) -Code "38;5;242"
-    $displayName = Format-CdpAnsiText -Text $rawName -Code "1;38;5;81"
+    $nameText = if (Test-CdpProjectPinned -Project $Project) { "[pin] $rawName" } else { $rawName }
+    $displayName = Format-CdpAnsiText -Text $nameText -Code "1;38;5;81"
     $displayPath = Format-CdpAnsiText -Text $rawPath -Code "38;5;245"
 
     "{0}`t{1}`t{2}`t{3}`t{4}`t{5}" -f $Index, $rawName, $rawPath, $displayIndex, $displayName, $displayPath
@@ -148,6 +195,9 @@ function Get-CdpPickerPreviewContent {
         "-----------"
         "name   $($Project.name)"
         "path   $rootPath"
+        "pin    $(if (Test-CdpProjectPinned -Project $Project) { 'pinned' } else { 'not pinned' })"
+        "alias  $((Get-CdpProjectStringList -Project $Project -PropertyName 'aliases') -join ', ')"
+        "tags   $((Get-CdpProjectStringList -Project $Project -PropertyName 'tags') -join ', ')"
         ""
         "state  $pathState"
         "git    $gitState"
@@ -261,6 +311,10 @@ function Switch-Project {
         If specified, launches WSL and changes to the project directory within WSL.
         Windows paths are automatically converted to WSL mount points (/mnt/c/, etc.).
 
+    .PARAMETER Open
+        Optional command to start after switching to the selected project. Common
+        values include code, cursor, codex, claude, and gemini.
+
     .EXAMPLE
         Switch-Project
         # Opens fzf menu to select from enabled projects
@@ -277,6 +331,10 @@ function Switch-Project {
         cdp -WSL
         # Select a project and launch WSL in that directory
 
+    .EXAMPLE
+        cdp api -Open codex
+        # Switches to the matching project and starts Codex there
+
     .NOTES
         Requires fzf to be installed. Install via: winget install fzf
     #>
@@ -290,7 +348,11 @@ function Switch-Project {
         [string]$Query,
 
         [Parameter(Mandatory = $false)]
-        [switch]$WSL
+        [switch]$WSL,
+
+        [Parameter(Mandatory = $false)]
+        [Alias('o')]
+        [string]$Open
     )
 
     # Get config path
@@ -311,7 +373,7 @@ function Switch-Project {
 
     try {
         $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
-        $enabledProjects = @($configData.EnabledProjects)
+        $enabledProjects = @(Sort-CdpProjectsForDisplay -Projects @($configData.EnabledProjects))
     } catch {
         Write-Host "Error: Failed to read or parse configuration file." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
@@ -428,13 +490,22 @@ function Switch-Project {
         if ($WSL) {
             # Convert Windows path to WSL path and launch WSL
             $wslPath = Convert-WindowsPathToWSL -WindowsPath $selectedProject.rootPath
-            Write-Host "Launching WSL in project: $($selectedProject.name)" -ForegroundColor Green
+            $launchText = if ([string]::IsNullOrWhiteSpace($Open)) {
+                "Launching WSL in project: $($selectedProject.name)"
+            } else {
+                "Launching WSL workspace: $($selectedProject.name)"
+            }
+            Write-Host $launchText -ForegroundColor Green
             Write-Host "WSL path: $wslPath" -ForegroundColor Gray
 
             Add-CdpRecentProject -Project $selectedProject
 
-            # Launch WSL with cd command
-            wsl --cd $wslPath
+            if ([string]::IsNullOrWhiteSpace($Open)) {
+                # Launch WSL with cd command
+                wsl --cd $wslPath
+            } else {
+                Invoke-CdpWorkspaceLauncher -Project $selectedProject -Open $Open -WSL
+            }
         } else {
             Set-Location -Path $selectedProject.rootPath
             Add-CdpRecentProject -Project $selectedProject
@@ -443,6 +514,10 @@ function Switch-Project {
             # Update Windows Terminal tab title
             $newTitle = $selectedProject.name
             Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
+
+            if (-not [string]::IsNullOrWhiteSpace($Open)) {
+                Invoke-CdpWorkspaceLauncher -Project $selectedProject -Open $Open
+            }
         }
     } else {
         Write-Host "Error: Invalid path for project '$selectedProjectName'." -ForegroundColor Red
@@ -489,7 +564,7 @@ function Get-ProjectList {
 
     try {
         $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
-        $enabledProjects = @($configData.EnabledProjects)
+        $enabledProjects = @(Sort-CdpProjectsForDisplay -Projects @($configData.EnabledProjects))
 
         if ($null -eq $enabledProjects -or $enabledProjects.Count -eq 0) {
             Write-Host "No enabled projects found." -ForegroundColor Yellow
@@ -505,23 +580,26 @@ function Get-ProjectList {
 
         Write-Host "`ncdp projects " -ForegroundColor Cyan -NoNewline
         Write-Host "($($enabledProjects.Count) enabled)" -ForegroundColor DarkGray
-        Write-Host ("-" * 96) -ForegroundColor DarkGray
+        Write-Host ("-" * 104) -ForegroundColor DarkGray
         Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
+        Write-Host ("{0,-5} " -f "Pin") -ForegroundColor DarkGray -NoNewline
         Write-Host (("{0,-$nameWidth} " -f "Project")) -ForegroundColor Cyan -NoNewline
         Write-Host "Path" -ForegroundColor DarkGray
-        Write-Host ("-" * 96) -ForegroundColor DarkGray
+        Write-Host ("-" * 104) -ForegroundColor DarkGray
 
         $index = 1
         foreach ($project in $enabledProjects) {
             $number = "{0:00}" -f $index
             $projectName = Limit-CdpText -Text ([string]$project.name) -MaxLength $nameWidth
+            $pinText = if (Test-CdpProjectPinned -Project $project) { "*" } else { "" }
             Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
+            Write-Host ("{0,-5} " -f $pinText) -ForegroundColor Yellow -NoNewline
             Write-Host (("{0,-$nameWidth} " -f $projectName)) -ForegroundColor Green -NoNewline
             Write-Host "$($project.rootPath)" -ForegroundColor DarkGray
             $index++
         }
 
-        Write-Host ("-" * 96) -ForegroundColor DarkGray
+        Write-Host ("-" * 104) -ForegroundColor DarkGray
         Write-Host "config: $ConfigPath" -ForegroundColor DarkGray
     } catch {
         Write-Host "Error: Failed to read configuration." -ForegroundColor Red
@@ -641,21 +719,36 @@ function Get-CdpProjectMatches {
         [string]$Query
     )
 
+    $comparison = [StringComparison]::OrdinalIgnoreCase
+
+    if ($Query.StartsWith('@')) {
+        $tagQuery = $Query.Substring(1)
+        return @($Projects | Where-Object {
+            @(Get-CdpProjectStringList -Project $_ -PropertyName 'tags') |
+                Where-Object { [string]::Equals($_, $tagQuery, $comparison) }
+        })
+    }
+
     $exactMatches = @($Projects | Where-Object {
-        [string]::Equals([string]$_.name, $Query, [StringComparison]::OrdinalIgnoreCase)
+        $projectAliases = @(Get-CdpProjectStringList -Project $_ -PropertyName 'aliases')
+        [string]::Equals([string]$_.name, $Query, $comparison) -or
+            @($projectAliases | Where-Object { [string]::Equals($_, $Query, $comparison) }).Count -gt 0
     })
 
     if ($exactMatches.Count -gt 0) {
         return $exactMatches
     }
 
-    $comparison = [StringComparison]::OrdinalIgnoreCase
     return @($Projects | Where-Object {
         $projectName = if ($null -eq $_.name) { "" } else { [string]$_.name }
         $projectPath = if ($null -eq $_.rootPath) { "" } else { [string]$_.rootPath }
+        $projectAliases = @(Get-CdpProjectStringList -Project $_ -PropertyName 'aliases')
+        $projectTags = @(Get-CdpProjectStringList -Project $_ -PropertyName 'tags')
 
         $projectName.IndexOf($Query, $comparison) -ge 0 -or
-            $projectPath.IndexOf($Query, $comparison) -ge 0
+            $projectPath.IndexOf($Query, $comparison) -ge 0 -or
+            @($projectAliases | Where-Object { $_.IndexOf($Query, $comparison) -ge 0 }).Count -gt 0 -or
+            @($projectTags | Where-Object { $_.IndexOf($Query, $comparison) -ge 0 }).Count -gt 0
     })
 }
 
@@ -678,6 +771,142 @@ function Test-CdpConfigPathArgument {
         $Argument.Contains('/') -or
         $Argument.StartsWith('~') -or
         $Argument -match '^[A-Za-z]:'
+}
+
+function Get-CdpWorkspaceLauncher {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Open
+    )
+
+    $launcherName = $Open.Trim()
+    $normalizedName = $launcherName.ToLowerInvariant()
+    $command = $launcherName
+    $arguments = @()
+    $label = $launcherName
+
+    switch ($normalizedName) {
+        { $_ -in @('code', 'vscode') } {
+            $command = 'code'
+            $arguments = @('.')
+            $label = 'VS Code'
+        }
+        'cursor' {
+            $command = 'cursor'
+            $arguments = @('.')
+            $label = 'Cursor'
+        }
+        'codex' { $label = 'Codex' }
+        'claude' { $label = 'Claude' }
+        'gemini' { $label = 'Gemini' }
+    }
+
+    [PSCustomObject]@{
+        Name = $launcherName
+        Label = $label
+        Command = $command
+        Arguments = $arguments
+    }
+}
+
+function Invoke-CdpWorkspaceLauncher {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Open,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$WSL
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Open)) {
+        return
+    }
+
+    $launcher = Get-CdpWorkspaceLauncher -Open $Open
+    $workingDirectory = if ($WSL) {
+        Convert-WindowsPathToWSL -WindowsPath ([string]$Project.rootPath)
+    } else {
+        [string]$Project.rootPath
+    }
+
+    $result = [PSCustomObject]@{
+        ProjectName = [string]$Project.name
+        WorkingDirectory = $workingDirectory
+        WSL = [bool]$WSL
+        Name = $launcher.Name
+        Label = $launcher.Label
+        Command = $launcher.Command
+        Arguments = @($launcher.Arguments)
+    }
+
+    if ($env:CDP_OPEN_DRY_RUN -eq '1') {
+        Write-Host "Would open $($Project.name) with $($launcher.Label)." -ForegroundColor Gray
+        return $result
+    }
+
+    Write-Host "Opening with $($launcher.Label)..." -ForegroundColor Cyan
+    if ($WSL) {
+        wsl --cd $workingDirectory --exec $launcher.Command @($launcher.Arguments)
+        return
+    }
+
+    if (-not (Get-Command $launcher.Command -ErrorAction SilentlyContinue)) {
+        Write-Host "Error: '$($launcher.Command)' command not found." -ForegroundColor Red
+        return
+    }
+
+    & $launcher.Command @($launcher.Arguments)
+}
+
+function ConvertFrom-CdpInvokeArguments {
+    param(
+        [string]$Command,
+        [string]$ConfigPath,
+        [string]$Query,
+        [string]$Open,
+        [string[]]$RemainingArgs
+    )
+
+    $remaining = if ($null -eq $RemainingArgs) { @() } else { @($RemainingArgs) }
+    $openTokens = @('--open', '-open')
+
+    if ([string]::IsNullOrWhiteSpace($Open)) {
+        if ($Command -in $openTokens) {
+            if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+                throw "Missing launcher after --open."
+            }
+            $Open = $ConfigPath
+            $Command = if ($remaining.Count -ge 1) { $remaining[0] } else { $null }
+            $ConfigPath = if ($remaining.Count -ge 2) { $remaining[1] } else { $null }
+        } elseif ($ConfigPath -in $openTokens) {
+            if ($remaining.Count -lt 1) {
+                throw "Missing launcher after --open."
+            }
+            $Open = $remaining[0]
+            $ConfigPath = if ($remaining.Count -ge 2) { $remaining[1] } else { $null }
+        } else {
+            for ($i = 0; $i -lt $remaining.Count; $i++) {
+                if ($remaining[$i] -in $openTokens) {
+                    if ($i + 1 -ge $remaining.Count) {
+                        throw "Missing launcher after --open."
+                    }
+                    $Open = $remaining[$i + 1]
+                    break
+                }
+            }
+        }
+    }
+
+    [PSCustomObject]@{
+        Command = $Command
+        ConfigPath = $ConfigPath
+        Query = $Query
+        Open = $Open
+        RemainingArgs = $remaining
+    }
 }
 
 # Helper function to get stored config choice path
@@ -1446,6 +1675,9 @@ function Add-Project {
             name = $Name
             rootPath = $Path
             enabled = $true
+            pinned = $false
+            aliases = @()
+            tags = @()
         }
 
         $projects = @($projects) + $newProject
@@ -1462,6 +1694,421 @@ function Add-Project {
     } catch {
         Write-Host "Error: Failed to add project." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+    }
+}
+
+function Set-ProjectPin {
+    <#
+    .SYNOPSIS
+        Pin or unpin a project in the cdp list.
+
+    .DESCRIPTION
+        Marks a project as pinned so it appears before normal projects in cdp
+        pickers and lists. If no name is provided, cdp tries to pin the project
+        matching the current directory.
+
+    .PARAMETER Name
+        Project name or query to pin or unpin. Omit it inside a project root.
+
+    .PARAMETER ConfigPath
+        Optional custom path to projects.json file.
+
+    .PARAMETER Pinned
+        Set to true to pin the project or false to unpin it.
+
+    .PARAMETER PassThru
+        Returns the updated project object for tests and scripting.
+
+    .EXAMPLE
+        cdp pin api
+        # Pins the matching project
+
+    .EXAMPLE
+        cdp unpin api
+        # Removes the pin from the matching project
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $false, Position = 1)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$Pinned = $true,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Get-DefaultConfigPath
+    }
+
+    Initialize-ConfigFile -ConfigPath $ConfigPath
+
+    try {
+        $projects = @(ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8))
+        $targetProjects = if ([string]::IsNullOrWhiteSpace($Name)) {
+            $currentPath = Get-CdpComparablePath -Path (Get-Location).Path
+            @($projects | Where-Object {
+                (Get-CdpComparablePath -Path ([string]$_.rootPath)) -eq $currentPath
+            })
+        } else {
+            @(Get-CdpProjectMatches -Projects $projects -Query $Name)
+        }
+
+        if ($targetProjects.Count -eq 0) {
+            Write-Host "No project matched for pin update." -ForegroundColor Yellow
+            return
+        }
+
+        if ($targetProjects.Count -gt 1) {
+            Write-Host "Multiple projects matched. Please use a more specific name." -ForegroundColor Yellow
+            $targetProjects | ForEach-Object { Write-Host "  $($_.name)" -ForegroundColor Gray }
+            return
+        }
+
+        $target = $targetProjects[0]
+        foreach ($project in $projects) {
+            $sameName = [string]::Equals([string]$project.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase)
+            $samePath = [string]::Equals([string]$project.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
+            if ($sameName -and $samePath) {
+                if ($project.PSObject.Properties['pinned']) {
+                    $project.pinned = $Pinned
+                } else {
+                    $project | Add-Member -NotePropertyName pinned -NotePropertyValue $Pinned
+                }
+            }
+        }
+
+        $projects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+
+        $stateText = if ($Pinned) { "Pinned" } else { "Unpinned" }
+        Write-Host "$stateText project: $($target.name)" -ForegroundColor Green
+
+        if ($PassThru) {
+            return ($projects | Where-Object {
+                [string]::Equals([string]$_.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase) -and
+                [string]::Equals([string]$_.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
+            } | Select-Object -First 1)
+        }
+    } catch {
+        Write-Host "Error: Failed to update project pin." -ForegroundColor Red
+        Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+    }
+}
+
+function Clear-ProjectPin {
+    <#
+    .SYNOPSIS
+        Remove the pinned state from a cdp project.
+
+    .DESCRIPTION
+        Convenience wrapper for Set-ProjectPin -Pinned false.
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $false, Position = 1)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    Set-ProjectPin -Name $Name -ConfigPath $ConfigPath -Pinned:$false -PassThru:$PassThru
+}
+
+function Update-CdpProjectStringList {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Value,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('aliases', 'tags')]
+        [string]$PropertyName,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Remove,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Get-DefaultConfigPath
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Name) -or [string]::IsNullOrWhiteSpace($Value)) {
+        Write-Host "Project name and metadata value are required." -ForegroundColor Yellow
+        return
+    }
+
+    Initialize-ConfigFile -ConfigPath $ConfigPath
+
+    try {
+        $projects = @(ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8))
+        $targets = @(Get-CdpProjectMatches -Projects $projects -Query $Name)
+
+        if ($targets.Count -ne 1) {
+            Write-Host "Expected one project match, found $($targets.Count)." -ForegroundColor Yellow
+            return
+        }
+
+        $target = $targets[0]
+        foreach ($project in $projects) {
+            $sameName = [string]::Equals([string]$project.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase)
+            $samePath = [string]::Equals([string]$project.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
+            if ($sameName -and $samePath) {
+                $values = @(Get-CdpProjectStringList -Project $project -PropertyName $PropertyName)
+                if ($Remove) {
+                    $values = @($values | Where-Object { -not [string]::Equals($_, $Value, [StringComparison]::OrdinalIgnoreCase) })
+                } elseif (@($values | Where-Object { [string]::Equals($_, $Value, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) {
+                    $values += $Value
+                }
+
+                if ($project.PSObject.Properties[$PropertyName]) {
+                    $project.$PropertyName = @($values)
+                } else {
+                    $project | Add-Member -NotePropertyName $PropertyName -NotePropertyValue @($values)
+                }
+            }
+        }
+
+        $projects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+
+        $action = if ($Remove) { "Removed" } else { "Added" }
+        Write-Host "$action $PropertyName '$Value' for project: $($target.name)" -ForegroundColor Green
+
+        if ($PassThru) {
+            return ($projects | Where-Object {
+                [string]::Equals([string]$_.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase) -and
+                [string]::Equals([string]$_.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
+            } | Select-Object -First 1)
+        }
+    } catch {
+        Write-Host "Error: Failed to update project metadata." -ForegroundColor Red
+        Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+    }
+}
+
+function Add-ProjectAlias {
+    [CmdletBinding()]
+    param([string]$Name, [string]$Alias, [string]$ConfigPath, [switch]$PassThru)
+    Update-CdpProjectStringList -Name $Name -Value $Alias -PropertyName aliases -ConfigPath $ConfigPath -PassThru:$PassThru
+}
+
+function Remove-ProjectAlias {
+    [CmdletBinding()]
+    param([string]$Name, [string]$Alias, [string]$ConfigPath, [switch]$PassThru)
+    Update-CdpProjectStringList -Name $Name -Value $Alias -PropertyName aliases -ConfigPath $ConfigPath -Remove -PassThru:$PassThru
+}
+
+function Add-ProjectTag {
+    [CmdletBinding()]
+    param([string]$Name, [string]$Tag, [string]$ConfigPath, [switch]$PassThru)
+    Update-CdpProjectStringList -Name $Name -Value $Tag -PropertyName tags -ConfigPath $ConfigPath -PassThru:$PassThru
+}
+
+function Remove-ProjectTag {
+    [CmdletBinding()]
+    param([string]$Name, [string]$Tag, [string]$ConfigPath, [switch]$PassThru)
+    Update-CdpProjectStringList -Name $Name -Value $Tag -PropertyName tags -ConfigPath $ConfigPath -Remove -PassThru:$PassThru
+}
+
+function Get-CdpUniqueName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.HashSet[string]]$UsedNames
+    )
+
+    if ($UsedNames.Add($Name)) {
+        return $Name
+    }
+
+    $index = 2
+    do {
+        $candidate = "$Name-$index"
+        $index++
+    } while (-not $UsedNames.Add($candidate))
+
+    $candidate
+}
+
+function Repair-ProjectConfig {
+    <#
+    .SYNOPSIS
+        Safely repair the active cdp project configuration.
+
+    .DESCRIPTION
+        Cleans only the JSON configuration, never project files. Invalid entries
+        are removed, duplicate root paths keep the first entry, duplicate names
+        are renamed, missing paths are disabled, and missing pinned fields are
+        filled with false.
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Get-DefaultConfigPath
+    }
+
+    Initialize-ConfigFile -ConfigPath $ConfigPath
+
+    try {
+        $projects = @(ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8))
+        $usedNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        $usedPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        $summary = [ordered]@{ RemovedInvalid = 0; RemovedDuplicatePaths = 0; RenamedDuplicates = 0; DisabledMissingPaths = 0; AddedPinnedFields = 0; FixedEnabledFields = 0 }
+        $cleanProjects = @()
+
+        foreach ($project in $projects) {
+            if ([string]::IsNullOrWhiteSpace($project.name) -or [string]::IsNullOrWhiteSpace($project.rootPath)) {
+                $summary.RemovedInvalid++
+                continue
+            }
+
+            $pathKey = Get-CdpComparablePath -Path ([string]$project.rootPath)
+            if (-not $usedPaths.Add($pathKey)) {
+                $summary.RemovedDuplicatePaths++
+                continue
+            }
+
+            if (-not ($project.enabled -is [bool])) {
+                if ($project.PSObject.Properties['enabled']) { $project.enabled = $false } else { $project | Add-Member -NotePropertyName enabled -NotePropertyValue $false }
+                $summary.FixedEnabledFields++
+            }
+
+            if (-not $project.PSObject.Properties['pinned']) {
+                $project | Add-Member -NotePropertyName pinned -NotePropertyValue $false
+                $summary.AddedPinnedFields++
+            }
+
+            foreach ($propertyName in @('aliases', 'tags')) {
+                if (-not $project.PSObject.Properties[$propertyName]) {
+                    $project | Add-Member -NotePropertyName $propertyName -NotePropertyValue @()
+                }
+            }
+
+            $uniqueName = Get-CdpUniqueName -Name ([string]$project.name) -UsedNames $usedNames
+            if (-not [string]::Equals($uniqueName, [string]$project.name, [StringComparison]::Ordinal)) {
+                $project.name = $uniqueName
+                $summary.RenamedDuplicates++
+            }
+
+            if ($project.enabled -eq $true -and -not (Test-Path -LiteralPath ([string]$project.rootPath))) {
+                $project.enabled = $false
+                $summary.DisabledMissingPaths++
+            }
+
+            $cleanProjects += $project
+        }
+
+        ConvertTo-Json -InputObject @($cleanProjects) -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
+        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+
+        Write-Host "cdp config repaired: $ConfigPath" -ForegroundColor Green
+        foreach ($item in $summary.GetEnumerator()) {
+            Write-Host "  $($item.Key): $($item.Value)" -ForegroundColor Gray
+        }
+
+        if ($PassThru) {
+            [PSCustomObject]@{
+                ConfigPath = $ConfigPath
+                ProjectCount = $cleanProjects.Count
+                RemovedInvalid = $summary.RemovedInvalid
+                RemovedDuplicatePaths = $summary.RemovedDuplicatePaths
+                RenamedDuplicates = $summary.RenamedDuplicates
+                DisabledMissingPaths = $summary.DisabledMissingPaths
+                AddedPinnedFields = $summary.AddedPinnedFields
+                FixedEnabledFields = $summary.FixedEnabledFields
+            }
+        }
+    } catch {
+        Write-Host "Error: Failed to repair project configuration." -ForegroundColor Red
+        Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+    }
+}
+
+function Initialize-Cdp {
+    <#
+    .SYNOPSIS
+        Initialize cdp for first-time use.
+
+    .DESCRIPTION
+        Creates the default cdp config if needed, saves it as the active config,
+        checks fzf availability, and optionally scans a root directory for Git
+        repositories.
+    #>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$RootPath,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [int]$MaxDepth = 4,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+    }
+
+    Initialize-ConfigFile -ConfigPath $ConfigPath
+    Save-ConfigChoice -ConfigPath $ConfigPath
+
+    $fzfFound = $null -ne (Resolve-CdpFzfCommand)
+    Write-CdpBrandHeader
+    Write-Host "Config: $ConfigPath" -ForegroundColor Cyan
+    Write-Host "Saved active config choice." -ForegroundColor Green
+    if ($fzfFound) {
+        Write-Host "fzf: found" -ForegroundColor Green
+    } else {
+        Write-Host "fzf: not found. Install with winget install fzf" -ForegroundColor Yellow
+    }
+
+    $scanResult = $null
+    if (-not [string]::IsNullOrWhiteSpace($RootPath)) {
+        $scanResult = Import-GitProjects -RootPath $RootPath -ConfigPath $ConfigPath -MaxDepth $MaxDepth -PassThru
+    }
+
+    if ($PassThru) {
+        [PSCustomObject]@{
+            ConfigPath = $ConfigPath
+            FzfFound = $fzfFound
+            ScanResult = $scanResult
+        }
     }
 }
 
@@ -1641,7 +2288,7 @@ function Import-GitProjects {
         }
 
         $name = Get-CdpUniqueProjectName -Path $repoPath -ExistingNames $existingNames
-        $newProject = [PSCustomObject]@{ name = $name; rootPath = $repoPath; enabled = $true }
+        $newProject = [PSCustomObject]@{ name = $name; rootPath = $repoPath; enabled = $true; pinned = $false; aliases = @(); tags = @() }
         $projects += $newProject
         $addedProjects += $newProject
         [void]$existingPaths.Add($repoPath)
@@ -1951,6 +2598,9 @@ function Test-ProjectHealth {
     .PARAMETER SkipUpdateCheck
         Skips the PowerShell Gallery version check.
 
+    .PARAMETER Fix
+        Repairs the project configuration instead of only reporting issues.
+
     .EXAMPLE
         Test-ProjectHealth
         # Runs diagnostics for the active cdp configuration
@@ -1969,8 +2619,16 @@ function Test-ProjectHealth {
         [switch]$PassThru,
 
         [Parameter(Mandatory = $false)]
-        [switch]$SkipUpdateCheck
+        [switch]$SkipUpdateCheck,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Fix
     )
+
+    if ($Fix) {
+        Repair-ProjectConfig -ConfigPath $ConfigPath -PassThru:$PassThru
+        return
+    }
 
     $configResult = Resolve-CdpHealthConfigPath -ConfigPath $ConfigPath
     $parseResult = Get-CdpConfigParseResult -ConfigPath $configResult.Path -ConfigSource $configResult.Source
@@ -2031,6 +2689,9 @@ function Invoke-Cdp {
     .PARAMETER WSL
         If specified, launches WSL and changes to the selected project directory.
 
+    .PARAMETER Open
+        Optional command to start after switching to the selected project.
+
     .EXAMPLE
         cdp
         # Opens fzf menu to select a project
@@ -2042,6 +2703,10 @@ function Invoke-Cdp {
     .EXAMPLE
         cdp api
         # Switches directly when the query has one match
+
+    .EXAMPLE
+        cdp api -Open codex
+        # Switches to the matching project and starts Codex there
     #>
 
     [CmdletBinding()]
@@ -2056,11 +2721,39 @@ function Invoke-Cdp {
         [string]$Query,
 
         [Parameter(Mandatory = $false)]
-        [switch]$WSL
+        [switch]$WSL,
+
+        [Parameter(Mandatory = $false)]
+        [Alias('o')]
+        [string]$Open,
+
+        [Parameter(Mandatory = $false, ValueFromRemainingArguments = $true)]
+        [string[]]$RemainingArgs
     )
 
+    try {
+        $parsedArgs = ConvertFrom-CdpInvokeArguments `
+            -Command $Command `
+            -ConfigPath $ConfigPath `
+            -Query $Query `
+            -Open $Open `
+            -RemainingArgs $RemainingArgs
+        $Command = $parsedArgs.Command
+        $ConfigPath = $parsedArgs.ConfigPath
+        $Query = $parsedArgs.Query
+        $Open = $parsedArgs.Open
+        $RemainingArgs = @($parsedArgs.RemainingArgs)
+    } catch {
+        Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+
     if ($Command -in @('doctor', 'health', 'check')) {
-        Test-ProjectHealth -ConfigPath $ConfigPath
+        if ($ConfigPath -in @('--fix', '-fix')) {
+            Repair-ProjectConfig
+        } else {
+            Test-ProjectHealth -ConfigPath $ConfigPath
+        }
         return
     }
 
@@ -2081,6 +2774,46 @@ function Invoke-Cdp {
         return
     }
 
+    if ($Command -in @('pin', 'pinned', 'favorite', 'star')) {
+        Set-ProjectPin -Name $ConfigPath
+        return
+    }
+
+    if ($Command -in @('unpin', 'unfavorite', 'unstar')) {
+        Clear-ProjectPin -Name $ConfigPath
+        return
+    }
+
+    if ($Command -in @('alias', 'add-alias')) {
+        Add-ProjectAlias -Name $ConfigPath -Alias $RemainingArgs[0]
+        return
+    }
+
+    if ($Command -in @('unalias', 'remove-alias')) {
+        Remove-ProjectAlias -Name $ConfigPath -Alias $RemainingArgs[0]
+        return
+    }
+
+    if ($Command -in @('tag', 'add-tag')) {
+        Add-ProjectTag -Name $ConfigPath -Tag $RemainingArgs[0]
+        return
+    }
+
+    if ($Command -in @('untag', 'remove-tag')) {
+        Remove-ProjectTag -Name $ConfigPath -Tag $RemainingArgs[0]
+        return
+    }
+
+    if ($Command -in @('clean', 'repair', 'fix')) {
+        Repair-ProjectConfig -ConfigPath $ConfigPath
+        return
+    }
+
+    if ($Command -in @('init', 'setup')) {
+        Initialize-Cdp -RootPath $ConfigPath
+        return
+    }
+
     if ($Command -in @('scan', 'import')) {
         Import-GitProjects -RootPath $ConfigPath
         return
@@ -2096,7 +2829,7 @@ function Invoke-Cdp {
         $Query = $Command
     }
 
-    Switch-Project -ConfigPath $ConfigPath -Query $Query -WSL:$WSL
+    Switch-Project -ConfigPath $ConfigPath -Query $Query -WSL:$WSL -Open $Open
 }
 
 # Export module members
@@ -2109,7 +2842,15 @@ Set-Alias -Name cdp-config -Value Set-ProjectConfig
 Set-Alias -Name cdp-doctor -Value Test-ProjectHealth
 Set-Alias -Name cdp-scan -Value Import-GitProjects
 Set-Alias -Name cdp-recent -Value Get-CdpRecentProjects
+Set-Alias -Name cdp-pin -Value Set-ProjectPin
+Set-Alias -Name cdp-unpin -Value Clear-ProjectPin
+Set-Alias -Name cdp-clean -Value Repair-ProjectConfig
+Set-Alias -Name cdp-init -Value Initialize-Cdp
+Set-Alias -Name cdp-alias -Value Add-ProjectAlias
+Set-Alias -Name cdp-unalias -Value Remove-ProjectAlias
+Set-Alias -Name cdp-tag -Value Add-ProjectTag
+Set-Alias -Name cdp-untag -Value Remove-ProjectTag
 
 Export-ModuleMember `
-    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects `
-    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects `
+    -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent, cdp-pin, cdp-unpin, cdp-clean, cdp-init, cdp-alias, cdp-unalias, cdp-tag, cdp-untag

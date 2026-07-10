@@ -116,8 +116,28 @@ jobs:
           cdp doctor "$tmpdir/projects.json"
           cdp SmokeProject "$tmpdir/projects.json"
           test "$PWD" = "$tmpdir/project"
+          export CDP_OPEN_DRY_RUN=1
+          cdp SmokeProject "$tmpdir/projects.json" --open codex
+          unset CDP_OPEN_DRY_RUN
           cdp recent 1
           test "$(jq -r '.recentProjects[0].name' "$CDP_STATE_PATH")" = "SmokeProject"
+          cdp pin SmokeProject "$tmpdir/projects.json"
+          test "$(jq -r '.[0].pinned' "$tmpdir/projects.json")" = "true"
+          cdp unpin SmokeProject "$tmpdir/projects.json"
+          test "$(jq -r '.[0].pinned' "$tmpdir/projects.json")" = "false"
+          cdp clean "$tmpdir/projects.json"
+          test "$(jq -r '.[0].pinned' "$tmpdir/projects.json")" = "false"
+          cdp alias SmokeProject smoke "$tmpdir/projects.json"
+          cdp tag SmokeProject work "$tmpdir/projects.json"
+          cdp smoke "$tmpdir/projects.json"
+          test "$PWD" = "$tmpdir/project"
+          cdp @work "$tmpdir/projects.json"
+          test "$PWD" = "$tmpdir/project"
+
+          initroot="$tmpdir/init-repos"
+          mkdir -p "$initroot/gamma/.git"
+          cdp init "$initroot" "$tmpdir/init-projects.json" 2
+          test "$(jq length "$tmpdir/init-projects.json")" = "1"
 
           scanroot="$tmpdir/repos"
           mkdir -p "$scanroot/alpha/.git" "$scanroot/nested/beta/.git"

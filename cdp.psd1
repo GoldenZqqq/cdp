@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.7.0'
+ModuleVersion = '1.8.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects')
+FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Set-ProjectPin', 'Clear-ProjectPin', 'Repair-ProjectConfig', 'Initialize-Cdp', 'Add-ProjectAlias', 'Remove-ProjectAlias', 'Add-ProjectTag', 'Remove-ProjectTag', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -76,7 +76,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config', 'cdp-doctor', 'cdp-scan', 'cdp-recent')
+AliasesToExport = @('cdp', 'cdp-add', 'cdp-rm', 'cdp-ls', 'cdp-edit', 'cdp-config', 'cdp-doctor', 'cdp-scan', 'cdp-recent', 'cdp-pin', 'cdp-unpin', 'cdp-clean', 'cdp-init', 'cdp-alias', 'cdp-unalias', 'cdp-tag', 'cdp-untag')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -94,7 +94,7 @@ PrivateData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
         Tags = @('project-manager', 'fzf', 'fuzzy-search', 'navigation', 'productivity',
-                 'vscode', 'cursor', 'terminal', 'cli', 'windows-terminal')
+                 'vscode', 'cursor', 'terminal', 'cli', 'windows-terminal', 'ai-cli')
 
         # A URL to the license for this module.
         LicenseUri = 'https://github.com/GoldenZqqq/cdp/blob/main/LICENSE'
@@ -106,7 +106,16 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = @'
+ReleaseNotes = @'
+v1.8.0 - AI CLI Workspace Launcher
+- Added: PowerShell cdp can start a workspace command after switching, for example cdp api -Open codex
+- Added: WSL/Linux cdp supports cdp api --open codex with the same launcher presets
+- Added: Launcher presets for code, cursor, codex, claude, and gemini, with custom PATH commands supported
+- Added: Pinned projects can be managed with cdp pin / cdp unpin and stay above normal projects
+- Added: Safe config repair with cdp clean / cdp-clean / cdp doctor --fix
+- Added: First-run setup with cdp init / cdp-init
+- Added: Project aliases and tags with cdp alias / cdp tag, including tag queries such as cdp '@work'
+
 v1.7.0 - Recent Projects
 - Added: cdp recent / cdp-recent shows recently visited projects ordered by last use
 - Added: Successful project switches are tracked in ~/.cdp/state.json without changing projects.json

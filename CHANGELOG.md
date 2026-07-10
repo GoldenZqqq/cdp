@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.8.0
+
+### Added
+
+- Added PowerShell workspace launching with `cdp api -Open codex` and `Switch-Project -Open`.
+- Added WSL/Linux workspace launching with `cdp api --open codex`.
+- Added launcher presets for `code`, `cursor`, `codex`, `claude`, and `gemini`, while still allowing custom commands on `PATH`.
+- Added pinned projects with `cdp pin`, `cdp unpin`, `cdp-pin`, and `cdp-unpin`.
+- Added safe config repair with `cdp clean`, `cdp-clean`, and `cdp doctor --fix`.
+- Added first-run setup with `cdp init` and `cdp-init`.
+- Added project aliases and tags with `cdp alias`, `cdp tag`, and tag queries such as `cdp '@work'`.
+
 ## 1.7.0
 
 ### Added
