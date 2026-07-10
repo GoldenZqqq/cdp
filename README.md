@@ -24,11 +24,11 @@
 
 ## 演示视频
 
-![cdp 中文演示：用模糊搜索快速切换项目](./docs/assets/cdp-demo-short-zh.gif)
+![cdp v1.8.0 中文演示：切换项目并启动 AI CLI 工作区](./docs/assets/cdp-demo-short-zh.gif)
 
 [观看中文 28 秒 MP4](./docs/assets/cdp-demo-short-zh.mp4) · [English GIF](./docs/assets/cdp-demo-short-en.gif) · [English MP4](./docs/assets/cdp-demo-short-en.mp4)
 
-这支短版演示讲清楚：Vibe Coding 时代为什么项目切换变成高频痛点，`cdp` 如何用 `fzf`、Project Manager / JSON 配置、`cdp doctor` 和 WSL 支持把这件事变成一个稳定的终端工作流。
+这支 v1.8.0 短版演示展示：`cdp api -Open codex` 如何一步切换并启动 AI CLI，项目置顶 / 别名 / 标签如何整理工作区，以及 `cdp init`、`cdp doctor --fix`、PowerShell / WSL 如何组成一套稳定的终端工作流。
 
 视频脚本、设计规范与 HyperFrames composition：
 [docs/video/cdp-intro-script.md](./docs/video/cdp-intro-script.md)、

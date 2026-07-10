@@ -2,9 +2,9 @@
 
 ## Goal
 
-Create a short product video for GitHub README, social posts, and release notes.
+Create a 28-second bilingual product video for the GitHub README, social posts, and v1.8.0 release notes.
 
-The video should explain one idea clearly: in the Vibe Coding era, developers spend more time inside terminal AI tools, so switching between project roots should be instant, searchable, and visible.
+The video should explain one idea clearly: `cdp` is now an AI CLI workspace launcher that can switch projects, start Codex/Claude/Gemini/editors, organize project metadata, and safely initialize or repair the shared project map.
 
 ## Audience
 
@@ -14,7 +14,7 @@ The video should explain one idea clearly: in the Vibe Coding era, developers sp
 
 ## Format
 
-- Duration: 60-75 seconds
+- Duration: 28 seconds
 - Aspect ratio: 16:9 for README and release pages
 - Style: dark terminal, crisp command motion, cyan/green accent, no decorative noise
 - Voice: practical, fast, developer-to-developer
@@ -23,11 +23,11 @@ The video should explain one idea clearly: in the Vibe Coding era, developers sp
 ## Narrative Arc
 
 1. The old workflow is slow: repeated `cd`, long paths, broken focus.
-2. AI CLI workflows made the terminal the control room again.
-3. `cdp` turns project switching into one fuzzy search.
-4. It works with Project Manager or a simple JSON file.
-5. `cdp doctor` makes setup problems visible.
-6. Windows and WSL can share the same project map.
+2. `cdp api -Open codex` switches to the project and starts the AI CLI in one move.
+3. Pinning, aliases, and tags turn the project list into an organized workspace map.
+4. `cdp init`, `cdp doctor --fix`, and `cdp clean` cover setup and safe repair.
+5. PowerShell and WSL share project metadata and launcher behavior.
+6. Close on v1.8.0 and the line: Switch. Launch. Stay in flow.
 
 ## Voiceover
 
@@ -39,57 +39,52 @@ Claude Code, Codex, Gemini CLI, Cursor, VS Code.
 
 But switching projects still feels like typing a mailing address by hand.
 
-### Scene 2: The Command
+### Scene 2: Launch the Workspace
 
-cdp makes project switching one command.
+One command opens the whole workspace.
 
-Type `cdp`, search a few letters, press Enter.
+Run `cdp api -Open codex`.
 
-You land in the project root, and the terminal tab shows where you are.
+cdp switches to the project root and starts Codex. The same launcher surface also supports Claude, Gemini, VS Code, Cursor, and custom PATH commands.
 
-### Scene 3: Bring Your Own Project List
+### Scene 3: Organize the Project Map
 
-Already using Project Manager in VS Code or Cursor?
+Pin frequent projects to the top.
 
-cdp reads it automatically.
+Add a short alias for direct jumps.
 
-Prefer a plain file?
+Add tags for focused project queries.
 
-Use `cdp-add` and keep everything in `~/.cdp/projects.json`.
+The metadata remains plain JSON and stays compatible with the same project list.
 
-### Scene 4: Diagnose Before You Guess
+### Scene 4: Initialize and Repair
 
-Setup problem?
+Run `cdp init E:\Projects` for first-time setup and Git repository discovery.
 
-Run `cdp doctor`.
+Use `cdp doctor --fix` or `cdp clean` to remove duplicate paths, disable missing paths, and fill safe defaults.
 
-It checks fzf, the active config file, JSON shape, duplicate names, and missing paths.
+### Scene 5: PowerShell Plus WSL
 
-### Scene 5: Windows Plus WSL
+PowerShell uses `cdp api -Open codex`; WSL uses `cdp api --open codex`.
 
-Working across PowerShell and WSL?
-
-cdp converts Windows paths for WSL and keeps the same project list usable on both sides.
+Both sides share the same project map and launch flow.
 
 ### Scene 6: Close
 
-Stop remembering paths.
+Switch. Launch. Stay in flow.
 
-Start switching projects.
-
-`Install-Module cdp`, then run `cdp doctor`.
+`Install-Module cdp`, run `cdp init`, then launch a workspace with `cdp api -Open codex`.
 
 ## Shot List
 
 | Time | Visual | Text |
 | --- | --- | --- |
-| 0-8s | Terminal rapidly typing long `cd` paths, then freezing on a deep folder | Project switching should not break flow |
-| 8-18s | AI CLI names appear as compact terminal tabs | Vibe Coding lives in the terminal |
-| 18-30s | `cdp` opens a fuzzy menu, query narrows results, selected project opens | One command. Fuzzy search. Enter. |
-| 30-42s | Split view: Project Manager JSON and `cdp-add` writing config | Use Project Manager or plain JSON |
-| 42-55s | `cdp doctor` checklist animates from warning to clean state | Diagnose setup in seconds |
-| 55-68s | PowerShell path transforms into WSL path | Windows and WSL share the map |
-| 68-75s | Final command card | `Install-Module cdp` |
+| 0-4.7s | Terminal rapidly typing long `cd` paths | Project switching should not break flow |
+| 4.7-9.5s | `cdp api -Open codex` types in; switch and launcher states resolve | Switch projects. Launch Codex. |
+| 9.5-14.3s | Pin, alias, and tag commands build beside enriched JSON | Pin it. Name it. Tag it. |
+| 14.3-19.3s | Init and repair checklist resolves into a healthy state | Initialize once. Repair safely. |
+| 19.3-23.7s | PowerShell and WSL commands share one workspace map | Same project map. Same launch flow. |
+| 23.7-28s | v1.8.0 logo and install/launch commands hold | Switch. Launch. Stay in flow. |
 
 ## On-Screen Commands
 
@@ -101,19 +96,27 @@ cdp doctor
 cdp
 cdp-add
 cdp -WSL
+cdp api -Open codex
+cdp pin api
+cdp alias api backend
+cdp tag api work
+cdp init E:\Projects
+cdp doctor --fix
+cdp clean
 ```
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
 cdp doctor
 cdp
+cdp api --open codex
 ```
 
 ## HyperFrames Production Notes
 
 - Design spec: `docs/video/cdp-intro/frame.md`
 - Expanded production prompt: `docs/video/cdp-intro/.hyperframes/expanded-prompt.md`
-- Use one composition with six scenes and soft terminal wipes between scenes.
+- Use one 28-second composition with six scenes and directional blur transitions.
 - Build all scene layouts in their final readable state before adding animation.
 - Keep terminal text at 28px or larger for 1080p.
 - Use a monospaced font for command lines and a clean sans font for captions.
@@ -124,7 +127,7 @@ cdp
 ## Acceptance Checklist
 
 - [ ] The first 10 seconds explain the pain without needing sound.
-- [ ] `cdp`, `cdp-add`, `cdp doctor`, and `cdp -WSL` all appear.
+- [ ] `cdp api -Open codex`, `cdp pin`, `cdp alias`, `cdp tag`, `cdp init`, and `cdp doctor --fix` all appear.
 - [ ] Installation is visible but does not dominate the video.
 - [ ] The video shows the actual product behavior, not abstract marketing visuals.
 - [ ] Captions remain readable on GitHub's dark and light page backgrounds.

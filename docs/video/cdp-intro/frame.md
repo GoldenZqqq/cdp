@@ -34,17 +34,19 @@ Terminal control room for Vibe Coding. Fast, focused, practical, and slightly ci
 
 ## Motion
 
-- Rhythm: hook-fast, demo-hold, config-build, doctor-pulse, WSL-transform, CTA-hold
+- Rhythm: hook-fast, launcher-hold, metadata-build, repair-pulse, platform-bridge, CTA-hold
 - Primary transition: directional blur crossfade, 0.45s, `power2.inOut`
 - Accent transition: terminal scan wipe, 0.35s, `power3.inOut`
 - Ambient motion: slow grid drift, glow breathing, cursor pulse
 
 ## Do
 
-- Show actual commands and project names.
+- Show actual v1.8.0 commands and project names.
 - Keep command lines large and readable.
-- Use `cdp doctor` as the trust-building beat.
-- Make PowerShell and WSL feel like two terminals sharing one map.
+- Make `cdp api -Open codex` the hero product beat.
+- Use `cdp init`, `cdp doctor --fix`, and `cdp clean` as the trust-building beat.
+- Make pinning, aliases, and tags feel like one coherent project-map workflow.
+- Make PowerShell and WSL feel like two terminals sharing one map and launcher flow.
 
 ## Avoid
 

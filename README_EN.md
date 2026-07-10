@@ -24,11 +24,11 @@ A fast project directory switcher for the Vibe Coding era, built for Claude Code
 
 ## Intro Video
 
-![cdp demo: switch projects quickly with fuzzy search](./docs/assets/cdp-demo-short-en.gif)
+![cdp v1.8.0 demo: switch projects and launch an AI CLI workspace](./docs/assets/cdp-demo-short-en.gif)
 
 [Open the English 28-second MP4](./docs/assets/cdp-demo-short-en.mp4) · [中文 GIF](./docs/assets/cdp-demo-short-zh.gif) · [中文 MP4](./docs/assets/cdp-demo-short-zh.mp4)
 
-This short demo shows why project switching becomes a high-frequency pain point in the Vibe Coding era, and how `cdp` turns `fzf`, Project Manager / JSON config, `cdp doctor`, and WSL support into one stable terminal workflow.
+This v1.8.0 demo shows how `cdp api -Open codex` switches and launches an AI CLI in one move, how pinning / aliases / tags organize the workspace map, and how `cdp init`, `cdp doctor --fix`, PowerShell, and WSL form one stable terminal workflow.
 
 Video script, frame spec, and HyperFrames composition:
 [docs/video/cdp-intro-script.md](./docs/video/cdp-intro-script.md),

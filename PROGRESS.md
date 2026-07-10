@@ -107,3 +107,6 @@ Current release step: build version 1.8.0 with AI CLI workspace launching.
 - Release 1.8.0: WSL Arch `bash -n ./src/cdp.sh` and `bash -n ./install-wsl.sh` passed.
 - Release 1.8.0: `git diff --check` reported no whitespace errors.
 - Release 1.8.0: Local WSL `--open` smoke was not run end-to-end because this Arch distro did not return a `jq` path; CI now includes a dry-run `cdp --open` smoke.
+- Release 1.8.0: Reworked the bilingual 28-second HyperFrames demo around workspace launching, project metadata, safe setup/repair, and PowerShell/WSL parity.
+- Release 1.8.0: HyperFrames 0.7.47 `validate` and `inspect --samples 15` passed for both English and Simplified Chinese variants.
+- Release 1.8.0: Rendered both variants as 1920x1080 30fps MP4 and 720x405 10fps GIF assets.

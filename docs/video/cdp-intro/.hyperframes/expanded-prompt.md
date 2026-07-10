@@ -2,7 +2,7 @@
 
 ## Title + Style Block
 
-Create a 60-75 second 16:9 HyperFrames product video for `cdp`, a fast project directory switcher for Vibe Coding CLI workflows.
+Create a 28-second 16:9 HyperFrames product video for `cdp` v1.8.0, an AI CLI workspace launcher for Vibe Coding workflows.
 
 Use the frame spec exactly:
 
@@ -23,9 +23,9 @@ The world is a terminal control room: calm, precise, focused, and useful. Avoid 
 
 ## Rhythm Declaration
 
-Rhythm: `hook-fast -> demo-hold -> config-build -> doctor-pulse -> WSL-transform -> CTA-hold`.
+Rhythm: `hook-fast -> launcher-hold -> metadata-build -> repair-pulse -> platform-bridge -> CTA-hold`.
 
-The video starts with friction, opens into one clean command, builds trust with config and diagnostics, then closes on install and verification.
+The video starts with navigation friction, reveals `cdp api -Open codex`, organizes the shared project map, builds trust with init/repair commands, then closes on the v1.8.0 launch path.
 
 ## Global Rules
 
@@ -33,7 +33,7 @@ The video starts with friction, opens into one clean command, builds trust with 
 - Every scene has at least two focal points: command terminal plus title/status/diagram.
 - Use terminal windows as real product surfaces, not decorative cards.
 - Use directional blur crossfades between scenes, 0.45s, `power2.inOut`.
-- Use one accent terminal scan wipe, 0.35s, `power3.inOut`, before the `cdp doctor` scene.
+- Use one accent terminal scan wipe, 0.35s, `power3.inOut`, before the initialize-and-repair scene.
 - All command text should be 34px or larger at 1920x1080.
 - Captions should be 34-42px, short, and positioned in the lower third.
 - Use no exit animations before scene transitions; transitions handle the handoff.
@@ -62,9 +62,9 @@ The video starts with friction, opens into one clean command, builds trust with 
 
 **Transition out:** Directional blur crossfade upward, 0.45s, `power2.inOut`.
 
-## Scene 2: The Command
+## Scene 2: Launch the Workspace
 
-**Concept:** The clutter collapses into one command: `cdp`. The viewer sees the whole product promise in one crisp terminal interaction.
+**Concept:** The clutter collapses into one workspace command: `cdp api -Open codex`. The viewer sees the project switch and AI CLI launch resolve as one terminal interaction.
 
 **Mood direction:** Clean command demo, confident and readable.
 
@@ -72,92 +72,88 @@ The video starts with friction, opens into one clean command, builds trust with 
 
 - BG: radial accent glow in `#15945F` at 18% opacity.
 - BG: ghost project names floating in muted foreground.
-- MG: centered terminal picker with `Select project: api`.
-- MG: highlighted selected row `my-api`.
-- FG: caption `One command. Fuzzy search. Enter.`
-- FG: small status row `2-5 sec switch`.
+- MG: terminal command line typing `cdp api -Open codex`.
+- MG: status rows `Switched to project: my-api` and `Opening with Codex...`.
+- FG: launcher presets for Codex, Claude, Gemini, VS Code, and Cursor.
+- FG: caption `Switch projects. Launch Codex.`
 
 **Animation choreography:**
 
-- `cdp` TYPES ON.
-- fzf picker EXPANDS from the prompt line.
-- Matching letters FILL in `#2FFFA0`.
-- Selected row LOCKS IN with a subtle scale pulse.
+- The launch command TYPES ON.
+- Switch and launch status rows CASCADE in.
+- Launcher presets SETTLE in as one compact group.
+- The full terminal interaction HOLDS long enough to read.
 
 **Transition out:** Directional blur crossfade, 0.45s, `power2.inOut`.
 
-## Scene 3: Bring Your Own Project List
+## Scene 3: Organize the Project Map
 
-**Concept:** cdp is not another database. It reads the project map developers already have, or creates a plain JSON map with `cdp-add`.
+**Concept:** cdp enriches the plain project map with pinning, aliases, and tags without replacing the JSON format.
 
 **Mood direction:** Toolchain compatibility, tidy and practical.
 
 **Depth layers:**
 
 - BG: thin rules and coordinates, `CONFIG/SOURCES`.
-- MG left: Project Manager path stack, Cursor and VS Code.
-- MG right: JSON snippet with `name`, `rootPath`, `enabled`.
-- FG: command `cdp-add`.
-- FG: connector line from Project Manager to cdp.
+- MG left: `cdp pin api`, `cdp alias api backend`, and `cdp tag api work`.
+- MG right: JSON with `pinned`, `aliases`, and `tags`.
+- FG: direct-jump examples `cdp backend` and `cdp '@work'`.
 
 **Animation choreography:**
 
-- Config sources SLIDE in from left.
-- JSON object DRAWS line by line.
-- `cdp-add` STAMPS into the command prompt.
-- Connector line GROWS toward the cdp label.
+- Metadata commands SLIDE in from left.
+- JSON fields DRAW line by line.
+- Command/result pairs SETTLE with a restrained stagger.
 
 **Transition out:** Terminal scan wipe, 0.35s, `power3.inOut`, accent `#2FFFA0`.
 
-## Scene 4: Diagnose Before You Guess
+## Scene 4: Initialize and Repair
 
-**Concept:** The trust beat. Instead of guessing why setup fails, `cdp doctor` turns environment state into a readable checklist.
+**Concept:** The trust beat. `cdp init`, `cdp doctor --fix`, and `cdp clean` cover first-run setup, diagnosis, and safe repair.
 
 **Mood direction:** Calm incident response. No panic, just checks becoming visible.
 
 **Depth layers:**
 
 - BG: dark panel with subtle scan bands.
-- MG: command line `cdp doctor`.
-- MG: checklist rows for `fzf`, `config file`, `JSON`, `duplicate names`, `project paths`.
-- FG: warning row in `#F2C14E` for missing paths, then clean summary.
-- FG: small label `trust the setup`.
+- MG: command line `cdp init E:\Projects`.
+- MG: checklist rows for config creation, Git scan, duplicate paths, missing paths, and healthy status.
+- FG: compact command rail for `init`, `doctor --fix`, and `clean`.
+- FG: small label `start clean, stay healthy`.
 
 **Animation choreography:**
 
-- Command TYPES ON.
+- Setup command TYPES ON.
 - Checklist rows CASCADE downward.
-- OK states CLICK from muted to `#2FFFA0`.
-- Warning row PULSES once in `#F2C14E`.
+- FIX and OK states CLICK from muted to `#2FFFA0`.
+- The final healthy state HOLDS.
 
 **Transition out:** Directional blur crossfade, 0.45s, `power2.inOut`.
 
-## Scene 5: Windows Plus WSL
+## Scene 5: PowerShell Plus WSL
 
-**Concept:** Two terminals share one project map. A Windows path transforms into a WSL path in a clear, inspectable way.
+**Concept:** Two terminals share one project map and one launcher flow. PowerShell and WSL show equivalent Codex launch commands.
 
 **Mood direction:** Systems bridge, precise and satisfying.
 
 **Depth layers:**
 
 - BG: split frame, PowerShell left, WSL right.
-- MG left: `C:\Learn\cdp`.
-- MG right: `/mnt/c/Learn/cdp`.
-- FG: transform arrow and shared config file `~/.cdp/projects.json`.
-- FG: small badge `same map`.
+- MG left: `cdp api -Open codex` above `C:\Learn\cdp`.
+- MG right: `cdp api --open codex` above `/mnt/c/Learn/cdp`.
+- FG: shared workspace-map badge.
 
 **Animation choreography:**
 
-- PowerShell path TYPES ON.
-- Drive letter and slashes MORPH into WSL form.
-- Shared config file FLOATS between the terminals.
-- Badge LOCKS IN after the transform.
+- PowerShell and WSL panels ENTER from opposite sides.
+- Commands RESOLVE in parallel.
+- Workspace-map badge LOCKS IN after both panels settle.
 
 **Transition out:** Soft blur crossfade, 0.55s, `sine.inOut`.
 
 ## Scene 6: CTA
 
-**Concept:** The viewer leaves with the shortest installation path and a clear first verification command.
+**Concept:** The viewer leaves with the shortest install, setup, and AI CLI launch path for v1.8.0.
 
 **Mood direction:** Quiet confidence. The product has already proven itself; the CTA should not shout.
 
@@ -165,16 +161,16 @@ The video starts with friction, opens into one clean command, builds trust with 
 
 - BG: stable grid and dim ghost command history.
 - MG: install command block.
-- MG: `cdp doctor` verification command.
+- MG: `cdp init E:\Projects` and `cdp api -Open codex`.
 - FG: project logo text `cdp`.
-- FG: final line `Stop remembering paths. Start switching projects.`
+- FG: version badge `v1.8.0` and final line `Switch. Launch. Stay in flow.`
 
 **Animation choreography:**
 
 - Logo DRAWS in with a terminal cursor.
 - Install command SLIDES up into place.
-- `cdp doctor` CLICKS into accent.
-- Final line BREATHES once, then holds.
+- `cdp api -Open codex` CLICKS into accent.
+- Version badge and final line SETTLE, then hold.
 
 **Final exit:** Fade to `#07130F` over 0.4s.
 

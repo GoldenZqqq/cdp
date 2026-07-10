@@ -12,6 +12,10 @@
 - Added first-run setup with `cdp init` and `cdp-init`.
 - Added project aliases and tags with `cdp alias`, `cdp tag`, and tag queries such as `cdp '@work'`.
 
+### Changed
+
+- Reworked the bilingual 28-second HyperFrames demo to show AI CLI launching, project metadata, safe setup/repair, and PowerShell/WSL parity.
+
 ## 1.7.0
 
 ### Added
