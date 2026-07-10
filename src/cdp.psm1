@@ -2146,6 +2146,154 @@ function Get-CdpGitProjectInfo {
     return $info
 }
 
+function Get-CdpWorkspacesPath {
+    $configPath = Get-DefaultConfigPath
+    $configDir = Split-Path -Parent $configPath
+    return Join-Path $configDir 'workspaces.json'
+}
+
+function Get-CdpWorkspaces {
+    param([string]$WorkspacesPath)
+
+    if ([string]::IsNullOrWhiteSpace($WorkspacesPath)) {
+        $WorkspacesPath = Get-CdpWorkspacesPath
+    }
+
+    if (-not (Test-Path -LiteralPath $WorkspacesPath)) {
+        return @()
+    }
+
+    $allWs = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $WorkspacesPath -Raw -Encoding UTF8)
+    return @($allWs)
+}
+
+function Invoke-CdpWorkspace {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$List,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Add,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]$Projects,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Open
+    )
+
+    $wsPath = Get-CdpWorkspacesPath
+
+    if ($List) {
+        $workspaces = Get-CdpWorkspaces -WorkspacesPath $wsPath
+        if ($workspaces.Count -eq 0) {
+            Write-Host "No workspaces defined." -ForegroundColor Yellow
+            Write-Host "Create one: cdp workspace --add <name> <project1> <project2> ..." -ForegroundColor Gray
+            return
+        }
+        Write-Host ""
+        Write-Host "cdp workspaces" -ForegroundColor Cyan
+        Write-Host ("-" * 60)
+        foreach ($ws in $workspaces) {
+            $projList = ($ws.projects -join ", ")
+            $openLabel = if ($ws.open) { " [$($ws.open)]" } else { "" }
+            Write-Host "  $($ws.name)" -ForegroundColor Green -NoNewline
+            Write-Host "$openLabel" -ForegroundColor Cyan -NoNewline
+            Write-Host " -> $projList" -ForegroundColor Gray
+        }
+        Write-Host ("-" * 60)
+        return
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Add)) {
+        if ($null -eq $Projects -or $Projects.Count -eq 0) {
+            Write-Host "Usage: cdp workspace --add <name> <project1> <project2> ..." -ForegroundColor Yellow
+            return
+        }
+
+        $workspaces = Get-CdpWorkspaces -WorkspacesPath $wsPath
+        $existing = $workspaces | Where-Object { $_.name -eq $Add }
+        if ($existing) {
+            Write-Host "Workspace '$Add' already exists." -ForegroundColor Yellow
+            return
+        }
+
+        $newWs = [PSCustomObject]@{
+            name = $Add
+            projects = @($Projects)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($Open)) {
+            $newWs | Add-Member -NotePropertyName open -NotePropertyValue $Open
+        }
+
+        $allWs = @($workspaces) + @($newWs)
+        $wsDir = Split-Path -Parent $wsPath
+        if (-not (Test-Path $wsDir)) { New-Item -ItemType Directory -Path $wsDir -Force | Out-Null }
+        ConvertTo-Json -InputObject @($allWs) -Depth 10 | Out-File -FilePath $wsPath -Encoding UTF8
+        Write-Host "Workspace '$Add' created with $($Projects.Count) projects." -ForegroundColor Green
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        Write-Host "Usage: cdp workspace <name> | cdp workspace --list | cdp workspace --add <name> <projects...>" -ForegroundColor Yellow
+        return
+    }
+
+    $workspaces = Get-CdpWorkspaces -WorkspacesPath $wsPath
+    $ws = $workspaces | Where-Object { $_.name -eq $Name } | Select-Object -First 1
+
+    if (-not $ws) {
+        Write-Host "Workspace '$Name' not found." -ForegroundColor Red
+        $available = ($workspaces | ForEach-Object { $_.name }) -join ", "
+        if ($available) { Write-Host "Available: $available" -ForegroundColor Gray }
+        return
+    }
+
+    $configPath = Get-DefaultConfigPath
+    $configData = Get-CdpProjectConfig -ConfigPath $configPath
+    $launcher = if (-not [string]::IsNullOrWhiteSpace($Open)) { $Open } elseif ($ws.open) { $ws.open } else { "" }
+
+    $hasWt = $null -ne (Get-Command wt.exe -ErrorAction SilentlyContinue)
+
+    foreach ($projName in $ws.projects) {
+        $project = $configData.EnabledProjects | Where-Object {
+            [string]::Equals([string]$_.name, $projName, [StringComparison]::OrdinalIgnoreCase)
+        } | Select-Object -First 1
+
+        if (-not $project) {
+            Write-Host "  Project '$projName' not found in config, skipping." -ForegroundColor Yellow
+            continue
+        }
+
+        $projPath = [string]$project.rootPath
+        if (-not (Test-Path -LiteralPath $projPath)) {
+            Write-Host "  Path missing for '$projName', skipping." -ForegroundColor Yellow
+            continue
+        }
+
+        if ($hasWt) {
+            $wtArgs = @('-w', '0', 'new-tab', '-d', $projPath, '--title', $projName)
+            if (-not [string]::IsNullOrWhiteSpace($launcher)) {
+                $wtArgs += @('--', 'pwsh', '-NoExit', '-Command', "& { Set-Location '$projPath'; $launcher }")
+            }
+            Start-Process wt.exe -ArgumentList $wtArgs
+            Write-Host "  Opened tab: $projName" -ForegroundColor Green
+        } else {
+            Write-Host "  $projName -> $projPath" -ForegroundColor Cyan
+        }
+    }
+
+    if (-not $hasWt) {
+        Write-Host ""
+        Write-Host "Windows Terminal (wt.exe) not found. Listed projects above." -ForegroundColor Yellow
+        Write-Host "Install Windows Terminal for multi-tab workspace launching." -ForegroundColor Gray
+    }
+}
+
 function Show-CdpProjectStatus {
     <#
     .SYNOPSIS
@@ -3101,6 +3249,27 @@ function Invoke-Cdp {
         return
     }
 
+    if ($Command -in @('workspace', 'ws')) {
+        $wsList = $ConfigPath -in @('--list', '-l', 'list')
+        $wsAdd = $null
+        $wsProjects = @()
+        $wsOpen = $Open
+
+        if ($ConfigPath -in @('--add', '-a', 'add') -and $RemainingArgs.Count -ge 1) {
+            $wsAdd = $RemainingArgs[0]
+            $wsProjects = @($RemainingArgs | Select-Object -Skip 1)
+        }
+
+        if ($wsList) {
+            Invoke-CdpWorkspace -List
+        } elseif ($wsAdd) {
+            Invoke-CdpWorkspace -Add $wsAdd -Projects $wsProjects -Open $wsOpen
+        } else {
+            Invoke-CdpWorkspace -Name $ConfigPath -Open $wsOpen
+        }
+        return
+    }
+
     if ([string]::IsNullOrWhiteSpace($ConfigPath) -and -not [string]::IsNullOrWhiteSpace($Command)) {
         if (Test-CdpConfigPathArgument -Argument $Command) {
             $ConfigPath = $Command
@@ -3139,7 +3308,7 @@ Register-ArgumentCompleter -CommandName Invoke-Cdp -ParameterName Command -Scrip
 
     $subcommands = @(
         'status', 'doctor', 'about', 'recent', 'pin', 'unpin',
-        'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan'
+        'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'workspace'
     )
 
     $completions = @($subcommands | Where-Object { $_ -like "$wordToComplete*" } |
@@ -3168,5 +3337,5 @@ Register-ArgumentCompleter -CommandName Invoke-Cdp -ParameterName Open -ScriptBl
 }
 
 Export-ModuleMember `
-    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects, Show-CdpProjectStatus `
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects, Show-CdpProjectStatus, Invoke-CdpWorkspace `
     -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent, cdp-pin, cdp-unpin, cdp-clean, cdp-init, cdp-alias, cdp-unalias, cdp-tag, cdp-untag, cdp-status

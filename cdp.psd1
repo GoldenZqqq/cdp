@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Set-ProjectPin', 'Clear-ProjectPin', 'Repair-ProjectConfig', 'Initialize-Cdp', 'Add-ProjectAlias', 'Remove-ProjectAlias', 'Add-ProjectTag', 'Remove-ProjectTag', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects', 'Show-CdpProjectStatus')
+FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Set-ProjectPin', 'Clear-ProjectPin', 'Repair-ProjectConfig', 'Initialize-Cdp', 'Add-ProjectAlias', 'Remove-ProjectAlias', 'Add-ProjectTag', 'Remove-ProjectTag', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects', 'Show-CdpProjectStatus', 'Invoke-CdpWorkspace')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()

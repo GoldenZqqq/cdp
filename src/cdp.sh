@@ -909,12 +909,147 @@ cdp-status() {
     fi
 }
 
+cdp-workspace() {
+    local action="${1:-}"
+
+    if ! command -v jq &>/dev/null; then
+        echo -e "${RED}Error: 'jq' command not found.${NC}"
+        return 1
+    fi
+
+    local config_path
+    config_path=$(get_default_config 2>/dev/null)
+    local config_dir
+    config_dir=$(dirname "$config_path" 2>/dev/null)
+    local ws_path="${config_dir}/workspaces.json"
+
+    case "$action" in
+        --list|-l|list)
+            if [[ ! -f "$ws_path" ]]; then
+                echo -e "${YELLOW}No workspaces defined.${NC}"
+                echo -e "${GRAY}Create one: cdp workspace --add <name> <project1> <project2> ...${NC}"
+                return
+            fi
+            echo ""
+            echo -e "${CYAN}cdp workspaces${NC}"
+            printf '%.0s-' {1..60}; echo ""
+            jq -r '.[] | "  [0;32m\(.name)[0m\(if .open then " [[0;36m\(.open)[0m]" else "" end) -> [0;90m\(.projects | join(", "))[0m"' "$ws_path" 2>/dev/null
+            printf '%.0s-' {1..60}; echo ""
+            ;;
+        --add|-a|add)
+            shift
+            local ws_name="${1:-}"
+            shift 2>/dev/null || true
+            local ws_projects=("$@")
+
+            if [[ -z "$ws_name" || ${#ws_projects[@]} -eq 0 ]]; then
+                echo -e "${YELLOW}Usage: cdp workspace --add <name> <project1> <project2> ...${NC}"
+                return
+            fi
+
+            if [[ -f "$ws_path" ]] && jq -e --arg n "$ws_name" '.[] | select(.name == $n)' "$ws_path" &>/dev/null; then
+                echo -e "${YELLOW}Workspace '$ws_name' already exists.${NC}"
+                return
+            fi
+
+            local projects_json
+            projects_json=$(printf '%s\n' "${ws_projects[@]}" | jq -R . | jq -s .)
+
+            local new_ws
+            new_ws=$(jq -n --arg name "$ws_name" --argjson projects "$projects_json" '{name: $name, projects: $projects}')
+
+            if [[ -f "$ws_path" ]]; then
+                local existing
+                existing=$(cat "$ws_path")
+                echo "$existing" | jq --argjson ws "$new_ws" '. + [$ws]' > "$ws_path"
+            else
+                mkdir -p "$config_dir"
+                echo "[$new_ws]" | jq '.' > "$ws_path"
+            fi
+            echo -e "${GREEN}Workspace '$ws_name' created with ${#ws_projects[@]} projects.${NC}"
+            ;;
+        *)
+            local ws_name="$action"
+            if [[ -z "$ws_name" ]]; then
+                echo -e "${YELLOW}Usage: cdp workspace <name> | cdp workspace --list | cdp workspace --add <name> <projects...>${NC}"
+                return
+            fi
+
+            if [[ ! -f "$ws_path" ]]; then
+                echo -e "${RED}No workspaces defined.${NC}"
+                return
+            fi
+
+            local ws_data
+            ws_data=$(jq -r --arg n "$ws_name" '.[] | select(.name == $n)' "$ws_path" 2>/dev/null)
+            if [[ -z "$ws_data" ]]; then
+                echo -e "${RED}Workspace '$ws_name' not found.${NC}"
+                local available
+                available=$(jq -r '.[].name' "$ws_path" 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
+                [[ -n "$available" ]] && echo -e "${GRAY}Available: $available${NC}"
+                return
+            fi
+
+            local ws_open
+            ws_open=$(echo "$ws_data" | jq -r '.open // empty')
+            local ws_projects_list
+            ws_projects_list=$(echo "$ws_data" | jq -r '.projects[]')
+
+            local has_tmux=false
+            command -v tmux &>/dev/null && has_tmux=true
+
+            if $has_tmux; then
+                local session_name="cdp-${ws_name}"
+                local first=true
+                while IFS= read -r proj_name; do
+                    proj_name="${proj_name%$'\r'}"
+                    [[ -z "$proj_name" ]] && continue
+                    local proj_path
+                    proj_path=$(jq -r --arg n "$proj_name" '.[] | select(.enabled == true) | select(.name == $n) | .rootPath' "$config_path" 2>/dev/null | head -1)
+                    proj_path="${proj_path%$'\r'}"
+                    [[ -z "$proj_path" || ! -d "$proj_path" ]] && { echo -e "${YELLOW}  Skipping '$proj_name' (not found)${NC}"; continue; }
+
+                    if $first; then
+                        tmux new-session -d -s "$session_name" -c "$proj_path" -n "$proj_name"
+                        [[ -n "$ws_open" ]] && tmux send-keys -t "$session_name" "$ws_open" Enter
+                        first=false
+                    else
+                        tmux new-window -t "$session_name" -c "$proj_path" -n "$proj_name"
+                        [[ -n "$ws_open" ]] && tmux send-keys -t "$session_name" "$ws_open" Enter
+                    fi
+                    echo -e "${GREEN}  Opened window: $proj_name${NC}"
+                done <<< "$ws_projects_list"
+
+                if ! $first; then
+                    tmux attach-session -t "$session_name" 2>/dev/null || tmux switch-client -t "$session_name" 2>/dev/null
+                fi
+            else
+                while IFS= read -r proj_name; do
+                    proj_name="${proj_name%$'\r'}"
+                    [[ -z "$proj_name" ]] && continue
+                    local proj_path
+                    proj_path=$(jq -r --arg n "$proj_name" '.[] | select(.enabled == true) | select(.name == $n) | .rootPath' "$config_path" 2>/dev/null | head -1)
+                    proj_path="${proj_path%$'\r'}"
+                    echo -e "${CYAN}  $proj_name${NC} -> ${GRAY}$proj_path${NC}"
+                done <<< "$ws_projects_list"
+                echo ""
+                echo -e "${YELLOW}Install tmux for multi-window workspace launching.${NC}"
+            fi
+            ;;
+    esac
+}
+
 # Main cdp function
 cdp() {
     case "$1" in
         status|st)
             shift
             cdp-status "$@"
+            return
+            ;;
+        workspace|ws)
+            shift
+            cdp-workspace "$@"
             return
             ;;
         doctor|health|check)
@@ -1876,7 +2011,7 @@ _cdp_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan"
+    local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan workspace"
     local launchers="code cursor codex claude gemini"
 
     if [[ "$prev" == "--open" || "$prev" == "-o" ]]; then
