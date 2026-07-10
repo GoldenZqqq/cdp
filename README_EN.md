@@ -9,12 +9,12 @@
 
 **English** | **[简体中文](./README.md)**
 
-A fast project directory switcher for the Vibe Coding era, built for Claude Code, Codex, Gemini CLI, Cursor, and VS Code users.
+A fast **project workbench** for the Vibe Coding era — one command to see all repo statuses, switch projects, and launch AI CLIs.
 
-`cdp` opens your project list with `fzf`. Type a few letters, press Enter, and your terminal jumps to the project root with the tab title updated.
+`cdp` is more than a project switcher — it knows whether each of your repos is clean, has unpushed commits, and can switch and launch an AI CLI in one move.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20WSL%20%7C%20Linux-lightgrey)](https://github.com/GoldenZqqq/cdp)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20WSL-lightgrey)](https://github.com/GoldenZqqq/cdp)
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 [![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 
@@ -55,12 +55,32 @@ PS C:\> cdp
 # press Enter and jump to the project root
 ```
 
+Even worse — you have no idea which repos have uncommitted changes:
+
+```bash
+# 50 repos — which ones have uncommitted work? Which forgot to push?
+cd project1 && git status && cd ../project2 && git status && ...
+```
+
+`cdp status` handles it in one command:
+
+```text
+$ cdp status
+  #  Project       Branch   Status        Sync   Last Commit
+  01 my-api        main     x 3 dirty     ^1     2 hours ago
+  02 blog          main     + clean              5 days ago
+  03 admin-panel   dev      ! 2 untracked        1 hour ago
+
+3 repos need attention
+```
+
 It is built for:
 
 - Developers who work across many repositories
 - Users of Claude Code, Codex, Gemini CLI, and other terminal AI tools
 - VS Code/Cursor Project Manager users
 - People who want one shared project list across Windows PowerShell and WSL/Linux
+- macOS / Linux native developers (full bash/zsh compatibility)
 
 ---
 
@@ -95,9 +115,13 @@ cd cdp
 
 `Install.ps1` tries `winget`, `scoop`, then `chocolatey` for `fzf`. If the current terminal still cannot find `fzf` after installation, restart PowerShell and run `cdp doctor`.
 
-### WSL / Linux
+### WSL / Linux / macOS
 
 ```bash
+# macOS users: install dependencies first
+brew install fzf jq
+
+# One-liner install (WSL/Linux/macOS)
 bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
 
 source ~/.bashrc  # zsh users: source ~/.zshrc
@@ -144,6 +168,15 @@ cdp version
 
 # Show recently visited projects
 cdp recent
+
+# See all repo statuses at a glance
+cdp status
+
+# Show only repos that need attention
+cdp status --dirty
+
+# Tab completion: press Tab after cdp to auto-complete subcommands and project names
+cdp s<TAB>  # → status, scan, ...
 
 # Keep frequent projects at the top
 cdp pin api
@@ -205,6 +238,9 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 
 ## Features
 
+- **Multi-project Git dashboard**: `cdp status` shows branch, dirty/untracked count, ahead/behind sync, and last commit time for every project
+- **Full cross-platform support**: Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL, all covered by CI
+- **Intelligent tab completion**: Press Tab after `cdp` to auto-complete subcommands and project names on PowerShell, bash, and zsh
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
 - **Neon TUI**: colored candidates, right-side project preview, and visible path/Git status
 - **Fast query jumps**: `cdp api` switches directly on one match, or filters fzf to matching projects
@@ -228,6 +264,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | Command | Alias | Description |
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
+| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `Switch-Project` | - | Opens the fzf menu and switches projects |
@@ -257,6 +294,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | Command | Description |
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
+| `cdp status` / `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp api --open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
@@ -392,15 +430,15 @@ cdp-config
 
 ## How It Compares
 
-| Tool | Best for | How it differs from `cdp` |
-| --- | --- | --- |
-| `cd` / tab completion | A few short paths | You still need to remember directory structure; deep or numerous projects become slower |
-| `zoxide` / `autojump` | Frecency-based jumping to any directory | They learn from visited directories and ranking history; `cdp` is driven by an explicit project list, so new projects can appear through Project Manager, `cdp-add`, or `cdp-scan` |
-| Plain `fzf cd` scripts | Ad-hoc selection from scanned or historical directories | They are usually one-off lists without shared config, diagnostics, or a project table that works across PowerShell and WSL |
-| VS Code/Cursor Project Manager | Managing projects inside the editor | Great inside the editor; `cdp` brings the same project list into terminal and AI CLI workflows |
-| `cdp` | Fast terminal switching between known project roots | Focuses on project roots, not arbitrary directories; supports `cdp <query>`, bulk Git scanning, terminal tab titles, and config diagnostics |
+| Tool | Project Switching | Status Overview | AI CLI Integration | Notes |
+| --- | --- | --- | --- | --- |
+| `cd` / Tab | Manual path typing | None | None | Costly with deep paths and many projects |
+| `zoxide` / `autojump` | Frecency-based jump | None | None | Knows paths, not "projects" |
+| Plain `fzf cd` scripts | Scan & select | None | None | One-off lists, no unified config |
+| VS Code Project Manager | In-editor switch | None | None | Editor-only |
+| **cdp** | **Fuzzy search + query jump** | **`cdp status` full dashboard** | **`-Open codex/claude/gemini`** | Your project workbench in the terminal |
 
-cdp does not try to replace every directory jumper. If you want to jump to any recently visited directory, `zoxide` is excellent. If you want VS Code/Cursor, PowerShell, WSL, and Claude Code/Codex/Gemini CLI to share one predictable project list, `cdp` is tuned for that workflow.
+cdp does not try to replace every directory jumper. zoxide excels at jumping to any recently visited directory; cdp knows your project list, each repo's Git status, and can launch an AI CLI in one move.
 
 ---
 
@@ -422,7 +460,8 @@ CI covers:
 
 - Windows PowerShell 5.1
 - PowerShell 7.x
-- bash/zsh syntax and `cdp doctor` smoke test
+- Ubuntu bash smoke test
+- macOS zsh smoke test
 
 ---
 
@@ -443,6 +482,9 @@ CI covers:
 - [x] `cdp doctor --fix` / `cdp clean` for stale paths and duplicates
 - [x] `cdp init` first-run setup wizard
 - [x] Project tags / aliases
+- [x] `cdp status` multi-project Git status dashboard
+- [x] Native macOS support (zsh + bash)
+- [x] Intelligent tab completion (PowerShell + bash + zsh)
 
 ---
 

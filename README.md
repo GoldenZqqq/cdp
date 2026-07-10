@@ -9,12 +9,12 @@
 
 **简体中文** | **[English](./README_EN.md)**
 
-在 Vibe Coding 时代，为 Claude Code、Codex、Gemini CLI、Cursor、VS Code 用户准备的快速项目切换器。
+在 Vibe Coding 时代，为 Claude Code、Codex、Gemini CLI、Cursor、VS Code 用户准备的**终端项目工作台**。
 
-`cdp` 用 `fzf` 打开你的项目列表，输入几个字母，回车，终端立刻切到项目根目录并更新标签标题。
+`cdp` 不只是项目切换器——它知道你的每个仓库是否干净、有没有未推送的提交，还能一键切换并启动 AI CLI。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20WSL%20%7C%20Linux-lightgrey)](https://github.com/GoldenZqqq/cdp)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20WSL-lightgrey)](https://github.com/GoldenZqqq/cdp)
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 [![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/cdp.svg)](https://www.powershellgallery.com/packages/cdp)
 
@@ -55,12 +55,32 @@ PS C:\> cdp
 # 回车后直接进入项目根目录
 ```
 
+更让人头疼的是——你根本不知道哪个仓库还有未提交的代码：
+
+```bash
+# 50 个仓库，哪些有未提交的改动？哪些忘了 push？
+cd project1 && git status && cd ../project2 && git status && ...
+```
+
+`cdp status` 一条命令搞定：
+
+```text
+$ cdp status
+  #  Project       Branch   Status        Sync   Last Commit
+  01 my-api        main     x 3 dirty     ^1     2 hours ago
+  02 blog          main     + clean              5 days ago
+  03 admin-panel   dev      ! 2 untracked        1 hour ago
+
+3 repos need attention
+```
+
 它特别适合：
 
 - 同时维护很多项目的开发者
 - 使用 Claude Code、Codex、Gemini CLI 等终端 AI 工具的人
 - 依赖 VS Code/Cursor Project Manager 管理项目的人
 - 需要在 Windows PowerShell 和 WSL/Linux 之间共享项目列表的人
+- macOS / Linux 原生开发者（bash/zsh 全兼容）
 
 ---
 
@@ -95,9 +115,13 @@ cd cdp
 
 `Install.ps1` 会依次尝试 `winget`、`scoop`、`chocolatey` 安装 `fzf`；如果安装后当前终端还找不到 `fzf`，重启 PowerShell 后运行 `cdp doctor`。
 
-### WSL / Linux
+### WSL / Linux / macOS
 
 ```bash
+# macOS 用户先安装依赖
+brew install fzf jq
+
+# 一键安装（WSL/Linux/macOS 通用）
 bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
 
 source ~/.bashrc  # zsh 用户改为 source ~/.zshrc
@@ -144,6 +168,15 @@ cdp version
 
 # 查看最近访问过的项目
 cdp recent
+
+# 一条命令查看所有仓库的 Git 状态
+cdp status
+
+# 只看需要关注的仓库（dirty / untracked / behind）
+cdp status --dirty
+
+# Tab 补全：输入 cdp 后按 Tab 自动补全子命令和项目名
+cdp s<TAB>  # → status, scan, ...
 
 # 将常用项目固定在列表顶部
 cdp pin api
@@ -205,6 +238,9 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 
 ## 核心特性
 
+- **多项目 Git 状态仪表盘**：`cdp status` 一条命令查看所有仓库的分支、dirty/untracked 状态、ahead/behind 同步和最近提交时间
+- **全平台支持**：Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL，CI 覆盖全部
+- **智能 Tab 补全**：输入 `cdp` 按 Tab 自动补全子命令和项目名，PowerShell + bash + zsh 全支持
 - **模糊搜索切换项目**：由 `fzf` 驱动，键盘优先，不需要记路径
 - **Neon 风格 TUI**：彩色候选行、右侧项目预览、路径/Git 状态一眼可见
 - **快速 query 跳转**：`cdp api` 唯一匹配时直接进入项目，多匹配时只在候选中选择
@@ -228,6 +264,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | 命令 | 别名 | 说明 |
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
+| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
 | `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `Switch-Project` | - | 打开 fzf 菜单并切换项目 |
@@ -257,6 +294,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | 命令 | 说明 |
 | --- | --- |
 | `cdp` | 打开 fzf 菜单并切换项目 |
+| `cdp status` / `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp api --open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
@@ -392,15 +430,15 @@ cdp-config
 
 ## 和其他工具的区别
 
-| 工具 | 更适合 | 和 `cdp` 的区别 |
-| --- | --- | --- |
-| `cd` / Tab 补全 | 少量路径、路径很短 | 仍然需要记住目录层级；项目多、路径深时切换成本高 |
-| `zoxide` / `autojump` | 按访问频率跳转任意目录 | 依赖历史访问和 frecency 排名，适合“去过的地方”；`cdp` 面向明确的项目清单，新项目可以通过 Project Manager、`cdp-add` 或 `cdp-scan` 直接出现 |
-| 纯 `fzf cd` 脚本 | 从扫描目录或 shell 历史中临时选择 | 通常是一次性列表，没有统一配置、健康检查、跨 PowerShell/WSL 的共享项目表 |
-| VS Code/Cursor Project Manager | 编辑器内管理项目 | 很适合编辑器内打开项目；`cdp` 把同一份项目清单带到终端和 AI CLI 工作流里 |
-| `cdp` | 在终端和 AI CLI 工作流里按项目列表快速切换根目录 | 关注“项目根目录”而不是任意目录，支持 `cdp <query>`、批量 Git 扫描、终端标签同步和配置诊断 |
+| 工具 | 项目切换 | 项目状态总览 | AI CLI 集成 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cd` / Tab 补全 | 手动输入路径 | 无 | 无 | 路径深、项目多时成本高 |
+| `zoxide` / `autojump` | 按频率跳转 | 无 | 无 | 只知道路径，不知道”项目” |
+| 纯 `fzf cd` 脚本 | 扫描目录选择 | 无 | 无 | 一次性列表，无统一配置 |
+| VS Code Project Manager | 编辑器内切换 | 无 | 无 | 仅限编辑器内使用 |
+| **cdp** | **模糊搜索 + query 直达** | **`cdp status` 全仓库仪表盘** | **`-Open codex/claude/gemini`** | 终端里的项目工作台 |
 
-cdp 的重点不是替代所有跳转工具，而是把“项目根目录切换”这件事做得稳定、可见、可共享。如果你想跳到最近访问过的任意目录，`zoxide` 很好；如果你想把 VS Code/Cursor、PowerShell、WSL 和 Claude Code/Codex/Gemini CLI 都连接到同一份项目列表，`cdp` 更贴近这个场景。
+cdp 的重点不是替代所有跳转工具，而是把”项目根目录切换”和”项目状态总览”合在一起。zoxide 擅长跳到去过的任意目录；cdp 知道你的项目列表、每个仓库的 Git 状态，还能一键启动 AI CLI。
 
 ---
 
@@ -422,7 +460,8 @@ CI 覆盖：
 
 - Windows PowerShell 5.1
 - PowerShell 7.x
-- bash/zsh 脚本语法和 `cdp doctor` smoke test
+- Ubuntu bash smoke test
+- macOS zsh smoke test
 
 ---
 
@@ -443,6 +482,9 @@ CI 覆盖：
 - [x] `cdp doctor --fix` / `cdp clean` 自动修复失效路径和重复项
 - [x] `cdp init` 首次使用向导
 - [x] 项目标签 / 别名
+- [x] `cdp status` 多项目 Git 状态仪表盘
+- [x] macOS 原生支持（zsh + bash）
+- [x] 智能 Tab 补全（PowerShell + bash + zsh）
 
 ---
 
