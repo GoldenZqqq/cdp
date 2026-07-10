@@ -3134,6 +3134,39 @@ Set-Alias -Name cdp-unalias -Value Remove-ProjectAlias
 Set-Alias -Name cdp-tag -Value Add-ProjectTag
 Set-Alias -Name cdp-untag -Value Remove-ProjectTag
 
+Register-ArgumentCompleter -CommandName Invoke-Cdp -ParameterName Command -ScriptBlock {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+    $subcommands = @(
+        'status', 'doctor', 'about', 'recent', 'pin', 'unpin',
+        'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan'
+    )
+
+    $completions = @($subcommands | Where-Object { $_ -like "$wordToComplete*" } |
+        ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) })
+
+    try {
+        $configPath = Get-DefaultConfigPath
+        if (Test-Path -LiteralPath $configPath) {
+            $configData = Get-CdpProjectConfig -ConfigPath $configPath
+            $completions += @($configData.EnabledProjects | ForEach-Object {
+                $name = [string]$_.name
+                if ($name -like "$wordToComplete*") {
+                    [System.Management.Automation.CompletionResult]::new($name, $name, 'ParameterValue', $name)
+                }
+            } | Where-Object { $null -ne $_ })
+        }
+    } catch {}
+
+    return $completions
+}
+
+Register-ArgumentCompleter -CommandName Invoke-Cdp -ParameterName Open -ScriptBlock {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+    @('code', 'cursor', 'codex', 'claude', 'gemini') | Where-Object { $_ -like "$wordToComplete*" } |
+        ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+}
+
 Export-ModuleMember `
     -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects, Show-CdpProjectStatus `
     -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent, cdp-pin, cdp-unpin, cdp-clean, cdp-init, cdp-alias, cdp-unalias, cdp-tag, cdp-untag, cdp-status
