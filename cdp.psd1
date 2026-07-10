@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.0.0'
+ModuleVersion = '2.0.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,12 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.0.1 - Status Dashboard UX
+- Added: Progress indicator while scanning projects (Scanning 3/58...)
+- Added: cdp status --fix to remove path-missing projects from config
+- Added: cdp status --push to push all repos ahead of remote
+- Added: Actionable tips after status summary (Tip: cdp status --fix / --push)
+
 v2.0.0 - Project Workbench
 - Added: cdp status multi-project Git dashboard with branch, dirty/clean, ahead/behind, and last commit
 - Added: cdp status --dirty to filter repos needing attention

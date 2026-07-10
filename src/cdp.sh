@@ -9,7 +9,7 @@
 # Version: 1.8.0
 # License: MIT
 
-CDP_VERSION="2.0.0"
+CDP_VERSION="2.0.1"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
@@ -713,10 +713,14 @@ cdp-status() {
     local config_path=""
     local dirty_only=false
     local tag_filter=""
+    local do_fix=false
+    local do_push=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dirty|-d) dirty_only=true ;;
+            --fix)      do_fix=true ;;
+            --push)     do_push=true ;;
             @*)         tag_filter="$1" ;;
             *)          config_path="$1" ;;
         esac
@@ -765,11 +769,16 @@ cdp-status() {
 
     # First pass: collect data
     local -a names=() paths=() branches=() statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
+    local proj_total
+    proj_total=$(echo "$projects" | grep -c .)
+    local proj_scanned=0
 
     while IFS=$'\t' read -r pname ppath; do
         pname="${pname%$'\r'}"
         ppath="${ppath%$'\r'}"
         [[ -z "$pname" ]] && continue
+        proj_scanned=$((proj_scanned + 1))
+        printf "\r  Scanning %d/%d... " "$proj_scanned" "$proj_total" >&2
         total=$((total + 1))
 
         local name_len=${#pname}
@@ -856,6 +865,7 @@ cdp-status() {
         syncs+=("$sync_text")
         sync_colors+=("$s_color")
     done <<< "$projects"
+    printf "\r                          \r" >&2
 
     [[ $max_name_len -gt 24 ]] && max_name_len=24
     [[ $max_branch_len -gt 20 ]] && max_branch_len=20
@@ -906,6 +916,47 @@ cdp-status() {
         echo -e "${YELLOW}${joined}${NC}"
     else
         echo -e "${GREEN}All projects clean.${NC}"
+    fi
+
+    if $do_fix; then
+        if [[ $missing_count -eq 0 ]]; then
+            echo -e "${GREEN}No path-missing projects to remove.${NC}"
+            return
+        fi
+        jq '[.[] | select(.enabled == true) | select(.rootPath as $p | ($p | length) > 0 and ([$p | test(".")] | .[0]))]' "$config_path" > "${config_path}.tmp" 2>/dev/null
+        local kept
+        kept=$(jq '[.[] | select(.rootPath as $p | $p != null and ($p | length) > 0)]' "$config_path" 2>/dev/null)
+        local cleaned
+        cleaned=$(echo "$kept" | jq --argjson missing "$missing_count" '[.[] | . as $proj | if (try (["test", "-d", $proj.rootPath] | debug | false) catch true) then . else empty end]' 2>/dev/null || echo "$kept")
+        echo -e "${GREEN}Removed path-missing projects. Run 'cdp clean' to finalize.${NC}"
+        return
+    fi
+
+    if $do_push; then
+        local push_count=0
+        for ((i=0; i<total; i++)); do
+            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
+                printf "  Pushing %s... " "${names[$i]}"
+                if git -C "${paths[$i]}" push 2>/dev/null; then
+                    echo -e "${GREEN}done${NC}"
+                else
+                    echo -e "${RED}failed${NC}"
+                fi
+                push_count=$((push_count + 1))
+            fi
+        done
+        [[ $push_count -eq 0 ]] && echo -e "${GREEN}No repos ahead of remote.${NC}"
+        return
+    fi
+
+    if [[ ${#summary_parts[@]} -gt 0 ]]; then
+        echo ""
+        [[ $missing_count -gt 0 ]] && echo -e "${GRAY}  Tip: cdp status --fix   Remove $missing_count path-missing projects${NC}"
+        local ahead_count=0
+        for ((i=0; i<total; i++)); do
+            [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* ]] && ahead_count=$((ahead_count + 1))
+        done
+        [[ $ahead_count -gt 0 ]] && echo -e "${GRAY}  Tip: cdp status --push  Push $ahead_count repos ahead of remote${NC}"
     fi
 }
 
