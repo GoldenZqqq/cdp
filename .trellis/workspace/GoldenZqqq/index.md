@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 3
+- **Total Sessions**: 4
 - **Last Active**: 2026-07-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~111 | Active |
+| `journal-1.md` | ~144 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 4 | 2026-07-10 | Rewrite bilingual READMEs as project workbench | `953ce5d` | `main` |
 | 3 | 2026-07-10 | Add tab completion for PowerShell and bash/zsh | `85c45b3`, `ad2f69a`, `063f009` | `main` |
 | 2 | 2026-07-10 | Add macOS native support and fix PS 5.1 JSON parsing | `e2d8145`, `68cea01` | `main` |
 | 1 | 2026-07-10 | Implement cdp status multi-project Git dashboard | `c227205`, `eeceedc`, `1f82036` | `main` |

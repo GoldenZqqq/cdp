@@ -109,3 +109,36 @@ Added intelligent tab completion for all platforms. PowerShell uses Register-Arg
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Rewrite bilingual READMEs as project workbench
+
+**Date**: 2026-07-10
+**Task**: Rewrite bilingual READMEs as project workbench
+**Branch**: `main`
+
+### Summary
+
+Repositioned cdp from directory switcher to project workbench. Added cdp status showcase, macOS install guide, tab completion examples, updated comparison table and roadmap in both README.md and README_EN.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `953ce5d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
