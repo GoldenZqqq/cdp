@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Install script for cdp (WSL/Linux version)
+# Install script for cdp (WSL/Linux/macOS version)
 #
-# This script installs the cdp shell functions for bash/zsh in WSL or Linux environments.
+# This script installs the cdp shell functions for bash/zsh in WSL, Linux, or macOS environments.
 # It can automatically install fzf and jq if they are not present.
 #
 # Usage:
@@ -185,7 +185,7 @@ check_and_install_jq() {
 }
 
 # Main installation
-echo -e "${CYAN}=== cdp WSL/Linux Installer ===${NC}"
+echo -e "${CYAN}=== cdp Installer (WSL/Linux/macOS) ===${NC}"
 echo ""
 
 # Check dependencies
@@ -302,9 +302,16 @@ echo -e "  ${YELLOW}cdp-add${NC}      - Add current directory as a project"
 echo -e "  ${YELLOW}cdp-ls${NC}       - List all enabled projects"
 echo ""
 echo -e "${CYAN}Configuration:${NC}"
-echo -e "  cdp will automatically detect and use your Windows config files:"
-echo -e "    • Cursor Project Manager (if installed)"
-echo -e "    • VS Code Project Manager (if installed)"
-echo -e "    • Windows ~/.cdp/projects.json"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo -e "  cdp will automatically detect and use your config files:"
+    echo -e "    • Cursor Project Manager (if installed)"
+    echo -e "    • VS Code Project Manager (if installed)"
+    echo -e "    • ~/.cdp/projects.json"
+else
+    echo -e "  cdp will automatically detect and use your Windows config files:"
+    echo -e "    • Cursor Project Manager (if installed)"
+    echo -e "    • VS Code Project Manager (if installed)"
+    echo -e "    • Windows ~/.cdp/projects.json"
+fi
 echo -e "  Run ${YELLOW}cdp-ls${NC} to see which config file is being used."
 echo ""

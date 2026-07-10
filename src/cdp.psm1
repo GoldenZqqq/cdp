@@ -1750,7 +1750,8 @@ function Set-ProjectPin {
     Initialize-ConfigFile -ConfigPath $ConfigPath
 
     try {
-        $projects = @(ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8))
+        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8)
+        $projects = @($allProjects)
         $targetProjects = if ([string]::IsNullOrWhiteSpace($Name)) {
             $currentPath = Get-CdpComparablePath -Path (Get-Location).Path
             @($projects | Where-Object {
@@ -1860,7 +1861,8 @@ function Update-CdpProjectStringList {
     Initialize-ConfigFile -ConfigPath $ConfigPath
 
     try {
-        $projects = @(ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8))
+        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8)
+        $projects = @($allProjects)
         $targets = @(Get-CdpProjectMatches -Projects $projects -Query $Name)
 
         if ($targets.Count -ne 1) {
@@ -1981,7 +1983,8 @@ function Repair-ProjectConfig {
     Initialize-ConfigFile -ConfigPath $ConfigPath
 
     try {
-        $projects = @(ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8))
+        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8)
+        $projects = @($allProjects)
         $usedNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         $usedPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         $summary = [ordered]@{ RemovedInvalid = 0; RemovedDuplicatePaths = 0; RenamedDuplicates = 0; DisabledMissingPaths = 0; AddedPinnedFields = 0; FixedEnabledFields = 0 }

@@ -11,6 +11,11 @@
 
 CDP_VERSION="1.8.0"
 
+# zsh compatibility: use bash-like array indexing and regex matching
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    setopt KSH_ARRAYS BASH_REMATCH 2>/dev/null
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -148,7 +153,8 @@ convert_windows_to_wsl() {
 
     # Check if path looks like Windows path (C:\... or C:/...)
     if [[ "$path" =~ ^([A-Za-z]):[/\\](.*)$ ]]; then
-        local drive="${BASH_REMATCH[1],,}"  # Convert to lowercase
+        local drive
+        drive="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
         local remainder="${BASH_REMATCH[2]}"
 
         # Replace backslashes with forward slashes
@@ -296,6 +302,21 @@ get_all_available_configs() {
         fi
     fi
 
+    # Check macOS Application Support paths
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        local mac_cursor_config="$HOME/Library/Application Support/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
+        if [[ -f "$mac_cursor_config" ]]; then
+            configs+=("$mac_cursor_config")
+            sources+=("Cursor Project Manager")
+        fi
+
+        local mac_vscode_config="$HOME/Library/Application Support/Code/User/globalStorage/alefragnani.project-manager/projects.json"
+        if [[ -f "$mac_vscode_config" ]]; then
+            configs+=("$mac_vscode_config")
+            sources+=("VS Code Project Manager")
+        fi
+    fi
+
     # Check WSL local config
     local wsl_config="$HOME/.cdp/projects.json"
     if [[ -f "$wsl_config" ]]; then
@@ -340,7 +361,7 @@ get_default_config() {
     fi
 
     # Count configs
-    local config_count=$(echo "$available_configs" | wc -l)
+    local config_count=$(echo "$available_configs" | wc -l | tr -d ' ')
 
     # If only one config, use it and save the choice
     if [[ $config_count -eq 1 ]]; then
@@ -371,7 +392,8 @@ get_default_config() {
 
     # Get user selection
     while true; do
-        read -p "Select config file (1-$config_count): " selection
+        printf "Select config file (1-%s): " "$config_count"
+        read -r selection
 
         if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le $config_count ]]; then
             local selected_path="${config_paths[$((selection-1))]}"
@@ -526,7 +548,7 @@ find_git_repos() {
     local depth="${2:-4}"
 
     if [[ -e "$root/.git" ]]; then
-        realpath "$root"
+        (cd "$root" && pwd -P)
         return
     fi
 
@@ -593,7 +615,7 @@ cdp_about() {
     fi
 
     cdp_brand_header
-    echo -e "${GRAY}Module:${NC} ${CYAN}${BASH_SOURCE[0]}${NC}"
+    echo -e "${GRAY}Module:${NC} ${CYAN}${BASH_SOURCE[0]:-${(%):-%x}}${NC}"
     echo -e "${GRAY}Config:${NC} ${CYAN}$config_path${NC}"
     echo -e "${GRAY}Projects:${NC} ${GREEN}$enabled_count enabled / $project_count total${NC}"
     echo -e "${GRAY}Upgrade:${NC} ${CYAN}$(cdp_upgrade_command)${NC}"
@@ -635,7 +657,9 @@ cdp-init() {
 resolve_workspace_launcher() {
     local opener="$1"
 
-    case "${opener,,}" in
+    local opener_lower
+    opener_lower="$(printf '%s' "$opener" | tr '[:upper:]' '[:lower:]')"
+    case "$opener_lower" in
         code|vscode)
             printf "code\t.\tVS Code\n"
             ;;
@@ -828,7 +852,7 @@ cdp-status() {
         [[ $behind -gt 0 ]] && { [[ -n "$sync_text" ]] && sync_text="$sync_text "; sync_text="${sync_text}v${behind}"; }
         [[ $behind -gt 0 ]] && s_color="$YELLOW"
         [[ $behind -eq 0 && $ahead -gt 0 ]] && s_color="$CYAN"
-        [[ $behind -gt 0 ]] && needs_attention[-1]=true
+        [[ $behind -gt 0 ]] && needs_attention[${#needs_attention[@]}-1]=true
         syncs+=("$sync_text")
         sync_colors+=("$s_color")
     done <<< "$projects"
@@ -844,9 +868,9 @@ cdp-status() {
     local shown_count=$total
     echo ""
     echo -e "${CYAN}cdp project status ${GRAY}(${shown_count} projects${filter_label})${NC}"
-    printf '%0.s-' $(seq 1 100); echo ""
+    printf '%.0s-' {1..100}; echo ""
     printf "  %-4s %-${max_name_len}s %-${max_branch_len}s %-14s %-10s %s\n" "#" "Project" "Branch" "Status" "Sync" "Last Commit"
-    printf '%0.s-' $(seq 1 100); echo ""
+    printf '%.0s-' {1..100}; echo ""
 
     local idx=1
     for ((i=0; i<total; i++)); do
@@ -869,7 +893,7 @@ cdp-status() {
         idx=$((idx + 1))
     done
 
-    printf '%0.s-' $(seq 1 100); echo ""
+    printf '%.0s-' {1..100}; echo ""
 
     local summary_parts=()
     [[ $attention_count -gt 0 ]] && summary_parts+=("$attention_count repos need attention")
@@ -1185,7 +1209,7 @@ cdp-ls() {
     fi
 
     # Count projects
-    local count=$(echo "$enabled_projects" | wc -l)
+    local count=$(echo "$enabled_projects" | wc -l | tr -d ' ')
     local name_width=14
     while IFS=$'\t' read -r name pinned path; do
         if (( ${#name} > name_width )); then
@@ -1308,7 +1332,7 @@ cdp-add() {
     fi
 
     # Resolve to absolute path
-    path=$(realpath "$path" 2>/dev/null || echo "$path")
+    path=$(cd "$path" 2>/dev/null && pwd -P || echo "$path")
 
     # Determine project name
     if [[ -z "$name" ]]; then
@@ -1550,7 +1574,7 @@ cdp-scan() {
         root_path="$PWD"
     fi
 
-    root_path=$(realpath "$root_path" 2>/dev/null)
+    root_path=$(cd "$root_path" 2>/dev/null && pwd -P)
     if [[ -z "$root_path" || ! -d "$root_path" ]]; then
         echo -e "${RED}Error: Invalid scan path.${NC}"
         return 1
@@ -1797,7 +1821,8 @@ cdp-config() {
     # Get user selection
     local config_count=${#config_paths[@]}
     while true; do
-        read -p "Select config file (1-$config_count, or 0 to cancel): " selection
+        printf "Select config file (1-%s, or 0 to cancel): " "$config_count"
+        read -r selection
 
         if [[ "$selection" == "0" ]]; then
             echo -e "\n${GRAY}Operation cancelled.${NC}"

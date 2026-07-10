@@ -144,3 +144,54 @@ jobs:
           echo "[]" > "$tmpdir/scan-projects.json"
           cdp-scan "$scanroot" "$tmpdir/scan-projects.json" 3
           test "$(jq length "$tmpdir/scan-projects.json")" = "2"
+
+          cdp status "$tmpdir/projects.json"
+
+  macos:
+    name: macOS smoke
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install fzf jq
+
+      - name: Check bash syntax
+        run: |
+          bash -n ./src/cdp.sh
+          bash -n ./install-wsl.sh
+
+      - name: Run zsh smoke test
+        shell: zsh {0}
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          mkdir -p "$tmpdir/project"
+          cat > "$tmpdir/projects.json" <<JSON
+          [
+            {
+              "name": "SmokeProject",
+              "rootPath": "$tmpdir/project",
+              "enabled": true
+            }
+          ]
+          JSON
+
+          export CDP_STATE_PATH="$tmpdir/state.json"
+          source ./src/cdp.sh
+          cdp-doctor "$tmpdir/projects.json"
+          cdp doctor "$tmpdir/projects.json"
+          cdp SmokeProject "$tmpdir/projects.json"
+          test "$PWD" = "$tmpdir/project"
+          cdp recent 1
+          cdp pin SmokeProject "$tmpdir/projects.json"
+          cdp unpin SmokeProject "$tmpdir/projects.json"
+          cdp clean "$tmpdir/projects.json"
+          cdp alias SmokeProject smoke "$tmpdir/projects.json"
+          cdp tag SmokeProject work "$tmpdir/projects.json"
+          cdp smoke "$tmpdir/projects.json"
+          test "$PWD" = "$tmpdir/project"
+          cdp status "$tmpdir/projects.json"
