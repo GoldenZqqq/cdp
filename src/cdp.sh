@@ -429,11 +429,11 @@ initialize_config() {
 }
 
 cdp_print_check() {
-    local status="$1"
+    local check_status="$1"
     local name="$2"
     local message="$3"
 
-    case "$status" in
+    case "$check_status" in
         ok)
             echo -e "${GREEN}[OK]   ${NC}${name}: ${GRAY}${message}${NC}"
             ;;
@@ -1852,7 +1852,7 @@ cdp-config() {
 }
 
 # Export functions for bash/zsh
-if [[ -n "$BASH_VERSION" ]]; then
+if [[ -n "${BASH_VERSION:-}" ]]; then
     export -f cdp
     export -f cdp_about
     export -f cdp-ls
