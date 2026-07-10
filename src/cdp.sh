@@ -1945,5 +1945,5 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
             return
         fi
     }
-    compdef _cdp_zsh_completions cdp 2>/dev/null
+    compdef _cdp_zsh_completions cdp 2>/dev/null || true
 fi
