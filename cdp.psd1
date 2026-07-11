@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.0.2'
+ModuleVersion = '2.0.3'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,10 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.0.3 - CJK Column Alignment
+- Fixed: Long project names (especially CJK/Chinese) no longer misalign the Branch/Status/Sync/Last Commit columns
+- Added: Display-width-aware text limiting and padding (CJK chars = 2 columns)
+
 v2.0.2 - Status Action Mode
 - Changed: cdp status --fix now shows only the projects being removed, not the full table
 - Changed: cdp status --push now shows only the repos being pushed, not the full table

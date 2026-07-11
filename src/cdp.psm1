@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 2.0.2
+    Version: 2.0.3
     License: MIT
 #>
 
@@ -268,6 +268,40 @@ function Get-CdpFzfColorTheme {
     "fg:#cdd6f4,bg:-1,hl:#89dceb,fg+:#ffffff,bg+:#313244,hl+:#f5c2e7,prompt:#94e2d5,pointer:#f38ba8,marker:#a6e3a1,border:#89b4fa,header:#bac2de,info:#fab387"
 }
 
+function Get-CdpDisplayWidth {
+    param([AllowNull()][string]$Text)
+    if ($null -eq $Text) { return 0 }
+    $width = 0
+    foreach ($ch in $Text.ToCharArray()) {
+        $code = [int]$ch
+        if ($code -ge 0x1100 -and (
+            ($code -ge 0x1100 -and $code -le 0x115F) -or
+            ($code -ge 0x2E80 -and $code -le 0xA4CF) -or
+            ($code -ge 0xAC00 -and $code -le 0xD7A3) -or
+            ($code -ge 0xF900 -and $code -le 0xFAFF) -or
+            ($code -ge 0xFE30 -and $code -le 0xFE4F) -or
+            ($code -ge 0xFF00 -and $code -le 0xFF60) -or
+            ($code -ge 0xFFE0 -and $code -le 0xFFE6)
+        )) {
+            $width += 2
+        } else {
+            $width += 1
+        }
+    }
+    return $width
+}
+
+function Pad-CdpText {
+    param([AllowNull()][string]$Text, [int]$Width)
+    if ($null -eq $Text) { $Text = "" }
+    $displayWidth = Get-CdpDisplayWidth $Text
+    $padding = $Width - $displayWidth
+    if ($padding -gt 0) {
+        return $Text + (" " * $padding)
+    }
+    return $Text
+}
+
 function Limit-CdpText {
     param(
         [AllowNull()]
@@ -277,15 +311,25 @@ function Limit-CdpText {
         [int]$MaxLength
     )
 
-    if ($null -eq $Text) {
+    if ($null -eq $Text -or $Text -eq "") {
         return ""
     }
 
-    if ($Text.Length -le $MaxLength) {
+    if ((Get-CdpDisplayWidth $Text) -le $MaxLength) {
         return $Text
     }
 
-    $Text.Substring(0, [Math]::Max(0, $MaxLength - 3)) + "..."
+    $result = ""
+    $currentWidth = 0
+    foreach ($ch in $Text.ToCharArray()) {
+        $chWidth = if (([int]$ch) -ge 0x2E80) { 2 } else { 1 }
+        if ($currentWidth + $chWidth -gt $MaxLength - 3) {
+            break
+        }
+        $result += $ch
+        $currentWidth += $chWidth
+    }
+    return $result + "..."
 }
 
 function Invoke-CdpOnEnter {
@@ -2477,14 +2521,15 @@ function Show-CdpProjectStatus {
 
     $nameWidth = 14
     foreach ($item in $statusList) {
-        $nameWidth = [Math]::Max($nameWidth, $item.Name.Length)
+        $nameWidth = [Math]::Max($nameWidth, (Get-CdpDisplayWidth $item.Name))
     }
     $nameWidth = [Math]::Min($nameWidth, 24)
 
     $branchWidth = 12
     foreach ($item in $statusList) {
-        if ($item.Branch.Length -gt $branchWidth) {
-            $branchWidth = [Math]::Min($item.Branch.Length, 20)
+        $bw = Get-CdpDisplayWidth $item.Branch
+        if ($bw -gt $branchWidth) {
+            $branchWidth = [Math]::Min($bw, 20)
         }
     }
 
@@ -2508,17 +2553,17 @@ function Show-CdpProjectStatus {
         $displayBranch = Limit-CdpText -Text $item.Branch -MaxLength $branchWidth
 
         Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
-        Write-Host ("{0,-$nameWidth} " -f $displayName) -ForegroundColor Green -NoNewline
+        Write-Host "$(Pad-CdpText $displayName $nameWidth) " -ForegroundColor Green -NoNewline
 
         if (-not $item.IsGitRepo) {
-            Write-Host ("{0,-$branchWidth} " -f "-") -ForegroundColor DarkGray -NoNewline
+            Write-Host "$(Pad-CdpText '-' $branchWidth) " -ForegroundColor DarkGray -NoNewline
             $labelColor = if ($item.PathExists) { "DarkGray" } else { "Red" }
             Write-Host $item.StatusLabel -ForegroundColor $labelColor
             $index++
             continue
         }
 
-        Write-Host ("{0,-$branchWidth} " -f $displayBranch) -ForegroundColor DarkCyan -NoNewline
+        Write-Host "$(Pad-CdpText $displayBranch $branchWidth) " -ForegroundColor DarkCyan -NoNewline
 
         $statusIcon = if ($item.DirtyCount -gt 0) { "x" } elseif ($item.UntrackedCount -gt 0) { "!" } else { "+" }
         $statusColor = if ($item.DirtyCount -gt 0) { "Red" } elseif ($item.UntrackedCount -gt 0) { "Yellow" } else { "Green" }

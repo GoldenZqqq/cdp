@@ -9,7 +9,7 @@
 # Version: 1.8.0
 # License: MIT
 
-CDP_VERSION="2.0.2"
+CDP_VERSION="2.0.3"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
@@ -709,6 +709,59 @@ cdp_open_workspace() {
     fi
 }
 
+cdp_display_width() {
+    local text="$1"
+    local width=0
+    local i
+    for ((i=0; i<${#text}; i++)); do
+        local ch="${text:$i:1}"
+        local code
+        code=$(printf '%d' "'$ch")
+        if [[ $code -ge 128 ]]; then
+            width=$((width + 2))
+        else
+            width=$((width + 1))
+        fi
+    done
+    echo "$width"
+}
+
+cdp_pad_text() {
+    local text="$1"
+    local target_width="$2"
+    local actual_width
+    actual_width=$(cdp_display_width "$text")
+    local padding=$((target_width - actual_width))
+    [[ $padding -gt 0 ]] && printf '%s%*s' "$text" "$padding" "" || printf '%s' "$text"
+}
+
+cdp_limit_text() {
+    local text="$1"
+    local max_len="$2"
+    local actual
+    actual=$(cdp_display_width "$text")
+    if [[ $actual -le $max_len ]]; then
+        printf '%s' "$text"
+        return
+    fi
+    local result=""
+    local current=0
+    local i
+    for ((i=0; i<${#text}; i++)); do
+        local ch="${text:$i:1}"
+        local code
+        code=$(printf '%d' "'$ch")
+        local cw=1
+        [[ $code -ge 128 ]] && cw=2
+        if [[ $((current + cw)) -gt $((max_len - 3)) ]]; then
+            break
+        fi
+        result+="$ch"
+        current=$((current + cw))
+    done
+    printf '%s...' "$result"
+}
+
 cdp-status() {
     local config_path=""
     local dirty_only=false
@@ -781,7 +834,8 @@ cdp-status() {
         printf "\r  Scanning %d/%d... " "$proj_scanned" "$proj_total" >&2
         total=$((total + 1))
 
-        local name_len=${#pname}
+        local name_len
+        name_len=$(cdp_display_width "$pname")
         [[ $name_len -gt $max_name_len ]] && max_name_len=$name_len
 
         names+=("$pname")
@@ -814,7 +868,8 @@ cdp-status() {
         branch=$(git -C "$ppath" branch --show-current 2>/dev/null)
         [[ -z "$branch" ]] && branch=$(git -C "$ppath" rev-parse --short HEAD 2>/dev/null)
         branches+=("$branch")
-        local branch_len=${#branch}
+        local branch_len
+        branch_len=$(cdp_display_width "$branch")
         [[ $branch_len -gt $max_branch_len ]] && max_branch_len=$branch_len
 
         local dirty_count=0
@@ -948,17 +1003,17 @@ cdp-status() {
             continue
         fi
 
-        local display_name="${names[$i]}"
-        [[ ${#display_name} -gt $max_name_len ]] && display_name="${display_name:0:$((max_name_len-3))}..."
+        local display_name
+        display_name=$(cdp_limit_text "${names[$i]}" "$max_name_len")
 
-        local display_branch="${branches[$i]}"
-        [[ ${#display_branch} -gt $max_branch_len ]] && display_branch="${display_branch:0:$((max_branch_len-3))}..."
+        local display_branch
+        display_branch=$(cdp_limit_text "${branches[$i]}" "$max_branch_len")
 
         local num
         num=$(printf "%02d" $idx)
 
-        printf "  ${GRAY}%-4s${NC} ${GREEN}%-${max_name_len}s${NC} ${BOLD_CYAN}%-${max_branch_len}s${NC} ${status_colors[$i]}%-14s${NC} ${sync_colors[$i]}%-10s${NC} ${GRAY}%s${NC}\n" \
-            "$num" "$display_name" "$display_branch" "${statuses[$i]}" "${syncs[$i]}" "${last_commits[$i]}"
+        printf "  ${GRAY}%-4s${NC} ${GREEN}%s${NC} ${BOLD_CYAN}%s${NC} ${status_colors[$i]}%-14s${NC} ${sync_colors[$i]}%-10s${NC} ${GRAY}%s${NC}\n" \
+            "$num" "$(cdp_pad_text "$display_name" "$max_name_len")" "$(cdp_pad_text "$display_branch" "$max_branch_len")" "${statuses[$i]}" "${syncs[$i]}" "${last_commits[$i]}"
 
         idx=$((idx + 1))
     done
