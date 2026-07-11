@@ -715,17 +715,20 @@ cdp_open_workspace() {
 
 cdp_display_width() {
     local text="$1"
+    if [[ -z "$text" ]]; then echo 0; return; fi
     local width=0
-    local i
-    for ((i=0; i<${#text}; i++)); do
-        local ch="${text:$i:1}"
-        local code
-        code=$(printf '%d' "'$ch")
+    local ch code
+    local i=0
+    local len=${#text}
+    while [[ $i -lt $len ]]; do
+        ch="${text:$i:1}"
+        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
         if [[ $code -ge 128 ]]; then
             width=$((width + 2))
         else
             width=$((width + 1))
         fi
+        i=$((i + 1))
     done
     echo "$width"
 }
@@ -736,7 +739,11 @@ cdp_pad_text() {
     local actual_width
     actual_width=$(cdp_display_width "$text")
     local padding=$((target_width - actual_width))
-    [[ $padding -gt 0 ]] && printf '%s%*s' "$text" "$padding" "" || printf '%s' "$text"
+    if [[ $padding -gt 0 ]]; then
+        printf '%s%*s' "$text" "$padding" ""
+    else
+        printf '%s' "$text"
+    fi
 }
 
 cdp_limit_text() {
@@ -750,11 +757,12 @@ cdp_limit_text() {
     fi
     local result=""
     local current=0
-    local i
-    for ((i=0; i<${#text}; i++)); do
+    local i=0
+    local len=${#text}
+    while [[ $i -lt $len ]]; do
         local ch="${text:$i:1}"
         local code
-        code=$(printf '%d' "'$ch")
+        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
         local cw=1
         [[ $code -ge 128 ]] && cw=2
         if [[ $((current + cw)) -gt $((max_len - 3)) ]]; then
@@ -762,6 +770,7 @@ cdp_limit_text() {
         fi
         result+="$ch"
         current=$((current + cw))
+        i=$((i + 1))
     done
     printf '%s...' "$result"
 }
