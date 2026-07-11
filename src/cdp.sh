@@ -361,7 +361,7 @@ get_default_config() {
     fi
 
     # Count configs
-    local config_count=$(echo "$available_configs" | wc -l | tr -d ' ')
+    local config_count=$(line_count "$available_configs")
 
     # If only one config, use it and save the choice
     if [[ $config_count -eq 1 ]]; then
@@ -469,7 +469,11 @@ line_count() {
         return
     fi
 
-    printf '%s\n' "$value" | wc -l | tr -d ' '
+    local count=0
+    while IFS= read -r _; do
+        count=$((count + 1))
+    done <<< "$value"
+    echo "$count"
 }
 
 find_project_matches() {
@@ -823,7 +827,7 @@ cdp-status() {
     # First pass: collect data
     local -a names=() paths=() branches=() statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
     local proj_total
-    proj_total=$(echo "$projects" | grep -c .)
+    proj_total=$(line_count "$projects")
     local proj_scanned=0
 
     while IFS=$'\t' read -r pname ppath; do
@@ -1500,7 +1504,7 @@ cdp-ls() {
     fi
 
     # Count projects
-    local count=$(echo "$enabled_projects" | wc -l | tr -d ' ')
+    local count=$(line_count "$enabled_projects")
     local name_width=14
     while IFS=$'\t' read -r name pinned path; do
         if (( ${#name} > name_width )); then
@@ -1954,7 +1958,7 @@ cdp-doctor() {
 
                 if [[ -n "$available_configs" ]]; then
                     local config_count
-                    config_count=$(echo "$available_configs" | wc -l | tr -d ' ')
+                    config_count=$(line_count "$available_configs")
                     config_path=$(echo "$available_configs" | head -n1 | cut -d'|' -f1)
                     config_source=$(echo "$available_configs" | head -n1 | cut -d'|' -f2)
 
