@@ -89,6 +89,8 @@ Use Conventional Commits such as:
 
 Run `./scripts/Test-CommitMessages.ps1 -All` to validate the complete reachable history.
 
+Direct updates to `main` are blocked. Open a pull request and wait for the `English-only commit messages` check to pass before merging.
+
 6. **Push to your fork**
 
 ```powershell

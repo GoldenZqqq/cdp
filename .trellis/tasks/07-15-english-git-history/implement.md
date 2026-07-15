@@ -26,7 +26,7 @@
 - Apply the tested raw-object rewriter to the working clone.
 - Verify the working clone produces the same rewritten refs as the mirror.
 - Force-push both branches and all tags using explicit refspecs.
-- Create an active GitHub ruleset for printable ASCII commit messages on the default branch.
+- Create an active GitHub ruleset that requires pull requests and the `English-only commit messages` check on the default branch.
 - Configure `core.hooksPath=.githooks` in the working clone.
 
 ## 5. Final Verification
@@ -35,5 +35,6 @@
 - Confirm branch/tag counts and rewritten SHAs match the expected map.
 - Confirm all GitHub Releases remain public and tag-associated.
 - Wait for CI and Pages success.
+- Confirm commit-message CI runs on all branches and the protected default branch requires the policy check.
 - Verify the website, README, and media assets remain available.
 - Archive the Trellis task and report backup paths, old/new HEADs, ruleset ID, and workflow URLs.

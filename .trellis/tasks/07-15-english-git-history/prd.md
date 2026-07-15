@@ -17,7 +17,7 @@ Make every reachable Git commit message English-only and prevent future non-Engl
 - Preserve file trees, authors, author dates, committers, committer dates, parent topology, merge topology, branch names, tag names, and GitHub Release records.
 - Rewrite all affected local and remote branches and tags, including the default branch and release tags.
 - Create and verify a complete Git bundle before rewriting any history.
-- Enforce printable ASCII-only commit messages for future commits through a versioned validator, a local commit hook, CI, and an active GitHub ruleset on the default branch.
+- Enforce printable ASCII-only commit messages through a versioned validator, a local commit hook, CI on every pushed branch, and a protected default branch that requires both a pull request and the English-only check.
 - Update repository contributor and agent guidance so English commit messages are the documented standard.
 - Keep the repository default documentation language English.
 - Do not change source behavior or release contents as part of the migration.
@@ -32,6 +32,7 @@ Make every reachable Git commit message English-only and prevent future non-Engl
 - [ ] Both remote branches and all 13 tags resolve successfully after the force push.
 - [ ] All 13 GitHub Releases remain published and associated with their original tag names.
 - [ ] The default branch contains a reusable validator, local hook, CI workflow, and English policy documentation.
-- [ ] The GitHub ruleset is active on all branches and configured with the same ASCII-only message contract.
+- [ ] CI validates every pushed branch and pull request with the same ASCII-only message contract.
+- [ ] The GitHub ruleset protects the default branch by requiring a pull request and the `English-only commit messages` status check.
 - [ ] CI and GitHub Pages complete successfully after the rewrite.
 - [ ] The working tree is clean and `main` matches `origin/main` at completion.

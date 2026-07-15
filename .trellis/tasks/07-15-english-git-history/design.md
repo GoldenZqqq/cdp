@@ -7,9 +7,11 @@ The migration has four layers:
 1. **Policy source**: `scripts/Test-CommitMessages.ps1` owns the executable printable-ASCII contract.
 2. **Early local feedback**: `.githooks/commit-msg` invokes the policy source before a local commit is created.
 3. **Repository verification**: `.github/workflows/commit-message-policy.yml` validates all commits reachable from the workflow SHA.
-4. **Remote enforcement**: a GitHub branch ruleset applies an equivalent commit-message regex to every branch.
+4. **Remote enforcement**: CI validates every pushed branch, while a GitHub ruleset requires pull requests and the English-only status check before the default branch can advance.
 
 Repository guidance in `AGENTS.md`, `CLAUDE.md`, and `CONTRIBUTING.md` documents the same rule and setup command.
+
+GitHub rejected the native `commit_message_pattern` rule type for this repository with HTTP 422, including a minimal disabled probe. The protected-branch design is therefore the strongest available server-side enforcement: a commit cannot enter canonical history unless the policy workflow passes on its pull request.
 
 ## Message Contract
 
@@ -49,4 +51,4 @@ Releases are retained by tag name. After rewritten tags are pushed, verify every
 
 - Old commit URLs and downstream clone histories become stale; this is inherent to rewriting commit messages.
 - ASCII-only is stricter than natural-language English but is deterministic and enforceable across local hooks, CI, and GitHub rulesets.
-- CI alone cannot prevent an already-authorized direct push, so the all-branch GitHub ruleset is required for hard remote enforcement.
+- GitHub cannot hard-reject a non-English commit on an unprotected feature branch for this repository because commit metadata rules are unavailable. CI still marks that branch as failed, and the default-branch ruleset prevents the commit from entering canonical history.

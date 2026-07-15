@@ -123,6 +123,7 @@ Projects are defined as JSON objects with three fields:
 - Common types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build`, `ci`, and `chore`.
 - Enable the versioned local hook after cloning: `git config core.hooksPath .githooks`.
 - Validate all reachable commits with `./scripts/Test-CommitMessages.ps1 -All`.
+- Changes enter `main` through pull requests after the `English-only commit messages` check passes.
 
 ## CRITICAL Development Guidelines
 

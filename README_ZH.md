@@ -522,6 +522,8 @@ fix: correct WSL path conversion
 docs: rewrite the quick start guide
 ```
 
+所有变更都需要通过 Pull Request 进入 `main`，并且必须先通过 `English-only commit messages` 检查。
+
 ---
 
 ## 致谢
