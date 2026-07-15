@@ -1,0 +1,252 @@
+@keyframes draw-route {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+}
+
+@media (max-width: 68rem) {
+    .hero-layout,
+    .proof-layout,
+    .platform-layout,
+    .install-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-copy {
+        max-width: 52rem;
+    }
+
+    .hero-switchyard {
+        width: min(100%, 43rem);
+        justify-self: end;
+    }
+
+    .pain-lane {
+        grid-template-columns: 0.3fr 0.9fr 1.25fr;
+    }
+
+    .pain-lane code {
+        grid-column: 2 / -1;
+        justify-self: start;
+    }
+
+    .route-merge {
+        width: min(100%, 48rem);
+        justify-self: end;
+    }
+
+    .noscript-note {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 56rem) {
+    .site-nav {
+        position: relative;
+        flex-wrap: wrap;
+    }
+
+    .js .site-nav {
+        flex-wrap: nowrap;
+    }
+
+    .js .nav-toggle {
+        display: grid;
+        gap: 0.3rem;
+    }
+
+    .nav-panel {
+        flex-basis: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        padding: 1rem 0 1.4rem;
+    }
+
+    .js .nav-panel {
+        display: none;
+    }
+
+    .js .nav-panel.is-open {
+        display: flex;
+        position: absolute;
+        top: 100%;
+        right: calc(var(--page-gutter) * -1);
+        left: calc(var(--page-gutter) * -1);
+        max-height: calc(100vh - 4.5rem);
+        padding: 1rem var(--page-gutter) 1.5rem;
+        overflow-y: auto;
+        background: var(--midnight);
+        box-shadow: 0 6px 8px rgba(7, 16, 31, 0.2);
+    }
+
+    .nav-links {
+        display: grid;
+        gap: 0;
+    }
+
+    .nav-links a,
+    .nav-github {
+        min-height: 2.75rem;
+        padding: 0.65rem 0;
+    }
+
+    .language-switch {
+        align-self: flex-start;
+    }
+
+    .command-station {
+        grid-template-columns: 1fr;
+    }
+
+    .command-rail {
+        display: grid;
+        grid-auto-columns: minmax(13rem, 70%);
+        grid-auto-flow: column;
+        overflow-x: auto;
+        padding-bottom: 0.55rem;
+        scroll-snap-type: x mandatory;
+    }
+
+    .command-rail button {
+        scroll-snap-align: start;
+    }
+}
+
+@media (max-width: 40rem) {
+    :root {
+        --page-gutter: 1.1rem;
+    }
+
+    html {
+        scroll-padding-top: 4.75rem;
+    }
+
+    .site-nav {
+        min-height: 4.5rem;
+    }
+
+    .brand img {
+        width: 6.4rem;
+    }
+
+    .hero {
+        padding-top: 7.25rem;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3rem), 62% 100%, 0 calc(100% - 1rem));
+    }
+
+    .hero-route-map {
+        top: 10rem;
+        right: -15rem;
+        width: 48rem;
+    }
+
+    .hero-layout {
+        gap: 3rem;
+    }
+
+    .hero h1 {
+        font-size: clamp(3.4rem, 18vw, 5.2rem);
+    }
+
+    .hero-actions,
+    .button {
+        width: 100%;
+    }
+
+    .hero-switchyard {
+        transform: none;
+    }
+
+    .destination-board {
+        grid-template-columns: 1fr;
+    }
+
+    .destination-board > div:nth-child(odd) {
+        border-right: 0;
+    }
+
+    .destination-board > div:nth-child(even) {
+        padding-left: 0;
+    }
+
+    .pain-lane {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .pain-lane code {
+        grid-column: auto;
+    }
+
+    .arrival-strip {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .arrival-strip strong {
+        text-align: left;
+    }
+
+    .terminal-screen {
+        min-height: 15rem;
+    }
+
+    .route-merge {
+        min-height: 25rem;
+    }
+
+    .route-merge svg {
+        width: 150%;
+        max-width: none;
+        transform: translateX(-20%);
+    }
+
+    .platform-list {
+        gap: 1.65rem;
+    }
+
+    .install-tabs {
+        overflow-x: auto;
+    }
+
+    .install-tabs button {
+        min-width: 8rem;
+    }
+
+    .install-command-row {
+        grid-template-columns: 1fr;
+    }
+
+    .copy-button {
+        min-height: 3rem;
+    }
+
+    .footer-layout {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+
+    .js .route-path-main {
+        animation: none;
+    }
+
+    .hero-switchyard {
+        transform: none;
+    }
+}

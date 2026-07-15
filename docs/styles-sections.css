@@ -1,0 +1,508 @@
+.pain-section,
+.proof-section {
+    padding: var(--section-space) 0;
+    background: var(--cold-paper);
+}
+
+.section-heading {
+    max-width: 58rem;
+}
+
+.section-signal {
+    margin-bottom: 1.25rem;
+    color: var(--deep-route);
+}
+
+.section-signal-cyan {
+    color: var(--route-cyan);
+}
+
+.section-signal-yellow {
+    color: var(--clear-white);
+}
+
+.section-heading h2,
+.install-heading h2 {
+    margin-bottom: 1.5rem;
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 7vw, 5rem);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 0.94;
+}
+
+.section-heading > p:last-child,
+.install-heading > p:last-child {
+    max-width: 68ch;
+    color: var(--slate-copy);
+    font-size: clamp(1rem, 1.6vw, 1.16rem);
+}
+
+.pain-heading {
+    margin-bottom: clamp(3.5rem, 7vw, 6rem);
+}
+
+.pain-lanes {
+    border-top: 2px solid var(--midnight);
+}
+
+.pain-lane {
+    display: grid;
+    grid-template-columns: minmax(5rem, 0.36fr) minmax(12rem, 1fr) minmax(16rem, 1.25fr) minmax(11rem, 0.7fr);
+    gap: clamp(1rem, 3vw, 3rem);
+    align-items: start;
+    padding: clamp(1.6rem, 3vw, 2.5rem) 0;
+    border-bottom: 1px solid var(--line-dark);
+}
+
+.pain-label {
+    color: var(--warp-blue);
+}
+
+.pain-lane h3 {
+    margin-bottom: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.65rem, 3vw, 2.3rem);
+    line-height: 1;
+}
+
+.pain-lane p:not(.pain-label) {
+    margin-bottom: 0;
+    color: var(--slate-copy);
+}
+
+.pain-lane code {
+    justify-self: end;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--radius-control);
+    background: var(--midnight);
+    color: var(--signal-yellow);
+    font-size: 0.8rem;
+}
+
+.command-section {
+    padding: var(--section-space) 0;
+    background: var(--midnight);
+    color: var(--clear-white);
+}
+
+.command-heading {
+    margin-bottom: clamp(3rem, 7vw, 5rem);
+}
+
+.command-station {
+    display: grid;
+    grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.35fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+}
+
+.command-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.command-rail button {
+    display: grid;
+    gap: 0.3rem;
+    min-height: 4.4rem;
+    padding: 0.9rem 1rem;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.66);
+    text-align: left;
+    transition: background 180ms var(--route-ease), color 180ms var(--route-ease), transform 180ms var(--route-ease);
+}
+
+.command-rail button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--clear-white);
+    transform: translateX(4px);
+}
+
+.command-rail button[aria-selected="true"] {
+    background: var(--signal-yellow);
+    color: var(--midnight);
+}
+
+.command-rail code {
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.command-rail span {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.command-panel {
+    align-self: stretch;
+    overflow: hidden;
+    border-radius: var(--radius-surface);
+    background: var(--deep-route);
+}
+
+.terminal-bar {
+    padding: 0.8rem 1rem;
+    background: var(--warp-blue);
+    color: var(--clear-white);
+}
+
+.terminal-platform {
+    color: var(--clear-white);
+}
+
+.command-panel-copy {
+    padding: clamp(1.5rem, 4vw, 2.7rem);
+}
+
+.command-intent {
+    margin-bottom: 1.5rem;
+    font-size: clamp(1.15rem, 2vw, 1.45rem);
+    font-weight: 650;
+}
+
+.terminal-screen {
+    min-height: 17rem;
+    padding: clamp(1.1rem, 3vw, 2rem);
+    border-radius: var(--radius-control);
+    background: var(--midnight);
+    color: var(--clear-white);
+    font-family: var(--font-mono);
+    font-size: clamp(0.72rem, 1.3vw, 0.88rem);
+    line-height: 1.8;
+}
+
+.terminal-screen p {
+    margin-bottom: 0.65rem;
+    white-space: pre-wrap;
+}
+
+.terminal-screen strong,
+.output-highlight {
+    color: var(--signal-yellow);
+}
+
+.output-muted {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.output-success {
+    color: var(--clean-green);
+}
+
+.output-warning {
+    color: var(--attention-red);
+}
+
+.arrival-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1rem clamp(1.5rem, 4vw, 2.7rem);
+    background: var(--route-cyan);
+    color: var(--midnight);
+}
+
+.arrival-strip span {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.arrival-strip strong {
+    text-align: right;
+}
+
+.proof-layout {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.65fr) minmax(0, 1.35fr);
+    gap: clamp(3rem, 7vw, 7rem);
+    align-items: center;
+}
+
+.proof-heading .text-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: var(--deep-route);
+    font-weight: 700;
+}
+
+.video-frame {
+    overflow: hidden;
+    padding: 0.6rem;
+    border-radius: var(--radius-surface);
+    background: var(--warp-blue);
+}
+
+.video-frame-bar {
+    padding: 0.45rem 0.5rem 0.9rem;
+    color: var(--clear-white);
+}
+
+.video-frame video {
+    width: 100%;
+    border-radius: var(--radius-control);
+    background: var(--midnight);
+}
+
+.platform-section {
+    padding: var(--section-space) 0;
+    background: var(--signal-yellow);
+    color: var(--midnight);
+}
+
+.platform-layout {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.75fr) minmax(0, 1.25fr);
+    gap: clamp(3rem, 8vw, 8rem);
+    align-items: center;
+}
+
+.platform-heading > p:last-child {
+    color: rgba(7, 16, 31, 0.75);
+}
+
+.route-merge {
+    position: relative;
+    min-height: 29rem;
+    overflow: hidden;
+    border-radius: var(--radius-surface);
+    background: var(--midnight);
+    color: var(--clear-white);
+}
+
+.route-merge svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.merge-line {
+    fill: none;
+    stroke-width: 4;
+}
+
+.merge-blue { stroke: var(--warp-blue); }
+.merge-cyan { stroke: var(--route-cyan); }
+.merge-white { stroke: var(--clear-white); }
+.merge-yellow { stroke: var(--signal-yellow); }
+
+.route-merge circle:first-of-type {
+    fill: var(--signal-yellow);
+}
+
+.route-merge circle:last-of-type {
+    fill: var(--route-cyan);
+}
+
+.platform-list {
+    position: absolute;
+    top: 1.3rem;
+    left: 1.3rem;
+    display: grid;
+    gap: 2.15rem;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: clamp(0.68rem, 1.2vw, 0.82rem);
+    list-style: none;
+}
+
+.platform-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.platform-dot {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+}
+
+.platform-dot-blue { background: var(--warp-blue); }
+.platform-dot-cyan { background: var(--route-cyan); }
+.platform-dot-white { background: var(--clear-white); }
+.platform-dot-yellow { background: var(--signal-yellow); }
+
+.merge-destination {
+    position: absolute;
+    right: 1.4rem;
+    bottom: 1.5rem;
+    display: grid;
+    gap: 0.3rem;
+    justify-items: end;
+    font-family: var(--font-mono);
+}
+
+.merge-destination span {
+    color: var(--route-cyan);
+    font-size: 0.67rem;
+    font-weight: 700;
+}
+
+.merge-destination strong {
+    font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+}
+
+.install-section {
+    padding: var(--section-space) 0;
+    background: var(--warp-blue);
+    color: var(--clear-white);
+}
+
+.install-layout {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr);
+    gap: clamp(3rem, 8vw, 8rem);
+    align-items: start;
+}
+
+.install-heading > p:last-child {
+    color: var(--clear-white);
+}
+
+.install-gate {
+    overflow: hidden;
+    border-radius: var(--radius-surface);
+    background: var(--midnight);
+}
+
+.install-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.65rem;
+    background: var(--deep-route);
+}
+
+.install-tabs button {
+    flex: 1;
+    min-height: 2.8rem;
+    padding: 0.65rem;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.64);
+    font-size: 0.83rem;
+    font-weight: 700;
+}
+
+.install-tabs button[aria-selected="true"] {
+    background: var(--signal-yellow);
+    color: var(--midnight);
+}
+
+.install-panel {
+    padding: clamp(1.4rem, 4vw, 2.5rem);
+}
+
+.install-panel > p:first-child {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.install-command-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.install-command-row pre {
+    min-width: 0;
+    margin: 0;
+    padding: 1.1rem;
+    overflow-x: auto;
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--route-cyan);
+    font-size: clamp(0.67rem, 1.25vw, 0.8rem);
+    line-height: 1.75;
+}
+
+.copy-button {
+    min-width: 7rem;
+    padding: 0.85rem 1rem;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--signal-yellow);
+    color: var(--midnight);
+    font-weight: 750;
+    transition: transform 180ms var(--route-ease), box-shadow 180ms var(--route-ease);
+}
+
+.copy-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(7, 16, 31, 0.2);
+}
+
+.copy-status {
+    min-height: 1.7em;
+    margin: 0.75rem 0 0;
+    color: var(--clean-green);
+    font-size: 0.84rem;
+}
+
+.install-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem clamp(1.4rem, 4vw, 2.5rem);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.install-links a {
+    font-size: 0.83rem;
+    font-weight: 700;
+}
+
+.noscript-note {
+    grid-column: 2;
+    padding: 1rem;
+    border-radius: var(--radius-control);
+    background: var(--signal-yellow);
+    color: var(--midnight);
+}
+
+.site-footer {
+    padding: 4rem 0;
+    background: var(--midnight);
+    color: var(--clear-white);
+}
+
+.footer-layout {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem 4rem;
+    align-items: end;
+}
+
+.footer-brand img {
+    width: 8rem;
+    height: auto;
+}
+
+.footer-brand p,
+.footer-note {
+    margin: 0.75rem 0 0;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.85rem;
+}
+
+.footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.footer-note {
+    grid-column: 1 / -1;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+}

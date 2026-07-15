@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-15T05:35:00.000Z",
+  "title": "Design System: cdp — The Warp Lane",
+  "extensions": {
+    "colorMeta": {
+      "warp-blue": {
+        "role": "primary",
+        "displayName": "Warp Blue",
+        "canonical": "oklch(56% 0.25 260)",
+        "tonalRamp": ["oklch(18% 0.09 260)", "oklch(28% 0.14 260)", "oklch(38% 0.19 260)", "oklch(48% 0.23 260)", "oklch(58% 0.24 260)", "oklch(70% 0.18 260)", "oklch(84% 0.09 260)", "oklch(95% 0.03 260)"]
+      },
+      "route-cyan": {
+        "role": "secondary",
+        "displayName": "Route Cyan",
+        "canonical": "oklch(81% 0.15 190)",
+        "tonalRamp": ["oklch(18% 0.05 190)", "oklch(29% 0.08 190)", "oklch(41% 0.11 190)", "oklch(55% 0.14 190)", "oklch(68% 0.15 190)", "oklch(80% 0.14 190)", "oklch(89% 0.08 190)", "oklch(96% 0.03 190)"]
+      },
+      "signal-yellow": {
+        "role": "tertiary",
+        "displayName": "Signal Yellow",
+        "canonical": "oklch(87% 0.17 95)",
+        "tonalRamp": ["oklch(18% 0.04 95)", "oklch(31% 0.07 95)", "oklch(44% 0.10 95)", "oklch(58% 0.13 95)", "oklch(72% 0.16 95)", "oklch(84% 0.17 95)", "oklch(91% 0.11 95)", "oklch(97% 0.04 95)"]
+      },
+      "midnight-asphalt": {
+        "role": "neutral",
+        "displayName": "Midnight Asphalt",
+        "canonical": "oklch(18% 0.03 255)",
+        "tonalRamp": ["oklch(12% 0.02 255)", "oklch(18% 0.03 255)", "oklch(28% 0.035 255)", "oklch(40% 0.035 255)", "oklch(55% 0.03 255)", "oklch(70% 0.025 255)", "oklch(84% 0.015 255)", "oklch(96% 0.005 255)"]
+      },
+      "cold-paper": {
+        "role": "neutral",
+        "displayName": "Cold Paper",
+        "canonical": "oklch(98% 0.007 255)",
+        "tonalRamp": ["oklch(16% 0.015 255)", "oklch(29% 0.014 255)", "oklch(43% 0.012 255)", "oklch(58% 0.011 255)", "oklch(72% 0.010 255)", "oklch(84% 0.009 255)", "oklch(92% 0.008 255)", "oklch(98% 0.007 255)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Road Sign Display", "purpose": "Hero claims and section turns only." },
+      "headline": { "displayName": "Route Headline", "purpose": "Pain statements and proof headlines." },
+      "body": { "displayName": "Readable Guidance", "purpose": "Chinese and English explanatory copy up to 70ch." },
+      "label": { "displayName": "Executable Label", "purpose": "Commands, paths, states, and controls only." }
+    },
+    "shadows": [
+      { "name": "nav-float", "value": "0 6px 8px rgba(7, 16, 31, 0.16)", "purpose": "Scrolled navigation only." },
+      { "name": "action-lift", "value": "0 4px 8px rgba(7, 16, 31, 0.20)", "purpose": "Primary action hover feedback only." }
+    ],
+    "motion": [
+      { "name": "route-ease", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Route arrival and control transitions." },
+      { "name": "route-fast", "value": "180ms", "purpose": "Button and tab state changes." },
+      { "name": "route-draw", "value": "1400ms", "purpose": "Single hero route drawing sequence." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "640px" },
+      { "name": "tablet", "value": "900px" },
+      { "name": "wide", "value": "1200px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Signal Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one high-priority action in a viewport.",
+      "html": "<button class=\"ds-signal-action\">INSTALL CDP <span aria-hidden=\"true\">→</span></button>",
+      "css": ".ds-signal-action{min-height:48px;padding:14px 20px;border:0;border-radius:10px;background:#F6D53B;color:#07101F;font:700 15px Manrope,sans-serif;transition:transform 180ms cubic-bezier(.16,1,.3,1),box-shadow 180ms}.ds-signal-action:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(7,16,31,.2)}.ds-signal-action:focus-visible{outline:3px solid #fff;outline-offset:3px}"
+    },
+    {
+      "name": "Route Tab",
+      "kind": "button",
+      "description": "A command destination in the signature Command Rail.",
+      "html": "<button class=\"ds-route-tab\" aria-selected=\"true\"><code>cdp status</code><span>See every repo at once</span></button>",
+      "css": ".ds-route-tab{display:grid;gap:5px;width:100%;padding:18px 20px;border:0;border-radius:10px;background:#F6D53B;color:#07101F;text-align:left}.ds-route-tab code{font:600 14px Cascadia Code,monospace}.ds-route-tab span{font:600 13px Manrope,sans-serif}.ds-route-tab:focus-visible{outline:3px solid #20D9D2;outline-offset:3px}"
+    },
+    {
+      "name": "Terminal Surface",
+      "kind": "custom",
+      "description": "A real output surface, never decorative terminal cosplay.",
+      "html": "<div class=\"ds-terminal\"><div class=\"ds-terminal-bar\">ROUTE LOCKED</div><code>PS C:\\&gt; cdp api -Open codex</code><p>destination  my-api<br>state        clean<br>launching    codex</p></div>",
+      "css": ".ds-terminal{padding:20px;border-radius:14px;background:#07101F;color:#fff;font:14px/1.7 Cascadia Code,monospace}.ds-terminal-bar{margin:-20px -20px 18px;padding:10px 20px;background:#0D2DAA;color:#20D9D2;font-weight:700}.ds-terminal code{color:#F6D53B}.ds-terminal p{color:#c8d4e7}"
+    },
+    {
+      "name": "Platform Chip",
+      "kind": "chip",
+      "description": "A factual platform or state marker.",
+      "html": "<span class=\"ds-platform-chip\">Windows PowerShell</span>",
+      "css": ".ds-platform-chip{display:inline-flex;align-items:center;min-height:32px;padding:6px 12px;border-radius:999px;background:#fff;color:#07101F;font:600 13px Manrope,sans-serif}"
+    },
+    {
+      "name": "Copy Control",
+      "kind": "button",
+      "description": "Copies an install command with visible success feedback.",
+      "html": "<button class=\"ds-copy-control\">COPY COMMAND</button>",
+      "css": ".ds-copy-control{min-height:44px;padding:10px 16px;border:1px solid #52647D;border-radius:10px;background:#07101F;color:#fff;font:600 13px Cascadia Code,monospace;transition:border-color 180ms,color 180ms}.ds-copy-control:hover{border-color:#F6D53B;color:#F6D53B}.ds-copy-control:focus-visible{outline:3px solid #20D9D2;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Warp Lane / 跃迁车道",
+    "overview": "cdp behaves like a high-speed wayfinding system for developer context. Commands are routes, projects are destinations, and every interaction ends in a visible arrival state. The system uses committed blue surfaces, rare signal yellow, and real terminal evidence without falling into dark SaaS or cyberpunk shorthand.",
+    "keyCharacteristics": ["High-speed wayfinding, not neon spectacle", "Large claims and real commands", "Flat color fields and structural route lines", "Purposeful arrival motion", "Complete mobile and no-JavaScript paths"],
+    "rules": [
+      { "name": "The Signal Rule", "body": "Signal Yellow is reserved for the next action; three yellow focal points in one viewport means hierarchy has failed.", "section": "colors" },
+      { "name": "The Real Mono Rule", "body": "Mono appears only for content visitors can execute, copy, or verify.", "section": "typography" },
+      { "name": "The Flat-At-Rest Rule", "body": "Static surfaces are flat; shadows are interaction feedback, never card decoration.", "section": "elevation" }
+    ],
+    "dos": ["Do prove value with real commands and output.", "Do animate routing, destination lock, and arrival.", "Do preserve full keyboard and reduced-motion paths."],
+    "donts": ["Don't use generic dark SaaS templates.", "Don't use cheap cyberpunk glitches or decorative terminal noise.", "Don't build a wall of identical feature cards."]
+  }
+}

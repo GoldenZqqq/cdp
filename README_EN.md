@@ -9,6 +9,8 @@
 
 **English** | **[简体中文](./README.md)**
 
+**[🌐 Visit the official cdp website](https://goldenzqqq.github.io/cdp/)**
+
 A fast **project workbench** for the Vibe Coding era — one command to see all repo statuses, switch projects, and launch AI CLIs.
 
 `cdp` is more than a project switcher — it knows whether each of your repos is clean, has unpushed commits, and can switch and launch an AI CLI in one move.
@@ -438,6 +440,16 @@ cdp does not try to replace every directory jumper. zoxide excels at jumping to 
 ---
 
 ## Development
+
+### Preview and Publish the Website
+
+The website is a dependency-free static GitHub Pages site under `docs/`:
+
+```powershell
+python -m http.server 4173 --directory docs
+```
+
+Then open `http://localhost:4173`. For the first deployment, open the GitHub repository's **Settings → Pages**, choose **Deploy from a branch**, set the branch to `main`, and select `/docs`; future pushes to `main` will update the site automatically.
 
 ```powershell
 # Import the local module
