@@ -176,3 +176,36 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: 设计并发布 cdp 官方官网
+
+**Date**: 2026-07-15
+**Task**: 设计并发布 cdp 官方官网
+**Branch**: `main`
+
+### Summary
+
+升级 Trellis 至 0.6.7，设计并实现双语 GitHub Pages 官网，完成 Lighthouse、Pester、响应式和公网部署验证。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a7e0acd37b6468f2f7fb80576ecab711bd15efd1` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
