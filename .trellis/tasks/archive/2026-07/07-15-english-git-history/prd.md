@@ -24,15 +24,15 @@ Make every reachable Git commit message English-only and prevent future non-Engl
 
 ## Acceptance Criteria
 
-- [ ] A verified bundle can restore every pre-rewrite branch and tag.
-- [ ] Every reachable commit message matches printable ASCII plus tab/newline characters.
-- [ ] Exactly 25 audited messages receive intentional English replacements; already compliant messages remain unchanged.
-- [ ] Rewritten commits preserve tree IDs and commit metadata, with only messages and derived parent/commit IDs changing.
-- [ ] Unaffected signed commits retain their original SHA and signature headers.
-- [ ] Both remote branches and all 13 tags resolve successfully after the force push.
-- [ ] All 13 GitHub Releases remain published and associated with their original tag names.
-- [ ] The default branch contains a reusable validator, local hook, CI workflow, and English policy documentation.
-- [ ] CI validates every pushed branch and pull request with the same ASCII-only message contract.
-- [ ] The GitHub ruleset protects the default branch by requiring a pull request and the `English-only commit messages` status check.
-- [ ] CI and GitHub Pages complete successfully after the rewrite.
-- [ ] The working tree is clean and `main` matches `origin/main` at completion.
+- [x] A verified bundle can restore every pre-rewrite branch and tag.
+- [x] Every reachable commit message matches printable ASCII plus tab/newline characters.
+- [x] Exactly 25 audited messages receive intentional English replacements; already compliant messages remain unchanged.
+- [x] Rewritten commits preserve tree IDs and commit metadata, with only messages and derived parent/commit IDs changing.
+- [x] Unaffected signed commits retain their original SHA and signature headers.
+- [x] Both remote branches and all 13 tags resolve successfully after the force push.
+- [x] All 13 GitHub Releases remain published and associated with their original tag names.
+- [x] The default branch contains a reusable validator, local hook, CI workflow, and English policy documentation.
+- [x] CI validates every pushed branch and pull request with the same ASCII-only message contract.
+- [x] The GitHub ruleset protects the default branch by requiring a pull request and the `English-only commit messages` status check.
+- [x] CI and GitHub Pages complete successfully after the rewrite.
+- [x] The working tree is clean and `main` matches `origin/main` at completion.
