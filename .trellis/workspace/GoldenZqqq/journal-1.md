@@ -209,3 +209,37 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: English Git History Migration
+
+**Date**: 2026-07-15
+**Task**: English Git History Migration
+**Branch**: `codex/archive-english-history-task`
+
+### Summary
+
+Rewrote all non-English commit messages, preserved Git metadata and signatures, added local and CI validation, and protected main with a required English-only check.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8b481cca29466b4fd2d17adc2f6d2756e1907d08` | (see git log) |
+| `4e56aa528cf4b069a1211ac55f895b20dc9b8450` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
