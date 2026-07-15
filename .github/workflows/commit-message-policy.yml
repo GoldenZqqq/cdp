@@ -1,0 +1,23 @@
+name: Commit Message Policy
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  english-only:
+    name: English-only commit messages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate reachable commit messages
+        shell: pwsh
+        run: ./scripts/Test-CommitMessages.ps1 -Revision '${{ github.sha }}'

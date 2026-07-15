@@ -74,16 +74,20 @@ Invoke-Pester -Path ./tests -CI
 5. **Commit your changes**
 
 ```powershell
+git config core.hooksPath .githooks
 git add .
-git commit -m "Add: Your descriptive commit message"
+git commit -m "feat: add your descriptive commit message"
 ```
 
-Use conventional commit messages:
-- `Add:` for new features
-- `Fix:` for bug fixes
-- `Update:` for updates to existing features
-- `Docs:` for documentation changes
-- `Refactor:` for code refactoring
+Commit subjects and bodies must use English printable ASCII characters only. The local hook and GitHub policy reject Chinese text, emoji, typographic punctuation, and other non-ASCII content.
+
+Use Conventional Commits such as:
+- `feat: add project health checks`
+- `fix: correct WSL path conversion`
+- `docs: rewrite the quick start guide`
+- `refactor: simplify configuration discovery`
+
+Run `./scripts/Test-CommitMessages.ps1 -All` to validate the complete reachable history.
 
 6. **Push to your fork**
 

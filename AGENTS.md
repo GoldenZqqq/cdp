@@ -118,11 +118,11 @@ Projects are defined as JSON objects with three fields:
 
 ## Commit Message Format
 
-- `Add:` for new features
-- `Fix:` for bug fixes
-- `Update:` for updates to existing features
-- `Docs:` for documentation changes
-- `Refactor:` for code refactoring
+- Commit subjects and bodies must use English printable ASCII characters only.
+- Use Conventional Commits: `<type>(optional-scope): <English summary>`.
+- Common types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build`, `ci`, and `chore`.
+- Enable the versioned local hook after cloning: `git config core.hooksPath .githooks`.
+- Validate all reachable commits with `./scripts/Test-CommitMessages.ps1 -All`.
 
 ## CRITICAL Development Guidelines
 
@@ -201,7 +201,8 @@ Before committing ANY change, verify:
 - [ ] README_ZH.md updated in Simplified Chinese (if user-facing change)
 - [ ] Version number incremented (if PowerShell module changed)
 - [ ] ReleaseNotes updated in cdp.psd1 (if version changed)
-- [ ] Commit message follows format (Add/Fix/Update/Docs/Refactor)
+- [ ] Commit subject and body use English printable ASCII only
+- [ ] Commit message follows Conventional Commits format
 
 ### 5. Release Publishing Workflow
 

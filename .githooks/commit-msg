@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+
+if command -v pwsh >/dev/null 2>&1; then
+    powershell_command=pwsh
+elif command -v powershell.exe >/dev/null 2>&1; then
+    powershell_command=powershell.exe
+elif command -v powershell >/dev/null 2>&1; then
+    powershell_command=powershell
+else
+    echo "PowerShell is required to validate commit messages." >&2
+    exit 1
+fi
+
+exec "$powershell_command" -NoLogo -NoProfile -File \
+    "$repo_root/scripts/Test-CommitMessages.ps1" -MessageFile "$1"

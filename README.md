@@ -508,12 +508,18 @@ Import-Module ./cdp.psd1 -Force
 Invoke-Pester -Path ./tests -CI
 ```
 
-Suggested commit messages:
+Commit messages must use English printable ASCII characters only. Enable the local policy hook once after cloning:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+Suggested Conventional Commit messages:
 
 ```text
-Add: 添加项目健康检查命令
-Fix: 修复 WSL 路径转换
-Docs: 重写快速开始说明
+feat: add project health checks
+fix: correct WSL path conversion
+docs: rewrite the quick start guide
 ```
 
 ---

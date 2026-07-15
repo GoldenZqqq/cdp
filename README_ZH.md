@@ -508,12 +508,18 @@ Import-Module ./cdp.psd1 -Force
 Invoke-Pester -Path ./tests -CI
 ```
 
-提交信息建议：
+提交信息的标题与正文必须仅使用英文可打印 ASCII 字符。克隆后请执行一次以下命令启用本地校验：
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+建议使用以下 Conventional Commits 格式：
 
 ```text
-Add: 添加项目健康检查命令
-Fix: 修复 WSL 路径转换
-Docs: 重写快速开始说明
+feat: add project health checks
+fix: correct WSL path conversion
+docs: rewrite the quick start guide
 ```
 
 ---
