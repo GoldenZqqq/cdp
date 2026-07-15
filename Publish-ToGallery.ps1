@@ -127,6 +127,7 @@ try {
         'LICENSE',
         'README.md',
         'README_EN.md',
+        'README_ZH.md',
         'install-wsl.sh'
     )
 

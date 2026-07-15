@@ -269,7 +269,7 @@ document.documentElement.classList.add("js");
             const saved = localStorage.getItem("cdp-language");
             if (saved && translations[saved]) return saved;
         } catch {}
-        return navigator.language.toLowerCase().startsWith("zh") ? "zh-CN" : "en";
+        return "en";
     }
 
     function text(key) {
@@ -298,8 +298,8 @@ document.documentElement.classList.add("js");
 
     function updateLanguageLinks() {
         const english = state.language === "en";
-        const docsHash = english ? "README_EN.md#quick-start" : "README.md#快速开始";
-        const docsFile = english ? "README_EN.md" : "README.md";
+        const docsHash = english ? "README.md#quick-start" : "README_ZH.md#快速开始";
+        const docsFile = english ? "README.md" : "README_ZH.md";
         const base = "https://github.com/GoldenZqqq/cdp/blob/main/";
         const installLink = document.querySelector("[data-docs-link]");
         const footerLink = document.querySelector("[data-footer-docs]");

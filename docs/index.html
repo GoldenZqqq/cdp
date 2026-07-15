@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#2156ff">
-    <meta name="description" content="cdp 是面向 Vibe Coding 工作流的终端项目工作台：模糊切换项目、检查多仓库 Git 状态，并一键启动 Codex、Claude Code 或编辑器。">
+    <meta name="description" content="cdp is the terminal project workbench for Vibe Coding: fuzzy-switch projects, inspect every repository, and launch your AI CLI in the right context.">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="cdp — 别再找路，直接开工">
-    <meta property="og:description" content="一条命令找到项目、看清 Git 状态，并进入 AI CLI。">
+    <meta property="og:title" content="cdp — Stop navigating. Start shipping.">
+    <meta property="og:description" content="cdp is the terminal project workbench for Vibe Coding: fuzzy-switch projects, inspect every repository, and launch your AI CLI in the right context.">
     <meta property="og:url" content="https://goldenzqqq.github.io/cdp/">
     <meta property="og:image" content="https://goldenzqqq.github.io/cdp/assets/cdp_dark.png">
     <meta name="twitter:card" content="summary_large_image">
@@ -21,35 +21,35 @@
     <link rel="stylesheet" href="styles-sections.css">
     <link rel="stylesheet" href="styles-responsive.css">
     <script src="script.js" defer></script>
-    <title>cdp — 别再找路，直接开工</title>
+    <title>cdp — Stop navigating. Start shipping.</title>
 </head>
 <body>
-    <a class="skip-link" href="#main" data-i18n="a11y.skip">跳到主要内容</a>
+    <a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to main content</a>
 
     <header class="site-header" data-site-header>
-        <nav class="site-nav" aria-label="主导航" data-i18n-aria-label="a11y.nav">
-            <a class="brand" href="#top" aria-label="cdp 首页" data-i18n-aria-label="a11y.home">
+        <nav class="site-nav" aria-label="Primary navigation" data-i18n-aria-label="a11y.nav">
+            <a class="brand" href="#top" aria-label="cdp home" data-i18n-aria-label="a11y.home">
                 <img src="assets/cdp-logo-dark-transparent.png" width="214" height="68" alt="cdp">
             </a>
 
             <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-panel" data-nav-toggle>
                 <span class="nav-toggle-line" aria-hidden="true"></span>
                 <span class="nav-toggle-line" aria-hidden="true"></span>
-                <span class="sr-only" data-i18n="nav.menu">打开菜单</span>
+                <span class="sr-only" data-i18n="nav.menu">Open menu</span>
             </button>
 
             <div class="nav-panel" id="nav-panel" data-nav-panel>
                 <div class="nav-links">
-                    <a href="#pain" data-i18n="nav.why">为什么需要</a>
-                    <a href="#commands" data-i18n="nav.commands">真实命令</a>
-                    <a href="#proof" data-i18n="nav.demo">演示</a>
-                    <a href="#install" data-i18n="nav.install">安装</a>
+                    <a href="#pain" data-i18n="nav.why">Why cdp</a>
+                    <a href="#commands" data-i18n="nav.commands">Real commands</a>
+                    <a href="#proof" data-i18n="nav.demo">Demo</a>
+                    <a href="#install" data-i18n="nav.install">Install</a>
                 </div>
 
-                <div class="language-switch" aria-label="语言" data-i18n-aria-label="a11y.language">
-                    <button type="button" data-language="zh-CN" aria-pressed="true">中</button>
+                <div class="language-switch" aria-label="Language" data-i18n-aria-label="a11y.language">
+                    <button type="button" data-language="zh-CN" aria-pressed="false">中</button>
                     <span aria-hidden="true">/</span>
-                    <button type="button" data-language="en" aria-pressed="false">EN</button>
+                    <button type="button" data-language="en" aria-pressed="true">EN</button>
                 </div>
 
                 <a class="nav-github" href="https://github.com/GoldenZqqq/cdp" target="_blank" rel="noreferrer">
@@ -70,38 +70,38 @@
 
             <div class="page-shell hero-layout">
                 <div class="hero-copy">
-                    <p class="hero-kicker" data-i18n="hero.kicker">终端项目工作台 · Windows / macOS / Linux</p>
+                    <p class="hero-kicker" data-i18n="hero.kicker">TERMINAL PROJECT WORKBENCH · WINDOWS / MACOS / LINUX</p>
                     <h1 id="hero-title">
-                        <span data-i18n="hero.line1">别再找路。</span>
-                        <span class="hero-title-signal" data-i18n="hero.line2">直接开工。</span>
+                        <span data-i18n="hero.line1">Stop navigating.</span>
+                        <span class="hero-title-signal" data-i18n="hero.line2">Start shipping.</span>
                     </h1>
-                    <p class="hero-lede" data-i18n="hero.lede">找到正确项目、看清所有仓库状态，再把 Codex、Claude Code 或编辑器直接启动在正确上下文里。</p>
+                    <p class="hero-lede" data-i18n="hero.lede">Find the right project, see every repository state, then launch Codex, Claude Code, or your editor inside the correct context.</p>
 
                     <div class="hero-actions">
                         <a class="button button-signal" href="#install">
-                            <span data-i18n="hero.install">安装 cdp</span>
+                            <span data-i18n="hero.install">Install cdp</span>
                             <span aria-hidden="true">→</span>
                         </a>
                         <a class="button button-ghost-light" href="https://github.com/GoldenZqqq/cdp" target="_blank" rel="noreferrer">
-                            <span data-i18n="hero.github">查看 GitHub</span>
+                            <span data-i18n="hero.github">View on GitHub</span>
                             <span aria-hidden="true">↗</span>
                         </a>
                     </div>
 
-                    <ul class="hero-facts" aria-label="核心特性" data-i18n-aria-label="a11y.heroFacts">
-                        <li><span class="fact-mark" aria-hidden="true"></span><span data-i18n="hero.fact1">模糊搜索，直接到项目根目录</span></li>
-                        <li><span class="fact-mark" aria-hidden="true"></span><span data-i18n="hero.fact2">一屏看清所有仓库 Git 状态</span></li>
-                        <li><span class="fact-mark" aria-hidden="true"></span><span data-i18n="hero.fact3">一步启动 AI CLI 或编辑器</span></li>
+                    <ul class="hero-facts" aria-label="Core capabilities" data-i18n-aria-label="a11y.heroFacts">
+                        <li><span class="fact-mark" aria-hidden="true"></span><span data-i18n="hero.fact1">Fuzzy-search straight to the project root</span></li>
+                        <li><span class="fact-mark" aria-hidden="true"></span><span data-i18n="hero.fact2">See every repository state in one view</span></li>
+                        <li><span class="fact-mark" aria-hidden="true"></span><span data-i18n="hero.fact3">Launch an AI CLI or editor in one step</span></li>
                     </ul>
                 </div>
 
-                <div class="hero-switchyard" aria-label="cdp 路由示例" data-i18n-aria-label="a11y.heroDemo">
+                <div class="hero-switchyard" aria-label="cdp routing example" data-i18n-aria-label="a11y.heroDemo">
                     <div class="switchyard-topbar">
                         <span class="switchyard-status"><span aria-hidden="true"></span><span data-i18n="hero.routeReady">ROUTE READY</span></span>
                         <span>cdp v2.0.3</span>
                     </div>
 
-                    <div class="old-route" aria-label="传统路径切换" data-i18n-aria-label="a11y.oldRoute">
+                    <div class="old-route" aria-label="Traditional directory switching" data-i18n-aria-label="a11y.oldRoute">
                         <span>cd E:\Work\Client Projects\VeryLongName\backend</span>
                         <span>cd ..\..\..\SideProjects\tooling</span>
                         <span>git status → cd → open → restart context</span>
@@ -120,19 +120,19 @@
 
                     <dl class="destination-board">
                         <div>
-                            <dt data-i18n="hero.destination">目的地</dt>
+                            <dt data-i18n="hero.destination">Destination</dt>
                             <dd>my-api</dd>
                         </div>
                         <div>
-                            <dt data-i18n="hero.branch">分支</dt>
+                            <dt data-i18n="hero.branch">Branch</dt>
                             <dd>main</dd>
                         </div>
                         <div>
-                            <dt data-i18n="hero.state">状态</dt>
+                            <dt data-i18n="hero.state">State</dt>
                             <dd class="state-clean"><span aria-hidden="true">●</span> clean</dd>
                         </div>
                         <div>
-                            <dt data-i18n="hero.launch">启动</dt>
+                            <dt data-i18n="hero.launch">Launch</dt>
                             <dd>codex <span aria-hidden="true">→</span></dd>
                         </div>
                     </dl>
@@ -143,30 +143,30 @@
         <section class="pain-section" id="pain" aria-labelledby="pain-title">
             <div class="page-shell">
                 <div class="section-heading pain-heading">
-                    <p class="section-signal" data-i18n="pain.signal">真正拖慢你的，不是键盘。</p>
-                    <h2 id="pain-title" data-i18n="pain.title">是每次开工前，重新寻找上下文。</h2>
-                    <p data-i18n="pain.lede">你记住路径、逐个检查仓库、再重启工具。cdp 把这些零碎动作压成一条可重复的路线。</p>
+                    <p class="section-signal" data-i18n="pain.signal">Your keyboard is not the bottleneck.</p>
+                    <h2 id="pain-title" data-i18n="pain.title">Rebuilding context before every session is.</h2>
+                    <p data-i18n="pain.lede">You remember paths, inspect repositories one by one, and restart tools. cdp compresses those fragments into one repeatable route.</p>
                 </div>
 
                 <div class="pain-lanes">
                     <article class="pain-lane">
                         <p class="pain-label">PATH</p>
-                        <h3 data-i18n="pain.pathTitle">长路径不是知识，是负担。</h3>
-                        <p data-i18n="pain.pathBody">不用记盘符、父目录和项目全名。输入几个字母，唯一匹配时直接到达。</p>
+                        <h3 data-i18n="pain.pathTitle">Long paths are baggage, not knowledge.</h3>
+                        <p data-i18n="pain.pathBody">Forget drive letters, parent folders, and exact names. Type a few letters and jump directly when there is one match.</p>
                         <code>cdp api</code>
                     </article>
 
                     <article class="pain-lane">
                         <p class="pain-label">STATE</p>
-                        <h3 data-i18n="pain.stateTitle">五十个仓库，不该查五十次。</h3>
-                        <p data-i18n="pain.stateBody">dirty、untracked、ahead、behind 和最近提交时间，一条命令全部展开。</p>
+                        <h3 data-i18n="pain.stateTitle">Fifty repositories should not mean fifty checks.</h3>
+                        <p data-i18n="pain.stateBody">Dirty, untracked, ahead, behind, and last commit time arrive in one command.</p>
                         <code>cdp status --dirty</code>
                     </article>
 
                     <article class="pain-lane">
                         <p class="pain-label">START</p>
-                        <h3 data-i18n="pain.startTitle">工具启动了，上下文却错了。</h3>
-                        <p data-i18n="pain.startBody">先进入项目，再启动 Codex、Claude、Gemini、VS Code 或 Cursor。</p>
+                        <h3 data-i18n="pain.startTitle">The tool launched. The context did not.</h3>
+                        <p data-i18n="pain.startBody">Enter the project first, then launch Codex, Claude, Gemini, VS Code, or Cursor.</p>
                         <code>cdp web -Open claude</code>
                     </article>
                 </div>
@@ -176,31 +176,31 @@
         <section class="command-section" id="commands" aria-labelledby="commands-title">
             <div class="page-shell">
                 <div class="section-heading command-heading">
-                    <p class="section-signal section-signal-cyan" data-i18n="commands.signal">不是功能清单，是可执行路线。</p>
-                    <h2 id="commands-title" data-i18n="commands.title">一个入口，接管项目上下文。</h2>
+                    <p class="section-signal section-signal-cyan" data-i18n="commands.signal">Not a feature list. Executable routes.</p>
+                    <h2 id="commands-title" data-i18n="commands.title">One entry point for project context.</h2>
                 </div>
 
                 <div class="command-station">
-                    <div class="command-rail" role="tablist" aria-label="cdp 命令" data-i18n-aria-label="a11y.commandTabs" data-command-tabs>
+                    <div class="command-rail" role="tablist" aria-label="cdp commands" data-i18n-aria-label="a11y.commandTabs" data-command-tabs>
                         <button type="button" role="tab" id="command-switch-tab" aria-controls="command-panel" aria-selected="true" tabindex="0" data-command="switch">
                             <code>cdp</code>
-                            <span data-i18n="commands.switch">模糊选择并进入项目</span>
+                            <span data-i18n="commands.switch">Fuzzy-select and enter a project</span>
                         </button>
                         <button type="button" role="tab" id="command-status-tab" aria-controls="command-panel" aria-selected="false" tabindex="-1" data-command="status">
                             <code>cdp status</code>
-                            <span data-i18n="commands.status">检查全部仓库状态</span>
+                            <span data-i18n="commands.status">Inspect every repository</span>
                         </button>
                         <button type="button" role="tab" id="command-open-tab" aria-controls="command-panel" aria-selected="false" tabindex="-1" data-command="open">
                             <code>cdp api -Open codex</code>
-                            <span data-i18n="commands.open">进入项目并启动 AI CLI</span>
+                            <span data-i18n="commands.open">Enter a project and launch an AI CLI</span>
                         </button>
                         <button type="button" role="tab" id="command-workspace-tab" aria-controls="command-panel" aria-selected="false" tabindex="-1" data-command="workspace">
                             <code>cdp workspace</code>
-                            <span data-i18n="commands.workspace">打开多项目工作区</span>
+                            <span data-i18n="commands.workspace">Open a multi-project workspace</span>
                         </button>
                         <button type="button" role="tab" id="command-doctor-tab" aria-controls="command-panel" aria-selected="false" tabindex="-1" data-command="doctor">
                             <code>cdp doctor</code>
-                            <span data-i18n="commands.doctor">检查并修复配置</span>
+                            <span data-i18n="commands.doctor">Check and repair configuration</span>
                         </button>
                     </div>
 
@@ -210,7 +210,7 @@
                             <span class="terminal-platform">PowerShell 7</span>
                         </div>
                         <div class="command-panel-copy">
-                            <p class="command-intent" data-command-intent data-i18n="scenario.switch.intent">从任意目录锁定目的地。</p>
+                            <p class="command-intent" data-command-intent data-i18n="scenario.switch.intent">Lock onto a destination from anywhere.</p>
                             <div class="terminal-screen" aria-live="polite" aria-atomic="true" data-command-output>
                                 <p><span class="terminal-prompt">PS C:\&gt;</span> <strong>cdp</strong></p>
                                 <p class="output-muted">56 projects · type to filter · enter to warp</p>
@@ -220,7 +220,7 @@
                         </div>
                         <div class="arrival-strip">
                             <span data-i18n="commands.arrival">ARRIVAL</span>
-                            <strong data-command-result data-i18n="scenario.switch.result">当前 shell 已进入项目根目录</strong>
+                            <strong data-command-result data-i18n="scenario.switch.result">The current shell is now at the project root</strong>
                         </div>
                     </div>
                 </div>
@@ -230,21 +230,21 @@
         <section class="proof-section" id="proof" aria-labelledby="proof-title">
             <div class="page-shell proof-layout">
                 <div class="section-heading proof-heading">
-                    <p class="section-signal" data-i18n="proof.signal">不相信宣传？看真实终端。</p>
-                    <h2 id="proof-title" data-i18n="proof.title">从仓库全景，到 AI CLI 启动。</h2>
-                    <p data-i18n="proof.lede">v2.0 演示展示 status 仪表盘、智能跳转、workspace、onEnter、Tab 补全和全平台支持。</p>
-                    <a class="text-link" href="assets/cdp-v2-promo.mp4" data-i18n="proof.openVideo">单独打开演示视频 ↗</a>
+                    <p class="section-signal" data-i18n="proof.signal">Skip the claims. Watch the terminal.</p>
+                    <h2 id="proof-title" data-i18n="proof.title">From repository overview to AI CLI launch.</h2>
+                    <p data-i18n="proof.lede">The v2.0 demo covers the status dashboard, direct jumps, workspaces, onEnter, Tab completion, and cross-platform support.</p>
+                    <a class="text-link" href="assets/cdp-v2-promo.mp4" data-i18n="proof.openVideo">Open the demo video ↗</a>
                 </div>
 
                 <div class="video-frame">
                     <div class="video-frame-bar">
                         <span>cdp / live proof</span>
-                        <span data-i18n="proof.duration">真实产品录屏</span>
+                        <span data-i18n="proof.duration">REAL PRODUCT CAPTURE</span>
                     </div>
                     <video controls preload="metadata" poster="assets/cdp_dark.png">
                         <source src="assets/cdp-v2-promo.mp4" type="video/mp4">
-                        <span data-i18n="proof.videoFallback">你的浏览器无法播放视频。</span>
-                        <a href="assets/cdp-v2-promo.mp4" data-i18n="proof.downloadVideo">下载 MP4</a>
+                        <span data-i18n="proof.videoFallback">Your browser cannot play this video.</span>
+                        <a href="assets/cdp-v2-promo.mp4" data-i18n="proof.downloadVideo">Download MP4</a>
                     </video>
                 </div>
             </div>
@@ -253,12 +253,12 @@
         <section class="platform-section" aria-labelledby="platform-title">
             <div class="page-shell platform-layout">
                 <div class="section-heading platform-heading">
-                    <p class="section-signal" data-i18n="platform.signal">不同 shell，同一份项目地图。</p>
-                    <h2 id="platform-title" data-i18n="platform.title">四条路线，汇入同一个工作台。</h2>
-                    <p data-i18n="platform.lede">PowerShell 与 bash / zsh 共享同类配置。Windows 路径进入 WSL 时自动转换，不需要维护两套项目清单。</p>
+                    <p class="section-signal" data-i18n="platform.signal">Different shells. One project map.</p>
+                    <h2 id="platform-title" data-i18n="platform.title">Four routes merge into one workbench.</h2>
+                    <p data-i18n="platform.lede">PowerShell and bash / zsh share the same configuration shape. Windows paths convert automatically when entering WSL, so there is no second project list to maintain.</p>
                 </div>
 
-                <div class="route-merge" aria-label="平台路线汇合图" data-i18n-aria-label="a11y.platformDiagram">
+                <div class="route-merge" aria-label="Platform routes merging into one destination" data-i18n-aria-label="a11y.platformDiagram">
                     <svg viewBox="0 0 720 420" aria-hidden="true" focusable="false">
                         <path class="merge-line merge-blue" d="M40 62 H280 C360 62 360 210 440 210 H680" />
                         <path class="merge-line merge-cyan" d="M40 160 H310 C370 160 380 210 440 210" />
@@ -284,27 +284,27 @@
         <section class="install-section" id="install" aria-labelledby="install-title">
             <div class="page-shell install-layout">
                 <div class="install-heading">
-                    <p class="section-signal section-signal-yellow" data-i18n="install.signal">选择你的入口。</p>
-                    <h2 id="install-title" data-i18n="install.title">下一条命令，直接到 cdp。</h2>
-                    <p data-i18n="install.lede">无需构建工具。选择平台、复制命令，然后运行 `cdp doctor` 验证环境。</p>
+                    <p class="section-signal section-signal-yellow" data-i18n="install.signal">Choose your entry point.</p>
+                    <h2 id="install-title" data-i18n="install.title">Your next command goes straight to cdp.</h2>
+                    <p data-i18n="install.lede">No build tools required. Pick a platform, copy the command, then run `cdp doctor` to verify the environment.</p>
                 </div>
 
                 <div class="install-gate">
-                    <div class="install-tabs" role="tablist" aria-label="安装平台" data-i18n-aria-label="a11y.installTabs" data-install-tabs>
+                    <div class="install-tabs" role="tablist" aria-label="Installation platforms" data-i18n-aria-label="a11y.installTabs" data-install-tabs>
                         <button type="button" role="tab" id="install-powershell-tab" aria-controls="install-panel" aria-selected="true" tabindex="0" data-platform="powershell">PowerShell</button>
                         <button type="button" role="tab" id="install-linux-tab" aria-controls="install-panel" aria-selected="false" tabindex="-1" data-platform="linux">WSL / Linux</button>
                         <button type="button" role="tab" id="install-macos-tab" aria-controls="install-panel" aria-selected="false" tabindex="-1" data-platform="macos">macOS</button>
                     </div>
 
                     <div class="install-panel" id="install-panel" role="tabpanel" tabindex="0" aria-labelledby="install-powershell-tab">
-                        <p data-install-description data-i18n="install.powershell">通过 PowerShell Gallery 安装模块，再安装 fzf。</p>
+                        <p data-install-description data-i18n="install.powershell">Install the module from PowerShell Gallery, then install fzf.</p>
                         <div class="install-command-row">
                             <pre><code id="install-command" data-install-command>Install-Module -Name cdp -Scope CurrentUser
 winget install fzf
 Import-Module cdp
 cdp doctor</code></pre>
                             <button class="copy-button" type="button" data-copy-target="install-command">
-                                <span data-copy-label data-i18n="install.copy">复制命令</span>
+                                <span data-copy-label data-i18n="install.copy">Copy command</span>
                             </button>
                         </div>
                         <p class="copy-status" role="status" aria-live="polite" data-copy-status></p>
@@ -312,7 +312,7 @@ cdp doctor</code></pre>
 
                     <div class="install-links">
                         <a href="https://www.powershellgallery.com/packages/cdp" target="_blank" rel="noreferrer" data-i18n="install.gallery">PowerShell Gallery ↗</a>
-                        <a href="https://github.com/GoldenZqqq/cdp#快速开始" target="_blank" rel="noreferrer" data-docs-link data-i18n="install.docs">完整安装文档 ↗</a>
+                        <a href="https://github.com/GoldenZqqq/cdp/blob/main/README.md#quick-start" target="_blank" rel="noreferrer" data-docs-link data-i18n="install.docs">Full installation guide ↗</a>
                     </div>
                 </div>
 
@@ -327,14 +327,14 @@ cdp doctor</code></pre>
         <div class="page-shell footer-layout">
             <div class="footer-brand">
                 <img src="assets/cdp-logo-dark-transparent.png" width="214" height="68" alt="cdp">
-                <p data-i18n="footer.tagline">终端里的项目跃迁车道。</p>
+                <p data-i18n="footer.tagline">The warp lane for terminal projects.</p>
             </div>
             <div class="footer-links">
                 <a href="https://github.com/GoldenZqqq/cdp" target="_blank" rel="noreferrer">GitHub</a>
-                <a href="https://github.com/GoldenZqqq/cdp/blob/main/README.md" target="_blank" rel="noreferrer" data-footer-docs data-i18n="footer.docs">中文文档</a>
+                <a href="https://github.com/GoldenZqqq/cdp/blob/main/README.md" target="_blank" rel="noreferrer" data-footer-docs data-i18n="footer.docs">English docs</a>
                 <a href="https://github.com/GoldenZqqq/cdp/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT License</a>
             </div>
-            <p class="footer-note" data-i18n="footer.note">为多仓库与 AI CLI 工作流而生。</p>
+            <p class="footer-note" data-i18n="footer.note">Built for multi-repository and AI CLI workflows.</p>
         </div>
     </footer>
 </body>

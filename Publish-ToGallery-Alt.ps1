@@ -50,6 +50,7 @@ try {
     Copy-Item -Path "LICENSE" -Destination $moduleDir -ErrorAction SilentlyContinue
     Copy-Item -Path "README.md" -Destination $moduleDir -ErrorAction SilentlyContinue
     Copy-Item -Path "README_EN.md" -Destination $moduleDir -ErrorAction SilentlyContinue
+    Copy-Item -Path "README_ZH.md" -Destination $moduleDir -ErrorAction SilentlyContinue
     Copy-Item -Path "install-wsl.sh" -Destination $moduleDir -ErrorAction SilentlyContinue
     Copy-Item -Path "src" -Destination $moduleDir -Recurse -Force
 

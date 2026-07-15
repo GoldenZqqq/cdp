@@ -33,7 +33,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 * Fill in the pull request template
 * Follow the PowerShell coding style
 * Include comments in your code where necessary
-* Update the README.md with details of changes if applicable
+* Update the canonical English `README.md` and the Simplified Chinese `README_ZH.md` when applicable
 * Run the Pester test suite when changing PowerShell behavior
 * Ensure your code works on Windows (primary platform)
 
@@ -146,7 +146,7 @@ Manual testing checklist:
 
 ## Documentation
 
-* Update README.md if you change functionality
+* Update both `README.md` and `README_ZH.md` if you change functionality
 * Update function comment-based help
 * Add examples for new features
 * Update version numbers in cdp.psd1

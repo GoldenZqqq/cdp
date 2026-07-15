@@ -130,9 +130,13 @@ Projects are defined as JSON objects with three fields:
 
 ### 1. Documentation Synchronization
 
-**RULE**: Any change that affects user-facing functionality MUST be documented in BOTH language versions:
-- `README.md` (中文版)
-- `README_EN.md` (English version)
+**RULE**: English is the canonical and default public language for this project. Any change that affects user-facing functionality MUST be documented in BOTH maintained language versions:
+- `README.md` (English canonical version and GitHub default)
+- `README_ZH.md` (Simplified Chinese mirror)
+
+`README_EN.md` is a legacy compatibility redirect only. Do not add or maintain product documentation there.
+
+The official website, SEO metadata, code examples, release notes, and newly added public documentation default to English. Chinese content is available through an explicit language switch or `_ZH` companion file.
 
 **When to update**:
 - Adding new features
@@ -143,8 +147,8 @@ Projects are defined as JSON objects with three fields:
 
 **How to synchronize**:
 1. Make changes to code first
-2. Update README.md with Chinese description
-3. Update README_EN.md with equivalent English description
+2. Update README.md with the English description first
+3. Update README_ZH.md with the equivalent Simplified Chinese description
 4. Ensure both READMEs have identical structure and information
 5. Review both files before committing
 
@@ -193,8 +197,8 @@ Before committing ANY change, verify:
 
 - [ ] PowerShell changes tested locally
 - [ ] Bash/WSL changes tested in WSL environment
-- [ ] README.md updated (if user-facing change)
-- [ ] README_EN.md updated (if user-facing change)
+- [ ] README.md updated in English (if user-facing change)
+- [ ] README_ZH.md updated in Simplified Chinese (if user-facing change)
 - [ ] Version number incremented (if PowerShell module changed)
 - [ ] ReleaseNotes updated in cdp.psd1 (if version changed)
 - [ ] Commit message follows format (Add/Fix/Update/Docs/Refactor)
@@ -217,7 +221,7 @@ Before committing ANY change, verify:
    - `tests/cdp.Tests.ps1` expected manifest version
    - `scoop/cdp.json` `version`, tag URL, and `extract_dir`
    - `CHANGELOG.md` release section
-3. Update `README.md` and `README_EN.md` when the release changes user-facing behavior.
+3. Update `README.md` and `README_ZH.md` when the release changes user-facing behavior.
 4. Keep private submission pitches or one-off promotion copy out of repository Markdown unless explicitly requested.
 
 **Required local validation before the release commit**:
@@ -242,7 +246,7 @@ git diff --check
    ```
 3. Commit the release preparation:
    ```powershell
-   git add CHANGELOG.md PROGRESS.md cdp.psd1 scoop/cdp.json src/cdp.psm1 src/cdp.sh tests/cdp.Tests.ps1 README.md README_EN.md
+   git add CHANGELOG.md PROGRESS.md cdp.psd1 scoop/cdp.json src/cdp.psm1 src/cdp.sh tests/cdp.Tests.ps1 README.md README_ZH.md
    git commit -m "chore: 准备 x.y.z 发布"
    ```
 4. Push the release commit:
@@ -347,7 +351,7 @@ When adding support for new project management tools:
 2. Include comment-based help with .SYNOPSIS, .DESCRIPTION, .PARAMETER, .EXAMPLE
 3. Export in cdp.psd1 under `FunctionsToExport`
 4. Add alias in `AliasesToExport` if needed
-5. Update README.md command list
+5. Update the command list in both README.md and README_ZH.md
 6. Test import: `Import-Module ./cdp.psd1 -Force`
 
 ### Modifying fzf Options

@@ -7,13 +7,13 @@
   <img src="./docs/assets/cdp-logo-light-transparent.png" alt="cdp logo" width="320">
 </picture>
 
-**简体中文** | **[English](./README_EN.md)**
+**English** | **[简体中文](./README_ZH.md)**
 
-**[🌐 访问 cdp 官方网站](https://goldenzqqq.github.io/cdp/)**
+**[🌐 Visit the official cdp website](https://goldenzqqq.github.io/cdp/)**
 
-在 Vibe Coding 时代，为 Claude Code、Codex、Gemini CLI、Cursor、VS Code 用户准备的**终端项目工作台**。
+A fast **project workbench** for the Vibe Coding era — one command to see all repo statuses, switch projects, and launch AI CLIs.
 
-`cdp` 不只是项目切换器——它知道你的每个仓库是否干净、有没有未推送的提交，还能一键切换并启动 AI CLI。
+`cdp` is more than a project switcher — it knows whether each of your repos is clean, has unpushed commits, and can switch and launch an AI CLI in one move.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20WSL-lightgrey)](https://github.com/GoldenZqqq/cdp)
@@ -24,19 +24,19 @@
 
 ---
 
-## 演示视频
+## Intro Video
 
-https://github.com/user-attachments/assets/cdp-v2-promo.mp4
+[![Watch the cdp v2.0 demo](./docs/assets/cdp-v2-promo.gif)](https://goldenzqqq.github.io/cdp/#proof)
 
-[观看 v2.0 演示 MP4](./docs/assets/cdp-v2-promo.mp4) · [v1.8 中文 GIF](./docs/assets/cdp-demo-short-zh.gif) · [v1.8 English GIF](./docs/assets/cdp-demo-short-en.gif)
+[Watch the HD demo on the official website](https://goldenzqqq.github.io/cdp/#proof) · [Open the v2.0 MP4 directly](https://goldenzqqq.github.io/cdp/assets/cdp-v2-promo.mp4)
 
-这支 v2.0 演示展示了 cdp 的核心功能：`cdp status` 多项目 Git 仪表盘、`cdp api -Open codex` 一步切换并启动 AI CLI、`cdp workspace` 多项目工作区、onEnter 环境自动激活、智能 Tab 补全，以及 Windows / macOS / Linux 全平台支持。
+This v2.0 demo showcases cdp's core features: `cdp status` multi-project Git dashboard, `cdp api -Open codex` one-step switch and AI CLI launch, `cdp workspace` multi-project workspaces, onEnter environment hooks, intelligent tab completion, and full Windows / macOS / Linux support.
 
 ---
 
-## 为什么需要 cdp
+## Why cdp
 
-AI CLI 工具把开发者重新带回终端，但多项目切换仍然很笨重：
+AI CLI tools bring developers back to the terminal, but switching between many projects is still clumsy:
 
 ```powershell
 PS C:\> cd E:\Work\Client Projects\VeryLongName\backend
@@ -44,22 +44,22 @@ PS E:\Work\Client Projects\VeryLongName\backend> cd ..\..\..\SideProjects\toolin
 PS E:\SideProjects\tooling> cd C:\Learn\another-project
 ```
 
-`cdp` 把这件事缩短成：
+With `cdp`, that becomes:
 
 ```powershell
 PS C:\> cdp
-# 输入 api / blog / cdp 等关键词
-# 回车后直接进入项目根目录
+# type api / blog / cdp
+# press Enter and jump to the project root
 ```
 
-更让人头疼的是——你根本不知道哪个仓库还有未提交的代码：
+Even worse — you have no idea which repos have uncommitted changes:
 
 ```bash
-# 50 个仓库，哪些有未提交的改动？哪些忘了 push？
+# 50 repos — which ones have uncommitted work? Which forgot to push?
 cd project1 && git status && cd ../project2 && git status && ...
 ```
 
-`cdp status` 一条命令搞定：
+`cdp status` handles it in one command:
 
 ```text
 $ cdp status
@@ -71,38 +71,38 @@ $ cdp status
 3 repos need attention
 ```
 
-它特别适合：
+It is built for:
 
-- 同时维护很多项目的开发者
-- 使用 Claude Code、Codex、Gemini CLI 等终端 AI 工具的人
-- 依赖 VS Code/Cursor Project Manager 管理项目的人
-- 需要在 Windows PowerShell 和 WSL/Linux 之间共享项目列表的人
-- macOS / Linux 原生开发者（bash/zsh 全兼容）
+- Developers who work across many repositories
+- Users of Claude Code, Codex, Gemini CLI, and other terminal AI tools
+- VS Code/Cursor Project Manager users
+- People who want one shared project list across Windows PowerShell and WSL/Linux
+- macOS / Linux native developers (full bash/zsh compatibility)
 
 ---
 
-## 快速开始
+## Quick Start
 
 ### Windows PowerShell
 
-如果已经习惯 PowerShell Gallery，可以直接安装模块并安装 `fzf`：
+If you are comfortable with PowerShell Gallery, install the module and `fzf` directly:
 
 ```powershell
-# 1. 安装 cdp
+# 1. Install cdp
 Install-Module -Name cdp -Scope CurrentUser
 
-# 2. 安装 fzf 依赖
+# 2. Install the fzf dependency
 winget install fzf
 
-# 3. 导入并验证
+# 3. Import and verify
 Import-Module cdp
 cdp doctor
 
-# 4. 开始切换项目
+# 4. Start switching projects
 cdp
 ```
 
-第一次使用、希望脚本自动处理 `fzf` 和 profile 配置时，推荐从源码安装：
+For a first-time setup where the script should handle `fzf` and profile configuration, use the source installer:
 
 ```powershell
 git clone https://github.com/GoldenZqqq/cdp.git
@@ -110,89 +110,89 @@ cd cdp
 .\Install.ps1 -AddToProfile
 ```
 
-`Install.ps1` 会依次尝试 `winget`、`scoop`、`chocolatey` 安装 `fzf`；如果安装后当前终端还找不到 `fzf`，重启 PowerShell 后运行 `cdp doctor`。
+`Install.ps1` tries `winget`, `scoop`, then `chocolatey` for `fzf`. If the current terminal still cannot find `fzf` after installation, restart PowerShell and run `cdp doctor`.
 
 ### WSL / Linux / macOS
 
 ```bash
-# macOS 用户先安装依赖
+# macOS users: install dependencies first
 brew install fzf jq
 
-# 一键安装（WSL/Linux/macOS 通用）
+# One-liner install (WSL/Linux/macOS)
 bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
 
-source ~/.bashrc  # zsh 用户改为 source ~/.zshrc
+source ~/.bashrc  # zsh users: source ~/.zshrc
 cdp doctor
 cdp
 ```
 
-`--auto` 会自动安装 `fzf` 和 `jq`；不加 `--auto` 时会逐项询问。
+`--auto` installs `fzf` and `jq` automatically. Without `--auto`, the installer asks before each dependency.
 
 ---
 
-## 30 秒使用示例
+## 30-Second Usage
 
 ```powershell
-# 添加当前目录为项目
+# Add the current directory as a project
 cd E:\Projects\my-api
 cdp-add
 
-# 首次使用：创建配置并可扫描 Git 仓库
+# First run: create config and optionally scan Git repositories
 cdp init E:\Projects
 
-# 从任意位置打开项目选择器
+# Open the project picker from anywhere
 cdp
 
-# 只有一个匹配时直接进入项目；多个匹配时再打开 fzf
+# Jump directly when one project matches; fall back to fzf for multiple matches
 cdp api
 
-# 进入项目并启动 AI CLI 或编辑器
+# Enter a project and start an AI CLI or editor
 cdp api -Open codex
 cdp api -Open code
 
-# 批量导入某个目录下的 Git 仓库
+# Bulk import Git repositories under a directory
 cdp-scan E:\Projects
 
-# 查看当前配置健康状态
+# Check your setup
 cdp doctor
 
-# 安全修复失效路径、重复项目和缺失字段
+# Safely repair missing paths, duplicates, and missing fields
 cdp clean
 cdp doctor --fix
 
-# 查看当前版本、配置和升级命令
+# Show the current version, config, and upgrade command
 cdp version
 
-# 查看最近访问过的项目
+# Show recently visited projects
 cdp recent
 
-# 一条命令查看所有仓库的 Git 状态
+# See all repo statuses at a glance
 cdp status
 
-# 只看需要关注的仓库（dirty / untracked / behind）
+# Show only repos that need attention
 cdp status --dirty
 
-# Tab 补全：输入 cdp 后按 Tab 自动补全子命令和项目名
+# Tab completion: press Tab after cdp to auto-complete subcommands and project names
 cdp s<TAB>  # → status, scan, ...
 
-# 将常用项目固定在列表顶部
+# Keep frequent projects at the top
 cdp pin api
 cdp unpin api
 
-# 添加短别名和标签；PowerShell 查询标签时需要引号
+# Add short aliases and tags; quote tag queries in PowerShell
 cdp alias api backend
 cdp tag api work
 cdp backend
 cdp '@work'
 
-# 从 PowerShell 直接启动 WSL 并进入项目
+# Launch WSL directly into a selected project
 cdp -WSL
 ```
 
-fzf 菜单里输入几个字母即可模糊匹配：
+Type a few letters in the fzf menu:
 
 ```text
-cdp v1.8.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v2.0.3 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -206,131 +206,131 @@ state  path exists
 git    git repo detected
 ```
 
-选择后：
+After selection:
 
-- 当前 shell 进入项目根目录
-- Windows Terminal / 常见终端标签标题更新为项目名
-- WSL 模式会自动把 `C:\path` 转为 `/mnt/c/path`
-- 使用 `-Open` 时，会在项目根目录继续启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令
-
----
-
-## 真实使用场景
-
-### 多仓库日常开发
-
-同时维护公司后台、前端应用、脚本工具和个人项目时，可以先用 `cdp-scan E:\Projects` 批量导入 Git 仓库。之后从任意终端运行 `cdp api`、`cdp admin` 或 `cdp blog`，唯一匹配时直接进入项目，多匹配时再用 `fzf` 选择。
-
-### AI CLI 工作流
-
-使用 Claude Code、Codex、Gemini CLI 等工具时，终端通常是主工作台。`cdp` 会把项目根目录切换、终端标签标题和项目列表放在一起，减少在多个 AI 会话、多个仓库之间反复复制长路径的时间。
-
-需要直接启动 AI CLI 时，可以用 `cdp api -Open codex`、`cdp web -Open claude` 或 `cdp tool -Open gemini`。如果想打开编辑器，可以用 `cdp api -Open code` 或 `cdp api -Open cursor`。
-
-### Windows + WSL 混合环境
-
-Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Linux 版也能使用同类 JSON 项目列表。需要从 PowerShell 进入 WSL 项目时，用 `cdp -WSL` 选择项目，Windows 路径会自动转换为 `/mnt/c/...`。
+- The current shell changes to the project root
+- Windows Terminal and common terminals update the tab title
+- WSL mode converts `C:\path` to `/mnt/c/path`
+- With `-Open`, cdp starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command from the project root
 
 ---
 
-## 核心特性
+## Real-World Workflows
 
-- **多项目 Git 状态仪表盘**：`cdp status` 一条命令查看所有仓库的分支、dirty/untracked 状态、ahead/behind 同步和最近提交时间
-- **全平台支持**：Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL，CI 覆盖全部
-- **智能 Tab 补全**：输入 `cdp` 按 Tab 自动补全子命令和项目名，PowerShell + bash + zsh 全支持
-- **模糊搜索切换项目**：由 `fzf` 驱动，键盘优先，不需要记路径
-- **Neon 风格 TUI**：彩色候选行、右侧项目预览、路径/Git 状态一眼可见
-- **快速 query 跳转**：`cdp api` 唯一匹配时直接进入项目，多匹配时只在候选中选择
-- **AI CLI 工作区启动**：`cdp api -Open codex` 先进入项目根目录，再启动 Codex、Claude、Gemini、VS Code 或 Cursor
-- **兼容 Project Manager**：自动读取 VS Code/Cursor Project Manager 配置
-- **自带项目管理命令**：`cdp-add`、`cdp-rm`、`cdp-ls`、`cdp-config`
-- **批量 Git 扫描**：`cdp-scan` 可把目录下的 Git 仓库批量导入配置
-- **最近访问项目**：`cdp recent` / `cdp-recent` 按最后访问时间列出最近切换过的项目
-- **项目置顶 / 收藏**：`cdp pin api` 把常用项目固定在选择器和列表顶部
-- **标签与短别名**：`cdp alias api backend` 添加短别名；`cdp tag api work` 后可用 `cdp '@work'` 过滤项目
-- **配置健康检查与修复**：`cdp doctor` 检查依赖、JSON、重复项目名、失效路径；`cdp clean` 安全修复项目配置
-- **Windows + WSL/Linux**：PowerShell 和 bash/zsh 版本共享同一类配置
-- **终端标签同步**：切换后自动把 tab title 改为项目名
+### Multi-Repository Development
+
+When you maintain a backend, frontend, scripts, and personal projects side by side, start with `cdp-scan E:\Projects` to bulk import Git repositories. After that, run `cdp api`, `cdp admin`, or `cdp blog` from any terminal. One match switches directly; multiple matches fall back to `fzf`.
+
+### AI CLI Workflows
+
+When using Claude Code, Codex, Gemini CLI, or similar tools, the terminal becomes the main workspace. `cdp` keeps project-root switching, terminal tab titles, and a shared project list together, reducing the time spent copying long paths across AI sessions and repositories.
+
+When you want to start an AI CLI immediately, use `cdp api -Open codex`, `cdp web -Open claude`, or `cdp tool -Open gemini`. For editors, use `cdp api -Open code` or `cdp api -Open cursor`.
+
+### Windows + WSL
+
+Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WSL/Linux version can use the same JSON shape. When you need to enter a WSL project from PowerShell, run `cdp -WSL`; Windows paths are converted to `/mnt/c/...` automatically.
 
 ---
 
-## 命令列表
+## Features
+
+- **Multi-project Git dashboard**: `cdp status` shows branch, dirty/untracked count, ahead/behind sync, and last commit time for every project
+- **Full cross-platform support**: Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL, all covered by CI
+- **Intelligent tab completion**: Press Tab after `cdp` to auto-complete subcommands and project names on PowerShell, bash, and zsh
+- **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
+- **Neon TUI**: colored candidates, right-side project preview, and visible path/Git status
+- **Fast query jumps**: `cdp api` switches directly on one match, or filters fzf to matching projects
+- **AI CLI workspace launching**: `cdp api -Open codex` enters the project root and starts Codex, Claude, Gemini, VS Code, or Cursor
+- **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
+- **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
+- **Bulk Git scanning**: `cdp-scan` imports Git repositories under a directory into your config
+- **Recent projects**: `cdp recent` / `cdp-recent` lists projects ordered by last visit
+- **Pinned / favorite projects**: `cdp pin api` keeps frequent projects at the top of pickers and lists
+- **Tags and short aliases**: `cdp alias api backend` adds a short alias; after `cdp tag api work`, PowerShell can query it with `cdp '@work'`
+- **Health checks and repair**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths; `cdp clean` safely repairs project config
+- **Windows + WSL/Linux**: PowerShell and bash/zsh versions share the same config shape
+- **Terminal tab titles**: selected project names become visible in terminal tabs
+
+---
+
+## Commands
 
 ### PowerShell
 
-| 命令 | 别名 | 说明 |
+| Command | Alias | Description |
 | --- | --- | --- |
-| `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
-| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
-| `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
-| `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
-| `Switch-Project` | - | 打开 fzf 菜单并切换项目 |
-| `Switch-Project -Query api` | - | 只在匹配 `api` 的项目中切换 |
-| `Switch-Project -Query api -Open code` | - | 切换到项目并打开 VS Code |
-| `Switch-Project -WSL` | `cdp -WSL` | 选择项目并启动 WSL 进入目录 |
-| `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | 诊断 cdp 环境和配置 |
-| `Repair-ProjectConfig` | `cdp clean`, `cdp-clean` | 安全修复配置：禁用失效路径、去重、补齐 `pinned` 字段 |
-| `Initialize-Cdp` | `cdp init`, `cdp-init` | 首次使用初始化：创建配置、保存选择、可扫描 Git 仓库 |
-| `Add-ProjectAlias` | `cdp alias`, `cdp-alias` | 给项目添加短别名，之后可直接用别名匹配 |
-| `Remove-ProjectAlias` | `cdp unalias`, `cdp-unalias` | 移除项目短别名 |
-| `Add-ProjectTag` | `cdp tag`, `cdp-tag` | 给项目添加标签，PowerShell 中用 `cdp '@work'` 查询 |
-| `Remove-ProjectTag` | `cdp untag`, `cdp-untag` | 移除项目标签 |
-| `Show-CdpAbout` | `cdp about`, `cdp version` | 显示 cdp Logo、版本、配置路径、项目数量和升级命令 |
-| `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | 列出最近访问过的项目 |
-| `Set-ProjectPin` | `cdp pin`, `cdp-pin` | 将项目固定在选择器和列表顶部 |
-| `Clear-ProjectPin` | `cdp unpin`, `cdp-unpin` | 取消项目置顶 |
-| `Add-Project` | `cdp-add` | 添加当前目录或指定路径 |
-| `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | 扫描 Git 仓库并批量导入配置 |
-| `Remove-Project` | `cdp-rm` | 删除项目，支持交互选择 |
-| `Get-ProjectList` | `cdp-ls` | 列出已启用项目 |
-| `Edit-ProjectConfig` | `cdp-edit` | 打开配置文件 |
-| `Set-ProjectConfig` | `cdp-config` | 切换当前使用的配置文件 |
+| `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
+| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
+| `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
+| `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
+| `Switch-Project` | - | Opens the fzf menu and switches projects |
+| `Switch-Project -Query api` | - | Switches within projects matching `api` |
+| `Switch-Project -Query api -Open code` | - | Switches to a project and opens VS Code |
+| `Switch-Project -WSL` | `cdp -WSL` | Selects a project and launches WSL in that directory |
+| `Test-ProjectHealth` | `cdp doctor`, `cdp-doctor` | Diagnoses the cdp environment and config |
+| `Repair-ProjectConfig` | `cdp clean`, `cdp-clean` | Safely repairs config by disabling missing paths, deduping projects, and filling `pinned` |
+| `Initialize-Cdp` | `cdp init`, `cdp-init` | First-run setup: creates config, saves the choice, and can scan Git repositories |
+| `Add-ProjectAlias` | `cdp alias`, `cdp-alias` | Adds a short project alias for faster matching |
+| `Remove-ProjectAlias` | `cdp unalias`, `cdp-unalias` | Removes a project alias |
+| `Add-ProjectTag` | `cdp tag`, `cdp-tag` | Adds a project tag; query with `cdp '@work'` in PowerShell |
+| `Remove-ProjectTag` | `cdp untag`, `cdp-untag` | Removes a project tag |
+| `Show-CdpAbout` | `cdp about`, `cdp version` | Shows the cdp logo, version, config path, project count, and upgrade command |
+| `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | Lists recently visited projects |
+| `Set-ProjectPin` | `cdp pin`, `cdp-pin` | Keeps a project at the top of pickers and lists |
+| `Clear-ProjectPin` | `cdp unpin`, `cdp-unpin` | Removes a project pin |
+| `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
+| `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | Scans Git repositories and imports them into the config |
+| `Remove-Project` | `cdp-rm` | Removes a project, with interactive selection support |
+| `Get-ProjectList` | `cdp-ls` | Lists enabled projects |
+| `Edit-ProjectConfig` | `cdp-edit` | Opens the config file |
+| `Set-ProjectConfig` | `cdp-config` | Changes the active config file |
 
 ### WSL / Linux
 
-| 命令 | 说明 |
+| Command | Description |
 | --- | --- |
-| `cdp` | 打开 fzf 菜单并切换项目 |
-| `cdp status` / `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
-| `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
-| `cdp api --open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
-| `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
-| `cdp clean` / `cdp-clean` | 安全修复配置：禁用失效路径、去重、补齐 `pinned` 字段 |
-| `cdp init ~/code` / `cdp-init ~/code` | 首次使用初始化：创建配置、保存选择、可扫描 Git 仓库 |
-| `cdp alias api backend` / `cdp-alias api backend` | 给项目添加短别名 |
-| `cdp tag api work` / `cdp-tag api work` | 给项目添加标签，bash/zsh 中可用 `cdp @work` 查询 |
-| `cdp about` / `cdp version` | 显示版本、配置路径、项目数量和升级命令 |
-| `cdp recent` / `cdp-recent` | 列出最近访问过的项目 |
-| `cdp pin api` / `cdp-pin api` | 将项目固定在选择器和列表顶部 |
-| `cdp unpin api` / `cdp-unpin api` | 取消项目置顶 |
-| `cdp-add` | 添加当前目录或指定路径 |
-| `cdp-scan ~/code` / `cdp scan ~/code` | 扫描 Git 仓库并批量导入配置 |
-| `cdp-ls` | 列出已启用项目 |
-| `cdp-config` | 切换当前使用的配置文件 |
+| `cdp` | Opens the fzf menu and switches projects |
+| `cdp status` / `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
+| `cdp api` | Quickly matches by project name or path and switches directly on one match |
+| `cdp api --open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
+| `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
+| `cdp clean` / `cdp-clean` | Safely repairs config by disabling missing paths, deduping projects, and filling `pinned` |
+| `cdp init ~/code` / `cdp-init ~/code` | First-run setup: creates config, saves the choice, and can scan Git repositories |
+| `cdp alias api backend` / `cdp-alias api backend` | Adds a short project alias |
+| `cdp tag api work` / `cdp-tag api work` | Adds a project tag; query with `cdp @work` in bash/zsh |
+| `cdp about` / `cdp version` | Shows the version, config path, project count, and upgrade command |
+| `cdp recent` / `cdp-recent` | Lists recently visited projects |
+| `cdp pin api` / `cdp-pin api` | Keeps a project at the top of pickers and lists |
+| `cdp unpin api` / `cdp-unpin api` | Removes a project pin |
+| `cdp-add` | Adds the current directory or a specific path |
+| `cdp-scan ~/code` / `cdp scan ~/code` | Scans Git repositories and imports them into the config |
+| `cdp-ls` | Lists enabled projects |
+| `cdp-config` | Changes the active config file |
 
 ---
 
-## 配置来源
+## Configuration Sources
 
-cdp 会按以下规则寻找项目配置：
+cdp discovers project config in this order:
 
-1. `CDP_CONFIG` 环境变量
-2. 已保存的 `cdp-config` 选择
-3. Cursor Project Manager 配置
-4. VS Code Project Manager 配置
-5. 自定义配置 `~/.cdp/projects.json`
+1. `CDP_CONFIG` environment variable
+2. The saved choice from `cdp-config`
+3. Cursor Project Manager config
+4. VS Code Project Manager config
+5. Custom config at `~/.cdp/projects.json`
 
-如果你已经使用 [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager)，通常无需额外配置。否则可以直接用：
+If you already use [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager), cdp usually works without extra setup. Otherwise:
 
 ```powershell
 cd E:\Projects\my-api
 cdp-add
 
-# 或者一次性扫描某个目录下的 Git 仓库
+# Or scan Git repositories under a directory in one pass
 cdp-scan E:\Projects
 ```
 
-自定义配置文件格式：
+Custom config format:
 
 ```json
 [
@@ -353,117 +353,117 @@ cdp-scan E:\Projects
 ]
 ```
 
-`pinned`、`aliases`、`tags` 都是可选字段；旧配置没有这些字段时会按未置顶、无别名、无标签处理。建议在 JSON 中使用 `/`，避免 Windows 反斜杠转义。
+`pinned`, `aliases`, and `tags` are optional; old configs without these fields are treated as unpinned and without metadata. Using `/` in JSON paths avoids escaping Windows backslashes.
 
-最近访问记录保存在独立状态文件 `~/.cdp/state.json`，不会写回 `projects.json`。自动化或测试场景可以用 `CDP_STATE_PATH` 指向临时状态文件。
+Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
 
 ---
 
-## 性能建议
+## Performance Tips
 
-如果第一次打开 Windows Terminal 后运行 `cdp` 需要等待几秒，通常不是项目数量本身造成的。PowerShell 首次自动加载模块、PATH 中查找 `fzf`，以及 Windows 对 `fzf.exe` 的冷启动检查都可能带来额外延迟。
+If `cdp` takes a few seconds to show the picker right after opening Windows Terminal, the project count is usually not the main cause. PowerShell module autoloading, PATH lookup for `fzf`, and the cold start check for `fzf.exe` can all add latency before the first interactive panel appears.
 
-可以在 PowerShell profile 里固定常用配置和 `fzf` 路径，减少首次交互前的探测：
+You can pin the active config and `fzf` executable in your PowerShell profile to reduce first-use discovery work:
 
 ```powershell
 $env:CDP_CONFIG = "$HOME\.cdp\projects.json"
 $env:CDP_FZF_PATH = "C:\Users\you\AppData\Local\Microsoft\WinGet\Links\fzf.exe"
 ```
 
-`CDP_FZF_PATH` 应填写 `(Get-Command fzf).Path` 返回的实际路径。`cdp` 也会在同一个 PowerShell 会话中缓存已解析的项目配置，配置文件被 `cdp-add`、`cdp-scan`、`cdp-rm` 修改后会自动失效并重新读取。
+Set `CDP_FZF_PATH` to the actual path returned by `(Get-Command fzf).Path`. `cdp` also caches the parsed project config within the current PowerShell session and automatically invalidates that cache after `cdp-add`, `cdp-scan`, or `cdp-rm` changes the config file.
 
 ---
 
-## 诊断与排错
+## Diagnostics
 
-先运行：
+Start with:
 
 ```powershell
 cdp doctor
 ```
 
-它会检查：
+It checks:
 
-- `fzf` 是否在 `PATH` 中
-- PowerShell Gallery 是否有新的 `cdp` 版本
-- bash/zsh 版是否安装 `jq`
-- 当前使用哪个配置文件
-- JSON 是否能解析
-- 项目字段是否完整
-- 是否有重复项目名
-- 启用项目的路径是否存在
+- Whether `fzf` is available in `PATH`
+- Whether a newer `cdp` version is available on PowerShell Gallery
+- Whether `jq` is installed for the bash/zsh version
+- Which config file is active
+- Whether JSON parsing works
+- Whether project fields are complete
+- Whether project names are duplicated
+- Whether enabled project paths exist
 
-常见问题：
+Common fixes:
 
 ```powershell
-# fzf 未安装
+# fzf missing
 winget install fzf
 
-# winget 不可用时
+# If winget is unavailable
 scoop install fzf
 choco install fzf -y
 
-# 重新导入模块
+# Reload the module
 Import-Module cdp -Force
 
-# 升级 cdp（PowerShell Gallery 安装）
+# Upgrade cdp when installed from PowerShell Gallery
 Update-Module -Name cdp -Scope CurrentUser -Force
 
-# 如果不是通过 Install-Module 安装，或 Update-Module 找不到旧安装记录
+# If it was not installed with Install-Module, or Update-Module cannot find the old install record
 Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber
 
-# 查看当前项目列表
+# List current projects
 cdp-ls
 
-# 安全修复配置
+# Safely repair config
 cdp clean
 cdp doctor --fix
 
-# 切换配置文件
+# Change config file
 cdp-config
 ```
 
 ---
 
-## 和其他工具的区别
+## How It Compares
 
-| 工具 | 项目切换 | 项目状态总览 | AI CLI 集成 | 说明 |
+| Tool | Project Switching | Status Overview | AI CLI Integration | Notes |
 | --- | --- | --- | --- | --- |
-| `cd` / Tab 补全 | 手动输入路径 | 无 | 无 | 路径深、项目多时成本高 |
-| `zoxide` / `autojump` | 按频率跳转 | 无 | 无 | 只知道路径，不知道”项目” |
-| 纯 `fzf cd` 脚本 | 扫描目录选择 | 无 | 无 | 一次性列表，无统一配置 |
-| VS Code Project Manager | 编辑器内切换 | 无 | 无 | 仅限编辑器内使用 |
-| **cdp** | **模糊搜索 + query 直达** | **`cdp status` 全仓库仪表盘** | **`-Open codex/claude/gemini`** | 终端里的项目工作台 |
+| `cd` / Tab | Manual path typing | None | None | Costly with deep paths and many projects |
+| `zoxide` / `autojump` | Frecency-based jump | None | None | Knows paths, not "projects" |
+| Plain `fzf cd` scripts | Scan & select | None | None | One-off lists, no unified config |
+| VS Code Project Manager | In-editor switch | None | None | Editor-only |
+| **cdp** | **Fuzzy search + query jump** | **`cdp status` full dashboard** | **`-Open codex/claude/gemini`** | Your project workbench in the terminal |
 
-cdp 的重点不是替代所有跳转工具，而是把”项目根目录切换”和”项目状态总览”合在一起。zoxide 擅长跳到去过的任意目录；cdp 知道你的项目列表、每个仓库的 Git 状态，还能一键启动 AI CLI。
+cdp does not try to replace every directory jumper. zoxide excels at jumping to any recently visited directory; cdp knows your project list, each repo's Git status, and can launch an AI CLI in one move.
 
 ---
 
-## 开发
+## Development
 
-### 官网预览与发布
+### Preview and Publish the Website
 
-官网是 `docs/` 下的纯静态 GitHub Pages 站点，无需安装前端依赖：
+The website is a dependency-free static GitHub Pages site under `docs/`:
 
 ```powershell
 python -m http.server 4173 --directory docs
 ```
 
-然后访问 `http://localhost:4173`。首次发布时，在 GitHub 仓库 **Settings → Pages** 中选择 **Deploy from a branch**，分支设为 `main`，目录设为 `/docs`；后续推送到 `main` 会自动更新官网。
+Then open `http://localhost:4173`. For the first deployment, open the GitHub repository's **Settings → Pages**, choose **Deploy from a branch**, set the branch to `main`, and select `/docs`; future pushes to `main` will update the site automatically.
 
 ```powershell
-# 导入本地模块
+# Import the local module
 Import-Module ./cdp.psd1 -Force
 
-# 运行诊断
+# Run diagnostics
 cdp doctor .\examples\projects.json
 
-# 运行测试
+# Run tests
 Import-Module Pester -MinimumVersion 5.5.0 -Force
 Invoke-Pester -Path ./tests -CI
 ```
 
-CI 覆盖：
+CI covers:
 
 - Windows PowerShell 5.1
 - PowerShell 7.x
@@ -472,32 +472,32 @@ CI 覆盖：
 
 ---
 
-## 路线图
+## Roadmap
 
-- [x] fzf 项目切换
-- [x] VS Code/Cursor Project Manager 配置读取
-- [x] 自定义配置文件
-- [x] 项目添加、删除、列出、配置切换
-- [x] PowerShell + WSL/Linux 支持
-- [x] `cdp doctor` 诊断命令
-- [x] GitHub Actions 基础 CI
-- [x] 最近访问项目
-- [x] 项目置顶 / 收藏
-- [x] `cdp <query>` 非交互快速匹配
-- [x] 批量扫描 Git 仓库生成配置
-- [x] 切换项目后启动 AI CLI / 编辑器
-- [x] `cdp doctor --fix` / `cdp clean` 自动修复失效路径和重复项
-- [x] `cdp init` 首次使用向导
-- [x] 项目标签 / 别名
-- [x] `cdp status` 多项目 Git 状态仪表盘
-- [x] macOS 原生支持（zsh + bash）
-- [x] 智能 Tab 补全（PowerShell + bash + zsh）
+- [x] fzf project switching
+- [x] VS Code/Cursor Project Manager config discovery
+- [x] Custom config files
+- [x] Add, remove, list, and config selection commands
+- [x] PowerShell + WSL/Linux support
+- [x] `cdp doctor` diagnostics
+- [x] GitHub Actions baseline CI
+- [x] Recent projects
+- [x] Pinned / favorite projects
+- [x] `cdp <query>` non-interactive matching
+- [x] Bulk scan Git repositories into config
+- [x] Start an AI CLI / editor after switching projects
+- [x] `cdp doctor --fix` / `cdp clean` for stale paths and duplicates
+- [x] `cdp init` first-run setup wizard
+- [x] Project tags / aliases
+- [x] `cdp status` multi-project Git status dashboard
+- [x] Native macOS support (zsh + bash)
+- [x] Intelligent tab completion (PowerShell + bash + zsh)
 
 ---
 
-## 贡献
+## Contributing
 
-欢迎提交 issue 和 PR。开始前请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+Issues and PRs are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
 
 ```powershell
 git clone https://github.com/GoldenZqqq/cdp.git
@@ -508,7 +508,7 @@ Import-Module ./cdp.psd1 -Force
 Invoke-Pester -Path ./tests -CI
 ```
 
-提交信息建议：
+Suggested commit messages:
 
 ```text
 Add: 添加项目健康检查命令
@@ -518,7 +518,7 @@ Docs: 重写快速开始说明
 
 ---
 
-## 致谢
+## Credits
 
 - [fzf](https://github.com/junegunn/fzf)
 - [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager)
