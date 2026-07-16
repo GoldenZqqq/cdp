@@ -1,0 +1,30 @@
+{
+  "id": "cdp-optimization-roadmap",
+  "name": "cdp-optimization-roadmap",
+  "title": "cdp 全面优化与版本演进路线",
+  "description": "按 2.0.4、2.1.0、2.2.0 三个版本里程碑修复稳定性、工程质量与自动化能力；每个子任务独立提交，每个版本统一推送和发布。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P0",
+  "creator": "GoldenZqqq",
+  "assignee": "GoldenZqqq",
+  "createdAt": "2026-07-16",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-16-v2-0-4-stabilization",
+    "07-16-v2-1-0-engineering",
+    "07-16-v2-2-0-automation"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
