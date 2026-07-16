@@ -22,13 +22,22 @@
 
 ## Acceptance Criteria
 
-- [ ] `cdp status --dirty @work <config>` 和合法排列产生相同结构化结果。
-- [ ] `cdp workspace --add team api web --open codex` 的项目仅为 `api`、`web`。
-- [ ] 缺少 option 值、未知 option、互斥动作返回可理解错误且无副作用。
-- [ ] 管理命令的自定义 config 不再被丢弃。
-- [ ] 新解析单元测试在 PowerShell 5.1/7 通过；shell 对等场景通过。
-- [ ] README 中已有示例保持兼容。
+- [x] `cdp status --dirty @work <config>` 和合法排列产生相同结构化结果。
+- [x] `cdp workspace --add team api web --open codex` 的项目仅为 `api`、`web`。
+- [x] 缺少 option 值、未知 option、互斥动作返回可理解错误且无副作用。
+- [x] 管理命令的自定义 config 不再被丢弃。
+- [x] 新解析单元测试在 PowerShell 5.1/7 通过；shell 对等场景通过。
+- [x] README 中已有示例保持兼容。
 
 ## Out of Scope
 
 - 本任务不改变 status 数据计算、workspace 启动布局或配置 schema。
+
+## Verification
+
+- PowerShell 7 Pester：32 passed，0 failed。
+- Windows PowerShell 5.1 Pester：32 passed，0 failed。
+- PSScriptAnalyzer `Severity Error`：0 findings。
+- Git Bash `tests/cdp.Cli.Tests.sh`：passed。
+- WSL Arch：`bash -n`、`zsh -n` passed；本机 Arch 缺少原生 jq，因此行为测试使用带 jq 的 Git Bash 执行，CI 的 Ubuntu/macOS job 会使用原生 jq 重跑。
+- `git diff --check`：passed。

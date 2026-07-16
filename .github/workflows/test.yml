@@ -94,6 +94,9 @@ jobs:
           bash -n ./src/cdp.sh
           bash -n ./install-wsl.sh
 
+      - name: Run shell CLI parser tests
+        run: bash ./tests/cdp.Cli.Tests.sh
+
       - name: Run bash doctor smoke test
         shell: bash
         run: |
@@ -163,6 +166,9 @@ jobs:
         run: |
           bash -n ./src/cdp.sh
           bash -n ./install-wsl.sh
+
+      - name: Run shell CLI parser tests
+        run: bash ./tests/cdp.Cli.Tests.sh
 
       - name: Run zsh smoke test
         shell: zsh {0}

@@ -172,6 +172,13 @@ cdp status
 # 只看需要关注的仓库（dirty / untracked / behind）
 cdp status --dirty
 
+# 组合过滤条件并使用显式配置文件
+cdp status --dirty '@work' E:\Projects\projects.json
+
+# 创建并启动多项目工作区
+cdp workspace --add fullstack api web --open codex
+cdp workspace fullstack
+
 # Tab 补全：输入 cdp 后按 Tab 自动补全子命令和项目名
 cdp s<TAB>  # → status, scan, ...
 
@@ -192,7 +199,7 @@ cdp -WSL
 fzf 菜单里输入几个字母即可模糊匹配：
 
 ```text
-cdp v2.0.3 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v2.0.4 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -262,6 +269,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
 | `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
+| `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
 | `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `Switch-Project` | - | 打开 fzf 菜单并切换项目 |
@@ -292,6 +300,7 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 | --- | --- |
 | `cdp` | 打开 fzf 菜单并切换项目 |
 | `cdp status` / `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
+| `cdp workspace` / `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp api --open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |

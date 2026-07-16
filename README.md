@@ -172,6 +172,13 @@ cdp status
 # Show only repos that need attention
 cdp status --dirty
 
+# Combine filters and use an explicit config
+cdp status --dirty '@work' E:\Projects\projects.json
+
+# Create and launch a multi-project workspace
+cdp workspace --add fullstack api web --open codex
+cdp workspace fullstack
+
 # Tab completion: press Tab after cdp to auto-complete subcommands and project names
 cdp s<TAB>  # → status, scan, ...
 
@@ -192,7 +199,7 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
-cdp v2.0.3 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v2.0.4 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -262,6 +269,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
 | `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
+| `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `Switch-Project` | - | Opens the fzf menu and switches projects |
@@ -292,6 +300,7 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
 | `cdp status` / `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
+| `cdp workspace` / `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp api --open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |

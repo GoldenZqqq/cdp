@@ -6,10 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 1.8.0
+# Version: 2.0.4
 # License: MIT
 
-CDP_VERSION="2.0.3"
+CDP_VERSION="2.0.4"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
@@ -787,11 +787,36 @@ cdp-status() {
             --dirty|-d) dirty_only=true ;;
             --fix)      do_fix=true ;;
             --push)     do_push=true ;;
-            @*)         tag_filter="$1" ;;
-            *)          config_path="$1" ;;
+            --config)
+                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --config.${NC}"; return 1; }
+                [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
+                config_path="$2"
+                shift
+                ;;
+            @*)
+                [[ -n "$tag_filter" ]] && { echo -e "${RED}Error: only one status tag filter is allowed.${NC}"; return 1; }
+                tag_filter="$1"
+                ;;
+            -*)
+                echo -e "${RED}Error: unknown status option: $1${NC}"
+                return 1
+                ;;
+            *)
+                [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
+                config_path="$1"
+                ;;
         esac
         shift
     done
+
+    if $do_fix && $do_push; then
+        echo -e "${RED}Error: --fix and --push cannot be used together.${NC}"
+        return 1
+    fi
+    if $dirty_only && { $do_fix || $do_push; }; then
+        echo -e "${RED}Error: --dirty cannot be combined with status actions.${NC}"
+        return 1
+    fi
 
     if ! command -v jq &> /dev/null; then
         echo -e "${RED}Error: 'jq' command not found.${NC}"
@@ -1058,21 +1083,54 @@ cdp-status() {
 }
 
 cdp-workspace() {
-    local action="${1:-}"
+    local action=""
+    local config_path=""
+    local open_override=""
+    local workspace_args=()
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --open|-o)
+                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --open.${NC}"; return 1; }
+                [[ -n "$open_override" ]] && { echo -e "${RED}Error: --open specified more than once.${NC}"; return 1; }
+                open_override="$2"
+                shift 2
+                ;;
+            --config)
+                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --config.${NC}"; return 1; }
+                [[ -n "$config_path" ]] && { echo -e "${RED}Error: --config specified more than once.${NC}"; return 1; }
+                config_path="$2"
+                shift 2
+                ;;
+            *)
+                workspace_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    set -- "${workspace_args[@]}"
+    action="${1:-}"
+    [[ $# -gt 0 ]] && shift
 
     if ! command -v jq &>/dev/null; then
         echo -e "${RED}Error: 'jq' command not found.${NC}"
         return 1
     fi
 
-    local config_path
-    config_path=$(get_default_config 2>/dev/null)
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config 2>/dev/null)
+    fi
     local config_dir
     config_dir=$(dirname "$config_path" 2>/dev/null)
     local ws_path="${config_dir}/workspaces.json"
 
     case "$action" in
         --list|-l|list)
+            if [[ $# -gt 0 ]]; then
+                echo -e "${RED}Error: workspace --list does not accept project arguments.${NC}"
+                return 1
+            fi
             if [[ ! -f "$ws_path" ]]; then
                 echo -e "${YELLOW}No workspaces defined.${NC}"
                 echo -e "${GRAY}Create one: cdp workspace --add <name> <project1> <project2> ...${NC}"
@@ -1085,9 +1143,8 @@ cdp-workspace() {
             printf '%.0s-' {1..60}; echo ""
             ;;
         --add|-a|add)
-            shift
             local ws_name="${1:-}"
-            shift 2>/dev/null || true
+            [[ $# -gt 0 ]] && shift
             local ws_projects=("$@")
 
             if [[ -z "$ws_name" || ${#ws_projects[@]} -eq 0 ]]; then
@@ -1104,7 +1161,11 @@ cdp-workspace() {
             projects_json=$(printf '%s\n' "${ws_projects[@]}" | jq -R . | jq -s .)
 
             local new_ws
-            new_ws=$(jq -n --arg name "$ws_name" --argjson projects "$projects_json" '{name: $name, projects: $projects}')
+            if [[ -n "$open_override" ]]; then
+                new_ws=$(jq -n --arg name "$ws_name" --argjson projects "$projects_json" --arg open "$open_override" '{name: $name, projects: $projects, open: $open}')
+            else
+                new_ws=$(jq -n --arg name "$ws_name" --argjson projects "$projects_json" '{name: $name, projects: $projects}')
+            fi
 
             if [[ -f "$ws_path" ]]; then
                 local existing
@@ -1121,6 +1182,10 @@ cdp-workspace() {
             if [[ -z "$ws_name" ]]; then
                 echo -e "${YELLOW}Usage: cdp workspace <name> | cdp workspace --list | cdp workspace --add <name> <projects...>${NC}"
                 return
+            fi
+            if [[ $# -gt 0 ]]; then
+                echo -e "${RED}Error: workspace launch accepts one workspace name.${NC}"
+                return 1
             fi
 
             if [[ ! -f "$ws_path" ]]; then
@@ -1140,6 +1205,7 @@ cdp-workspace() {
 
             local ws_open
             ws_open=$(echo "$ws_data" | jq -r '.open // empty')
+            [[ -n "$open_override" ]] && ws_open="$open_override"
             local ws_projects_list
             ws_projects_list=$(echo "$ws_data" | jq -r '.projects[]')
 

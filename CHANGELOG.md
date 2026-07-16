@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.4
+
+### Fixed
+
+- Reworked CLI argument parsing so `status` filters, tags, actions, and custom config paths are interpreted independently of order.
+- Prevented `workspace --open` and its launcher value from leaking into the workspace project list.
+- Preserved custom config paths for short project-management commands.
+
 ## 1.8.0
 
 ### Added

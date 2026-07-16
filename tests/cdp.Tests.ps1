@@ -20,7 +20,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '2.0.3'
+        $manifest.Version.ToString() | Should -Be '2.0.4'
     }
 }
 
@@ -372,7 +372,7 @@ Describe 'project configuration helpers' {
 
         $about = Show-CdpAbout -ConfigPath $configPath -PassThru
         $about.Name | Should -Be 'cdp'
-        $about.Version | Should -Be '2.0.3'
+        $about.Version | Should -Be '2.0.4'
         $about.ConfigPath | Should -Be $configPath
         $about.ProjectCount | Should -Be 1
         $about.EnabledProjectCount | Should -Be 1
@@ -627,5 +627,163 @@ Describe 'project configuration helpers' {
         $projects = @(Read-TestProjects -Path $configPath)
         $projects.Count | Should -Be 1
         $projects[0].rootPath | Should -Be $repoPath
+    }
+}
+
+Describe 'cdp invocation parser' {
+    It 'parses status filters independently of argument order' {
+        InModuleScope cdp {
+            $configPath = 'C:\Temp\projects.json'
+            $first = ConvertFrom-CdpInvokeArguments `
+                -Command 'status' `
+                -ConfigPath '--dirty' `
+                -RemainingArgs @('@work', $configPath)
+            $second = ConvertFrom-CdpInvokeArguments `
+                -Command 'status' `
+                -ConfigPath '@work' `
+                -RemainingArgs @($configPath, '--dirty')
+
+            $first.Kind | Should -Be 'status'
+            $first.DirtyOnly | Should -BeTrue
+            $first.TagFilter | Should -Be '@work'
+            $first.ConfigPath | Should -Be $configPath
+            $second.DirtyOnly | Should -BeTrue
+            $second.TagFilter | Should -Be '@work'
+            $second.ConfigPath | Should -Be $configPath
+        }
+    }
+
+    It 'consumes workspace open options instead of treating them as projects' {
+        InModuleScope cdp {
+            $parsed = ConvertFrom-CdpInvokeArguments `
+                -Command 'workspace' `
+                -ConfigPath '--add' `
+                -RemainingArgs @('team', 'api', 'web', '--open', 'codex')
+
+            $parsed.Kind | Should -Be 'workspace'
+            $parsed.WorkspaceAction | Should -Be 'add'
+            $parsed.WorkspaceName | Should -Be 'team'
+            @($parsed.Projects) | Should -Be @('api', 'web')
+            $parsed.Open | Should -Be 'codex'
+        }
+    }
+
+    It 'passes custom config paths through management commands' {
+        InModuleScope cdp {
+            $configPath = 'C:\Temp\projects.json'
+            $pin = ConvertFrom-CdpInvokeArguments `
+                -Command 'pin' `
+                -ConfigPath 'api' `
+                -RemainingArgs @($configPath)
+            $metadata = ConvertFrom-CdpInvokeArguments `
+                -Command 'alias' `
+                -ConfigPath 'api' `
+                -RemainingArgs @('backend', $configPath)
+            $scan = ConvertFrom-CdpInvokeArguments `
+                -Command 'scan' `
+                -ConfigPath 'C:\Repos' `
+                -RemainingArgs @($configPath, '3')
+
+            $pin.Name | Should -Be 'api'
+            $pin.ConfigPath | Should -Be $configPath
+            $metadata.Name | Should -Be 'api'
+            $metadata.Value | Should -Be 'backend'
+            $metadata.ConfigPath | Should -Be $configPath
+            $scan.RootPath | Should -Be 'C:\Repos'
+            $scan.ConfigPath | Should -Be $configPath
+            $scan.MaxDepth | Should -Be 3
+        }
+    }
+
+    It 'rejects conflicting actions and incomplete options' {
+        InModuleScope cdp {
+            {
+                ConvertFrom-CdpInvokeArguments `
+                    -Command 'status' `
+                    -ConfigPath '--fix' `
+                    -RemainingArgs @('--push')
+            } | Should -Throw '*cannot be used together*'
+
+            {
+                ConvertFrom-CdpInvokeArguments `
+                    -Command 'workspace' `
+                    -ConfigPath '--add' `
+                    -RemainingArgs @('team', '--open')
+            } | Should -Throw '*Missing value after --open*'
+
+            {
+                ConvertFrom-CdpInvokeArguments `
+                    -Command 'status' `
+                    -ConfigPath '--unknown'
+            } | Should -Throw '*Unknown status option*'
+
+            {
+                ConvertFrom-CdpInvokeArguments `
+                    -Command 'workspace' `
+                    -ConfigPath '--list' `
+                    -RemainingArgs @('--open', 'codex')
+            } | Should -Throw '*not valid with workspace --list*'
+        }
+    }
+
+    It 'keeps classic switch syntax compatible' {
+        InModuleScope cdp {
+            $configPath = 'C:\Temp\projects.json'
+            $parsed = ConvertFrom-CdpInvokeArguments `
+                -Command 'api' `
+                -ConfigPath $configPath `
+                -RemainingArgs @('--open', 'codex')
+
+            $parsed.Kind | Should -Be 'switch'
+            $parsed.Query | Should -Be 'api'
+            $parsed.ConfigPath | Should -Be $configPath
+            $parsed.Open | Should -Be 'codex'
+        }
+    }
+
+    It 'routes combined status filters to the status command' {
+        InModuleScope cdp {
+            Mock Show-CdpProjectStatus {}
+            $configPath = 'C:\Temp\projects.json'
+
+            Invoke-Cdp status --dirty '@work' $configPath
+
+            Should -Invoke Show-CdpProjectStatus -Times 1 -Exactly -ParameterFilter {
+                $DirtyOnly -and
+                $TagFilter -eq '@work' -and
+                $ConfigPath -eq 'C:\Temp\projects.json' -and
+                -not $Fix -and
+                -not $Push
+            }
+        }
+    }
+
+    It 'routes workspace options without leaking option tokens into projects' {
+        InModuleScope cdp {
+            Mock Invoke-CdpWorkspace {}
+
+            Invoke-Cdp workspace --add team api web --open codex --config 'C:\Temp\projects.json'
+
+            Should -Invoke Invoke-CdpWorkspace -Times 1 -Exactly -ParameterFilter {
+                $Add -eq 'team' -and
+                @($Projects).Count -eq 2 -and
+                $Projects[0] -eq 'api' -and
+                $Projects[1] -eq 'web' -and
+                $Open -eq 'codex' -and
+                $ConfigPath -eq 'C:\Temp\projects.json'
+            }
+        }
+    }
+
+    It 'routes custom config paths to management commands' {
+        InModuleScope cdp {
+            Mock Set-ProjectPin {}
+
+            Invoke-Cdp pin api 'C:\Temp\projects.json'
+
+            Should -Invoke Set-ProjectPin -Times 1 -Exactly -ParameterFilter {
+                $Name -eq 'api' -and $ConfigPath -eq 'C:\Temp\projects.json'
+            }
+        }
     }
 }

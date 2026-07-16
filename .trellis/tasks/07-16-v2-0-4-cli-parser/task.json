@@ -3,7 +3,7 @@
   "name": "v2-0-4-cli-parser",
   "title": "修复 CLI 参数解析与组合选项",
   "description": "拆出可测试的参数解释逻辑，修复 status 组合过滤、workspace --open 残留和自定义配置路径丢失。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

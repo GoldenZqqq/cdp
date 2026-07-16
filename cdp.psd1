@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.0.3'
+ModuleVersion = '2.0.4'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.0.4 - Stability Fixes
+- Fixed: CLI options are parsed independently of order for status and workspace commands
+- Fixed: Custom config paths are preserved by short management commands
+- Fixed: workspace --open tokens are no longer treated as project names
+
 v2.0.3 - CJK Column Alignment
 - Fixed: Long project names (especially CJK/Chinese) no longer misalign the Branch/Status/Sync/Last Commit columns
 - Added: Display-width-aware text limiting and padding (CJK chars = 2 columns)

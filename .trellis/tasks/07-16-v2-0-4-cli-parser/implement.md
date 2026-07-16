@@ -16,7 +16,8 @@
 - `src/cdp.psm1`
 - `src/cdp.sh`
 - `tests/cdp.Tests.ps1`
-- 必要时新增 `tests/fixtures/cli-invocations.json` 和定向 shell 测试入口
+- `.github/workflows/test.yml`
+- `tests/cdp.Cli.Tests.sh` 定向 shell 测试入口
 - `cdp.psd1`、`tests/cdp.Tests.ps1` 中版本预期（若模块版本进入 2.0.4 开发态）
 
 ## Validation

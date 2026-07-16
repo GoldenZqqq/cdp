@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 2.0.3
+    Version: 2.0.4
     License: MIT
 #>
 
@@ -938,52 +938,251 @@ function Invoke-CdpWorkspaceLauncher {
     & $launcher.Command @($launcher.Arguments)
 }
 
-function ConvertFrom-CdpInvokeArguments {
-    param(
-        [string]$Command,
-        [string]$ConfigPath,
-        [string]$Query,
-        [string]$Open,
-        [string[]]$RemainingArgs
-    )
-
-    $remaining = if ($null -eq $RemainingArgs) { @() } else { @($RemainingArgs) }
-    $openTokens = @('--open', '-open')
-
-    if ([string]::IsNullOrWhiteSpace($Open)) {
-        if ($Command -in $openTokens) {
-            if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
-                throw "Missing launcher after --open."
-            }
-            $Open = $ConfigPath
-            $Command = if ($remaining.Count -ge 1) { $remaining[0] } else { $null }
-            $ConfigPath = if ($remaining.Count -ge 2) { $remaining[1] } else { $null }
-        } elseif ($ConfigPath -in $openTokens) {
-            if ($remaining.Count -lt 1) {
-                throw "Missing launcher after --open."
-            }
-            $Open = $remaining[0]
-            $ConfigPath = if ($remaining.Count -ge 2) { $remaining[1] } else { $null }
-        } else {
-            for ($i = 0; $i -lt $remaining.Count; $i++) {
-                if ($remaining[$i] -in $openTokens) {
-                    if ($i + 1 -ge $remaining.Count) {
-                        throw "Missing launcher after --open."
-                    }
-                    $Open = $remaining[$i + 1]
-                    break
-                }
-            }
-        }
-    }
+function New-CdpInvocation {
+    param([string]$Kind)
 
     [PSCustomObject]@{
-        Command = $Command
-        ConfigPath = $ConfigPath
-        Query = $Query
-        Open = $Open
-        RemainingArgs = $remaining
+        Kind = $Kind
+        Command = $Kind
+        ConfigPath = $null
+        Query = $null
+        Open = $null
+        DirtyOnly = $false
+        Fix = $false
+        Push = $false
+        TagFilter = $null
+        WorkspaceAction = $null
+        WorkspaceName = $null
+        Projects = @()
+        Name = $null
+        Value = $null
+        RootPath = $null
+        MaxDepth = 4
+        Count = 10
     }
+}
+
+function Get-CdpInvocationTokens {
+    param([string]$Command, [string]$ConfigPath, [string[]]$RemainingArgs)
+
+    $tokens = @()
+    if (-not [string]::IsNullOrWhiteSpace($Command)) { $tokens += $Command }
+    if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $tokens += $ConfigPath }
+    if ($null -ne $RemainingArgs) { $tokens += @($RemainingArgs) }
+    @($tokens | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function Split-CdpCommonOptions {
+    param([string[]]$Tokens, [string]$Open)
+
+    $positionals = New-Object 'System.Collections.Generic.List[string]'
+    $resolvedOpen = $Open
+    $resolvedConfig = $null
+    for ($i = 0; $i -lt $Tokens.Count; $i++) {
+        $token = $Tokens[$i]
+        if ($token -in @('--open', '-open', '-o')) {
+            if ($i + 1 -ge $Tokens.Count) { throw "Missing value after --open." }
+            if (-not [string]::IsNullOrWhiteSpace($resolvedOpen)) { throw "The --open option was specified more than once." }
+            $resolvedOpen = $Tokens[++$i]
+            continue
+        }
+        if ($token -in @('--config', '-config')) {
+            if ($i + 1 -ge $Tokens.Count) { throw "Missing value after --config." }
+            if (-not [string]::IsNullOrWhiteSpace($resolvedConfig)) { throw "The --config option was specified more than once." }
+            $resolvedConfig = $Tokens[++$i]
+            continue
+        }
+        $positionals.Add($token)
+    }
+
+    [PSCustomObject]@{ Tokens = @($positionals); Open = $resolvedOpen; ConfigPath = $resolvedConfig }
+}
+
+function Resolve-CdpCommandKind {
+    param([string]$Command)
+
+    if ([string]::IsNullOrWhiteSpace($Command)) { return $null }
+    switch -Regex ($Command.ToLowerInvariant()) {
+        '^(status|st)$' { return 'status' }
+        '^(workspace|ws)$' { return 'workspace' }
+        '^(doctor|health|check)$' { return 'doctor' }
+        '^(about|version|--version|-v)$' { return 'about' }
+        '^(recent|recents|history)$' { return 'recent' }
+        '^(pin|pinned|favorite|star)$' { return 'pin' }
+        '^(unpin|unfavorite|unstar)$' { return 'unpin' }
+        '^(alias|add-alias)$' { return 'alias' }
+        '^(unalias|remove-alias)$' { return 'unalias' }
+        '^(tag|add-tag)$' { return 'tag' }
+        '^(untag|remove-tag)$' { return 'untag' }
+        '^(clean|repair|fix)$' { return 'clean' }
+        '^(init|setup)$' { return 'init' }
+        '^(scan|import)$' { return 'scan' }
+        default { return $null }
+    }
+}
+
+function ConvertFrom-CdpStatusTokens {
+    param([string[]]$Tokens, [string]$ConfigPath)
+
+    $result = New-CdpInvocation -Kind 'status'
+    $result.ConfigPath = $ConfigPath
+    foreach ($token in $Tokens) {
+        if ($token -in @('--dirty', '-dirty', '-d')) { $result.DirtyOnly = $true; continue }
+        if ($token -in @('--fix', '-fix')) { $result.Fix = $true; continue }
+        if ($token -in @('--push', '-push')) { $result.Push = $true; continue }
+        if ($token.StartsWith('@')) {
+            if ($result.TagFilter) { throw "Only one status tag filter can be specified." }
+            $result.TagFilter = $token
+            continue
+        }
+        if ($token.StartsWith('-')) { throw "Unknown status option: $token" }
+        if ($result.ConfigPath) { throw "Only one status config path can be specified." }
+        $result.ConfigPath = $token
+    }
+    if ($result.Fix -and $result.Push) { throw "The --fix and --push actions cannot be used together." }
+    if ($result.DirtyOnly -and ($result.Fix -or $result.Push)) { throw "The --dirty filter and status actions cannot be used together." }
+    $result
+}
+
+function ConvertFrom-CdpWorkspaceTokens {
+    param([string[]]$Tokens, [string]$ConfigPath, [string]$Open)
+
+    $result = New-CdpInvocation -Kind 'workspace'
+    $result.ConfigPath = $ConfigPath
+    $result.Open = $Open
+    if ($Tokens.Count -eq 0) {
+        if ($Open) { throw "The --open option requires a workspace name or --add action." }
+        $result.WorkspaceAction = 'usage'
+        return $result
+    }
+    $action = $Tokens[0].ToLowerInvariant()
+    if ($action -in @('--list', '-l', 'list')) {
+        if ($Open) { throw "The --open option is not valid with workspace --list." }
+        if ($Tokens.Count -ne 1) { throw "Workspace --list does not accept project arguments." }
+        $result.WorkspaceAction = 'list'
+        return $result
+    }
+    if ($action -in @('--add', '-a', 'add')) {
+        if ($Tokens.Count -lt 3) { throw "Workspace --add requires a name and at least one project." }
+        $result.WorkspaceAction = 'add'
+        $result.WorkspaceName = $Tokens[1]
+        $result.Projects = @($Tokens | Select-Object -Skip 2)
+        return $result
+    }
+    if ($Tokens.Count -ne 1) { throw "Workspace launch accepts one workspace name." }
+    if ($Tokens[0].StartsWith('-')) { throw "Unknown workspace option: $($Tokens[0])" }
+    $result.WorkspaceAction = 'open'
+    $result.WorkspaceName = $Tokens[0]
+    $result
+}
+
+function Set-CdpTrailingConfigPath {
+    param([object]$Result, [string[]]$Arguments, [int]$RequiredCount)
+
+    if ($Arguments.Count -lt $RequiredCount -or $Arguments.Count -gt ($RequiredCount + 1)) {
+        throw "Invalid arguments for cdp $($Result.Kind)."
+    }
+    if ($Arguments.Count -eq ($RequiredCount + 1)) {
+        if ($Result.ConfigPath) { throw "The config path was specified more than once." }
+        $Result.ConfigPath = $Arguments[-1]
+    }
+}
+
+function ConvertFrom-CdpManagementTokens {
+    param([string]$Kind, [string[]]$Tokens, [string]$ConfigPath)
+
+    $result = New-CdpInvocation -Kind $Kind
+    $result.ConfigPath = $ConfigPath
+    if ($Kind -eq 'doctor') {
+        $items = @($Tokens | Where-Object { if ($_ -in @('--fix', '-fix')) { $result.Fix = $true; $false } else { $true } })
+        Set-CdpTrailingConfigPath -Result $result -Arguments $items -RequiredCount 0
+    } elseif ($Kind -in @('about', 'clean')) {
+        Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 0
+    } elseif ($Kind -eq 'recent') {
+        if ($Tokens.Count -gt 1) { throw "Recent count must be a positive integer." }
+        if ($Tokens.Count -eq 1) {
+            $recentCount = 0
+            if (-not [int]::TryParse($Tokens[0], [ref]$recentCount)) { throw "Recent count must be a positive integer." }
+            $result.Count = $recentCount
+        }
+        if ($result.Count -le 0) { throw "Recent count must be a positive integer." }
+    } elseif ($Kind -in @('pin', 'unpin')) {
+        Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 1
+        $result.Name = $Tokens[0]
+    } elseif ($Kind -in @('alias', 'unalias', 'tag', 'untag')) {
+        Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 2
+        $result.Name = $Tokens[0]
+        $result.Value = $Tokens[1]
+    } else {
+        $result = ConvertFrom-CdpScanTokens -Kind $Kind -Tokens $Tokens -ConfigPath $ConfigPath
+    }
+    $result
+}
+
+function ConvertFrom-CdpScanTokens {
+    param([string]$Kind, [string[]]$Tokens, [string]$ConfigPath)
+
+    $result = New-CdpInvocation -Kind $Kind
+    $result.ConfigPath = $ConfigPath
+    if ($Tokens.Count -gt 0) { $result.RootPath = $Tokens[0] }
+    $depthSet = $false
+    foreach ($token in @($Tokens | Select-Object -Skip 1)) {
+        $depth = 0
+        if ([int]::TryParse($token, [ref]$depth)) {
+            if ($depthSet -or $depth -lt 1) { throw "Max depth must be one positive integer." }
+            $result.MaxDepth = $depth
+            $depthSet = $true
+        } elseif (-not $result.ConfigPath) {
+            $result.ConfigPath = $token
+        } else {
+            throw "The config path was specified more than once."
+        }
+    }
+    $result
+}
+
+function ConvertFrom-CdpSwitchTokens {
+    param([string[]]$Tokens, [string]$Query, [string]$ConfigPath, [string]$Open)
+
+    $result = New-CdpInvocation -Kind 'switch'
+    $result.Query = $Query
+    $result.ConfigPath = $ConfigPath
+    $result.Open = $Open
+    $items = @($Tokens)
+    if ([string]::IsNullOrWhiteSpace($result.Query) -and $items.Count -gt 0 -and -not (Test-CdpConfigPathArgument $items[0])) {
+        $result.Query = $items[0]
+        $items = @($items | Select-Object -Skip 1)
+    }
+    if ($items.Count -gt 1) { throw "Project switching accepts one query and one config path." }
+    if ($items.Count -eq 1) {
+        if ($items[0].StartsWith('-')) { throw "Unknown cdp option: $($items[0])" }
+        if ($result.ConfigPath) { throw "The config path was specified more than once." }
+        $result.ConfigPath = $items[0]
+    }
+    $result
+}
+
+function ConvertFrom-CdpInvokeArguments {
+    param([string]$Command, [string]$ConfigPath, [string]$Query, [string]$Open, [string[]]$RemainingArgs)
+
+    $tokens = @(Get-CdpInvocationTokens -Command $Command -ConfigPath $ConfigPath -RemainingArgs $RemainingArgs)
+    $common = Split-CdpCommonOptions -Tokens $tokens -Open $Open
+    $tokens = @($common.Tokens)
+    $kind = if ($tokens.Count -gt 0) { Resolve-CdpCommandKind -Command $tokens[0] } else { $null }
+    if ($kind) { $tokens = @($tokens | Select-Object -Skip 1) }
+
+    if ($kind -eq 'status') {
+        if ($common.Open) { throw "The --open option is not valid for status." }
+        return ConvertFrom-CdpStatusTokens -Tokens $tokens -ConfigPath $common.ConfigPath
+    }
+    if ($kind -eq 'workspace') {
+        return ConvertFrom-CdpWorkspaceTokens -Tokens $tokens -ConfigPath $common.ConfigPath -Open $common.Open
+    }
+    if ($kind) {
+        if ($common.Open) { throw "The --open option is only valid for project and workspace commands." }
+        return ConvertFrom-CdpManagementTokens -Kind $kind -Tokens $tokens -ConfigPath $common.ConfigPath
+    }
+    ConvertFrom-CdpSwitchTokens -Tokens $tokens -Query $Query -ConfigPath $common.ConfigPath -Open $common.Open
 }
 
 # Helper function to get stored config choice path
@@ -2224,8 +2423,12 @@ function Get-CdpGitProjectInfo {
 }
 
 function Get-CdpWorkspacesPath {
-    $configPath = Get-DefaultConfigPath
-    $configDir = Split-Path -Parent $configPath
+    param([string]$ConfigPath)
+
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Get-DefaultConfigPath
+    }
+    $configDir = Split-Path -Parent $ConfigPath
     return Join-Path $configDir 'workspaces.json'
 }
 
@@ -2260,10 +2463,13 @@ function Invoke-CdpWorkspace {
         [string[]]$Projects,
 
         [Parameter(Mandatory = $false)]
-        [string]$Open
+        [string]$Open,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ConfigPath
     )
 
-    $wsPath = Get-CdpWorkspacesPath
+    $wsPath = Get-CdpWorkspacesPath -ConfigPath $ConfigPath
 
     if ($List) {
         $workspaces = Get-CdpWorkspaces -WorkspacesPath $wsPath
@@ -2330,8 +2536,10 @@ function Invoke-CdpWorkspace {
         return
     }
 
-    $configPath = Get-DefaultConfigPath
-    $configData = Get-CdpProjectConfig -ConfigPath $configPath
+    if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+        $ConfigPath = Get-DefaultConfigPath
+    }
+    $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
     $launcher = if (-not [string]::IsNullOrWhiteSpace($Open)) { $Open } elseif ($ws.open) { $ws.open } else { "" }
 
     $hasWt = $null -ne (Get-Command wt.exe -ErrorAction SilentlyContinue)
@@ -3218,6 +3426,67 @@ function Test-ProjectHealth {
     }
 }
 
+function Invoke-CdpStatusInvocation {
+    param([object]$Invocation)
+
+    Show-CdpProjectStatus `
+        -ConfigPath $Invocation.ConfigPath `
+        -DirtyOnly:$Invocation.DirtyOnly `
+        -TagFilter $Invocation.TagFilter `
+        -Fix:$Invocation.Fix `
+        -Push:$Invocation.Push
+}
+
+function Invoke-CdpWorkspaceInvocation {
+    param([object]$Invocation)
+
+    switch ($Invocation.WorkspaceAction) {
+        'list' { Invoke-CdpWorkspace -List -ConfigPath $Invocation.ConfigPath; return }
+        'add' {
+            Invoke-CdpWorkspace `
+                -Add $Invocation.WorkspaceName `
+                -Projects $Invocation.Projects `
+                -Open $Invocation.Open `
+                -ConfigPath $Invocation.ConfigPath
+            return
+        }
+        'open' {
+            Invoke-CdpWorkspace `
+                -Name $Invocation.WorkspaceName `
+                -Open $Invocation.Open `
+                -ConfigPath $Invocation.ConfigPath
+            return
+        }
+        default { Invoke-CdpWorkspace -ConfigPath $Invocation.ConfigPath }
+    }
+}
+
+function Invoke-CdpManagementInvocation {
+    param([object]$Invocation)
+
+    switch ($Invocation.Kind) {
+        'doctor' {
+            if ($Invocation.Fix) { Repair-ProjectConfig -ConfigPath $Invocation.ConfigPath }
+            else { Test-ProjectHealth -ConfigPath $Invocation.ConfigPath }
+        }
+        'about' { Show-CdpAbout -ConfigPath $Invocation.ConfigPath }
+        'recent' { Get-CdpRecentProjects -Count $Invocation.Count }
+        'pin' { Set-ProjectPin -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
+        'unpin' { Clear-ProjectPin -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
+        'alias' { Add-ProjectAlias -Name $Invocation.Name -Alias $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'unalias' { Remove-ProjectAlias -Name $Invocation.Name -Alias $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'tag' { Add-ProjectTag -Name $Invocation.Name -Tag $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'untag' { Remove-ProjectTag -Name $Invocation.Name -Tag $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'clean' { Repair-ProjectConfig -ConfigPath $Invocation.ConfigPath }
+        'init' {
+            Initialize-Cdp -RootPath $Invocation.RootPath -ConfigPath $Invocation.ConfigPath -MaxDepth $Invocation.MaxDepth
+        }
+        'scan' {
+            Import-GitProjects -RootPath $Invocation.RootPath -ConfigPath $Invocation.ConfigPath -MaxDepth $Invocation.MaxDepth
+        }
+    }
+}
+
 function Invoke-Cdp {
     <#
     .SYNOPSIS
@@ -3284,149 +3553,30 @@ function Invoke-Cdp {
     )
 
     try {
-        $parsedArgs = ConvertFrom-CdpInvokeArguments `
+        $invocation = ConvertFrom-CdpInvokeArguments `
             -Command $Command `
             -ConfigPath $ConfigPath `
             -Query $Query `
             -Open $Open `
             -RemainingArgs $RemainingArgs
-        $Command = $parsedArgs.Command
-        $ConfigPath = $parsedArgs.ConfigPath
-        $Query = $parsedArgs.Query
-        $Open = $parsedArgs.Open
-        $RemainingArgs = @($parsedArgs.RemainingArgs)
     } catch {
         Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
         return
     }
 
-    if ($Command -in @('status', 'st')) {
-        $statusDirty = $ConfigPath -in @('--dirty', '-dirty', '-d')
-        $statusFix = $ConfigPath -in @('--fix', '-fix')
-        $statusPush = $ConfigPath -in @('--push', '-push')
-        $statusTag = $null
-        $statusConfigPath = $null
-
-        if (-not $statusDirty -and -not $statusFix -and -not $statusPush -and -not [string]::IsNullOrWhiteSpace($ConfigPath)) {
-            if ($ConfigPath.StartsWith('@')) {
-                $statusTag = $ConfigPath
-            } else {
-                $statusConfigPath = $ConfigPath
-            }
+    switch ($invocation.Kind) {
+        'status' { Invoke-CdpStatusInvocation -Invocation $invocation; return }
+        'workspace' { Invoke-CdpWorkspaceInvocation -Invocation $invocation; return }
+        'switch' {
+            Switch-Project `
+                -ConfigPath $invocation.ConfigPath `
+                -Query $invocation.Query `
+                -WSL:$WSL `
+                -Open $invocation.Open
+            return
         }
-
-        # A flag can carry a trailing config path in RemainingArgs
-        if (($statusDirty -or $statusFix -or $statusPush) -and $RemainingArgs.Count -ge 1) {
-            $statusConfigPath = $RemainingArgs[0]
-        }
-
-        Show-CdpProjectStatus -ConfigPath $statusConfigPath -DirtyOnly:$statusDirty -TagFilter $statusTag -Fix:$statusFix -Push:$statusPush
-        return
+        default { Invoke-CdpManagementInvocation -Invocation $invocation }
     }
-
-    if ($Command -in @('doctor', 'health', 'check')) {
-        if ($ConfigPath -in @('--fix', '-fix')) {
-            Repair-ProjectConfig
-        } else {
-            Test-ProjectHealth -ConfigPath $ConfigPath
-        }
-        return
-    }
-
-    if ($Command -in @('about', 'version', '--version', '-v')) {
-        Show-CdpAbout -ConfigPath $ConfigPath
-        return
-    }
-
-    if ($Command -in @('recent', 'recents', 'history')) {
-        $recentCount = 10
-        if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) {
-            $parsedRecentCount = 0
-            if ([int]::TryParse($ConfigPath, [ref]$parsedRecentCount) -and $parsedRecentCount -gt 0) {
-                $recentCount = $parsedRecentCount
-            }
-        }
-        Get-CdpRecentProjects -Count $recentCount
-        return
-    }
-
-    if ($Command -in @('pin', 'pinned', 'favorite', 'star')) {
-        Set-ProjectPin -Name $ConfigPath
-        return
-    }
-
-    if ($Command -in @('unpin', 'unfavorite', 'unstar')) {
-        Clear-ProjectPin -Name $ConfigPath
-        return
-    }
-
-    if ($Command -in @('alias', 'add-alias')) {
-        Add-ProjectAlias -Name $ConfigPath -Alias $RemainingArgs[0]
-        return
-    }
-
-    if ($Command -in @('unalias', 'remove-alias')) {
-        Remove-ProjectAlias -Name $ConfigPath -Alias $RemainingArgs[0]
-        return
-    }
-
-    if ($Command -in @('tag', 'add-tag')) {
-        Add-ProjectTag -Name $ConfigPath -Tag $RemainingArgs[0]
-        return
-    }
-
-    if ($Command -in @('untag', 'remove-tag')) {
-        Remove-ProjectTag -Name $ConfigPath -Tag $RemainingArgs[0]
-        return
-    }
-
-    if ($Command -in @('clean', 'repair', 'fix')) {
-        Repair-ProjectConfig -ConfigPath $ConfigPath
-        return
-    }
-
-    if ($Command -in @('init', 'setup')) {
-        Initialize-Cdp -RootPath $ConfigPath
-        return
-    }
-
-    if ($Command -in @('scan', 'import')) {
-        Import-GitProjects -RootPath $ConfigPath
-        return
-    }
-
-    if ($Command -in @('workspace', 'ws')) {
-        $wsList = $ConfigPath -in @('--list', '-l', 'list')
-        $wsAdd = $null
-        $wsProjects = @()
-        $wsOpen = $Open
-
-        if ($ConfigPath -in @('--add', '-a', 'add') -and $RemainingArgs.Count -ge 1) {
-            $wsAdd = $RemainingArgs[0]
-            $wsProjects = @($RemainingArgs | Select-Object -Skip 1)
-        }
-
-        if ($wsList) {
-            Invoke-CdpWorkspace -List
-        } elseif ($wsAdd) {
-            Invoke-CdpWorkspace -Add $wsAdd -Projects $wsProjects -Open $wsOpen
-        } else {
-            Invoke-CdpWorkspace -Name $ConfigPath -Open $wsOpen
-        }
-        return
-    }
-
-    if ([string]::IsNullOrWhiteSpace($ConfigPath) -and -not [string]::IsNullOrWhiteSpace($Command)) {
-        if (Test-CdpConfigPathArgument -Argument $Command) {
-            $ConfigPath = $Command
-        } else {
-            $Query = $Command
-        }
-    } elseif ([string]::IsNullOrWhiteSpace($Query) -and -not [string]::IsNullOrWhiteSpace($Command)) {
-        $Query = $Command
-    }
-
-    Switch-Project -ConfigPath $ConfigPath -Query $Query -WSL:$WSL -Open $Open
 }
 
 # Export module members
