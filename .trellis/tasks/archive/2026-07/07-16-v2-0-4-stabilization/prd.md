@@ -12,7 +12,7 @@
 
 ## Acceptance Criteria
 
-- [ ] 所有 6 个子任务完成并各自拥有一个提交。
-- [ ] 组合参数、跨平台 status 和安装路径问题均有自动化回归测试。
-- [ ] PowerShell 5.1/7 Pester、PSScriptAnalyzer Error、bash/zsh syntax、shell regression、`git diff --check` 全部通过。
-- [ ] 统一 push 后 CI 成功，v2.0.4 tag、GitHub Release、PowerShell Gallery 和 Scoop 均核验成功。
+- [x] 所有 6 个子任务完成并各自拥有独立 work/archive 提交。
+- [x] 组合参数、跨平台 status 和安装路径问题均有自动化回归测试。
+- [x] PowerShell 5.1/7 Pester、PSScriptAnalyzer Error、bash/zsh syntax、shell regression、`git diff --check` 全部通过。
+- [x] 统一 push 后 CI 成功，v2.0.4 tag、GitHub Release、PowerShell Gallery 和 Scoop 均核验成功。
