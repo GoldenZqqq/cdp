@@ -22,7 +22,7 @@ Latest verified public release: v2.0.3 on GitHub Releases and PowerShell Gallery
 
 Current release target: v2.0.4.
 
-Release status: local stabilization and metadata validation in progress. Push, tag, GitHub Release, PowerShell Gallery publication, and post-release channel verification remain pending until all v2.0.4 leaf tasks are complete.
+Release status: the local v2.0.4 release candidate has passed the complete PowerShell, shell, metadata, syntax, and repository validation matrix. Push, remote CI, tag, GitHub Release, PowerShell Gallery publication, and post-release channel verification remain pending.
 
 ## 2.0.4 Stability Checklist
 
@@ -65,6 +65,13 @@ Release status: local stabilization and metadata validation in progress. Push, t
 - [ ] Improve the public demo around the AI CLI workflow and the difference from zoxide/autojump.
 
 ## Verification Log
+
+- Release 2.0.4 candidate: PowerShell 7 and Windows PowerShell 5.1 Pester each passed 58/58 tests.
+- Release 2.0.4 candidate: the canonical metadata validator passed under PowerShell 7 and Windows PowerShell 5.1.
+- Release 2.0.4 candidate: PSScriptAnalyzer reported no Error-severity findings.
+- Release 2.0.4 candidate: Git Bash CLI parser, status, and shared shell v2 regressions passed.
+- Release 2.0.4 candidate: WSL bash/zsh shared regressions and bash/zsh syntax checks passed.
+- Release 2.0.4 candidate: Scoop JSON, workflow YAML, Trellis task validation, and `git diff --check` passed.
 
 - PowerShell 7 Pester: `Invoke-Pester -Path ./tests -CI` passed 7 tests.
 - PSScriptAnalyzer: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
