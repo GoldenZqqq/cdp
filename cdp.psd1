@@ -111,6 +111,9 @@ v2.0.4 - Stability Fixes
 - Fixed: CLI options are parsed independently of order for status and workspace commands
 - Fixed: Custom config paths are preserved by short management commands
 - Fixed: workspace --open tokens are no longer treated as project names
+- Fixed: status recognizes linked worktrees and reports dirty plus untracked changes together
+- Fixed: shell status and workspace resolve shared Windows paths before filesystem access
+- Fixed: status --fix removes only the enabled missing projects shown in its action preview
 
 v2.0.3 - CJK Column Alignment
 - Fixed: Long project names (especially CJK/Chinese) no longer misalign the Branch/Status/Sync/Last Commit columns

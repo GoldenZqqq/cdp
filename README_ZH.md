@@ -238,11 +238,13 @@ git    git repo detected
 
 Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Linux 版也能使用同类 JSON 项目列表。需要从 PowerShell 进入 WSL 项目时，用 `cdp -WSL` 选择项目，Windows 路径会自动转换为 `/mnt/c/...`。
 
+bash/zsh 的 status 与 workspace 命令使用相同的 Windows 到 WSL 路径解析，因此共享 Project Manager 配置可以同时用于切换、仓库检查和工作区启动。
+
 ---
 
 ## 核心特性
 
-- **多项目 Git 状态仪表盘**：`cdp status` 一条命令查看所有仓库的分支、dirty/untracked 状态、ahead/behind 同步和最近提交时间
+- **多项目 Git 状态仪表盘**：`cdp status` 一条命令查看所有仓库的分支、dirty 与 untracked 数量、ahead/behind 同步、linked worktree 和最近提交时间
 - **全平台支持**：Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL，CI 覆盖全部
 - **智能 Tab 补全**：输入 `cdp` 按 Tab 自动补全子命令和项目名，PowerShell + bash + zsh 全支持
 - **模糊搜索切换项目**：由 `fzf` 驱动，键盘优先，不需要记路径

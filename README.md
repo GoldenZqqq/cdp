@@ -238,11 +238,13 @@ When you want to start an AI CLI immediately, use `cdp api -Open codex`, `cdp we
 
 Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WSL/Linux version can use the same JSON shape. When you need to enter a WSL project from PowerShell, run `cdp -WSL`; Windows paths are converted to `/mnt/c/...` automatically.
 
+The bash/zsh status and workspace commands use the same Windows-to-WSL path resolution, so a shared Project Manager config works for switching, repository inspection, and workspace launch.
+
 ---
 
 ## Features
 
-- **Multi-project Git dashboard**: `cdp status` shows branch, dirty/untracked count, ahead/behind sync, and last commit time for every project
+- **Multi-project Git dashboard**: `cdp status` shows branch, dirty and untracked counts, ahead/behind sync, linked worktrees, and last commit time for every project
 - **Full cross-platform support**: Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL, all covered by CI
 - **Intelligent tab completion**: Press Tab after `cdp` to auto-complete subcommands and project names on PowerShell, bash, and zsh
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization

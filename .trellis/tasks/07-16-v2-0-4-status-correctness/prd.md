@@ -15,8 +15,18 @@
 
 ## Acceptance Criteria
 
-- [ ] Windows 路径配置在 WSL status/workspace 中正确解析。
-- [ ] 常规仓库与 linked worktree 均识别为 Git 仓库。
-- [ ] dirty、untracked、ahead、behind、detached、无 upstream、missing、non-git 均有回归测试。
-- [ ] behind-only 汇总正确。
-- [ ] 修复不引入 2.1.0 才计划的并发或缓存重构。
+- [x] Windows 路径配置在 WSL status/workspace 中正确解析。
+- [x] 常规仓库与 linked worktree 均识别为 Git 仓库。
+- [x] dirty、untracked、ahead、behind、detached、无 upstream、missing、non-git 均有回归测试。
+- [x] behind-only 汇总正确。
+- [x] 修复不引入 2.1.0 才计划的并发或缓存重构。
+
+## Verification
+
+- PowerShell 7 Pester：38 passed、0 failed。
+- Windows PowerShell 5.1 Pester：38 passed、0 failed。
+- PSScriptAnalyzer `Severity Error`：0 findings。
+- Git Bash：`tests/cdp.Cli.Tests.sh` 与 `tests/cdp.Status.Tests.sh` 均通过。
+- WSL Arch：`bash -n src/cdp.sh` 与 `zsh -n src/cdp.sh` 均通过。
+- `git diff --check` 与 Trellis task validation 均通过。
+- WSL 首次启动曾在脚本执行前出现一次 `HCS_E_CONNECTION_TIMEOUT`，单独重试后语法验证成功；判定为非阻塞宿主环境抖动。

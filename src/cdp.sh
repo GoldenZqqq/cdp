@@ -859,7 +859,7 @@ cdp-status() {
     local max_branch_len=12
 
     # First pass: collect data
-    local -a names=() paths=() branches=() statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
+    local -a names=() raw_paths=() paths=() branches=() statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
     local proj_total
     proj_total=$(line_count "$projects")
     local proj_scanned=0
@@ -868,6 +868,8 @@ cdp-status() {
         pname="${pname%$'\r'}"
         ppath="${ppath%$'\r'}"
         [[ -z "$pname" ]] && continue
+        local raw_ppath="$ppath"
+        ppath=$(convert_windows_to_wsl "$raw_ppath")
         proj_scanned=$((proj_scanned + 1))
         printf "\r  Scanning %d/%d... " "$proj_scanned" "$proj_total" >&2
         total=$((total + 1))
@@ -877,6 +879,7 @@ cdp-status() {
         [[ $name_len -gt $max_name_len ]] && max_name_len=$name_len
 
         names+=("$pname")
+        raw_paths+=("$raw_ppath")
         paths+=("$ppath")
 
         if [[ ! -d "$ppath" ]]; then
@@ -891,7 +894,9 @@ cdp-status() {
             continue
         fi
 
-        if [[ ! -d "$ppath/.git" ]]; then
+        local inside_work_tree
+        inside_work_tree=$(git -C "$ppath" rev-parse --is-inside-work-tree 2>/dev/null || true)
+        if [[ "$inside_work_tree" != "true" ]]; then
             branches+=("-")
             statuses+=("not a git repo")
             status_colors+=("$GRAY")
@@ -932,7 +937,12 @@ cdp-status() {
         last_commit=$(git -C "$ppath" log -1 --format="%cr" 2>/dev/null)
         last_commits+=("$last_commit")
 
-        if [[ $dirty_count -gt 0 ]]; then
+        if [[ $dirty_count -gt 0 && $untracked_count -gt 0 ]]; then
+            statuses+=("x $dirty_count dirty + $untracked_count untracked")
+            status_colors+=("$RED")
+            needs_attention+=(true)
+            attention_count=$((attention_count + 1))
+        elif [[ $dirty_count -gt 0 ]]; then
             statuses+=("x $dirty_count dirty")
             status_colors+=("$RED")
             needs_attention+=(true)
@@ -954,7 +964,12 @@ cdp-status() {
         [[ $behind -gt 0 ]] && { [[ -n "$sync_text" ]] && sync_text="$sync_text "; sync_text="${sync_text}v${behind}"; }
         [[ $behind -gt 0 ]] && s_color="$YELLOW"
         [[ $behind -eq 0 && $ahead -gt 0 ]] && s_color="$CYAN"
-        [[ $behind -gt 0 ]] && needs_attention[${#needs_attention[@]}-1]=true
+        if [[ $behind -gt 0 ]]; then
+            if [[ "${needs_attention[${#needs_attention[@]}-1]}" != "true" ]]; then
+                attention_count=$((attention_count + 1))
+            fi
+            needs_attention[${#needs_attention[@]}-1]=true
+        fi
         syncs+=("$sync_text")
         sync_colors+=("$s_color")
     done <<< "$projects"
@@ -969,34 +984,20 @@ cdp-status() {
         echo -e "\n${YELLOW}Removing $missing_count path-missing projects:${NC}"
         for ((i=0; i<total; i++)); do
             if [[ "${statuses[$i]}" == "path missing" ]]; then
-                echo -e "  ${GRAY}x ${names[$i]}  ${paths[$i]}${NC}"
+                echo -e "  ${GRAY}x ${names[$i]}  ${raw_paths[$i]}${NC}"
             fi
         done
-        local raw_config
-        raw_config=$(cat "$config_path")
-        local kept_count=0
-        local new_json="[]"
-        new_json=$(echo "$raw_config" | jq '[.[] | select((.rootPath // "") != "")]')
-        # Filter out entries whose path does not exist on disk
-        local filtered="[]"
-        local len
-        len=$(echo "$new_json" | jq 'length')
-        local out_items=()
-        for ((j=0; j<len; j++)); do
-            local rp
-            rp=$(echo "$new_json" | jq -r ".[$j].rootPath")
-            local wsl_rp
-            wsl_rp=$(convert_windows_to_wsl "$rp")
-            if [[ -d "$wsl_rp" ]]; then
-                out_items+=("$(echo "$new_json" | jq -c ".[$j]")")
-                kept_count=$((kept_count + 1))
-            fi
+        local missing_raw_paths=()
+        for ((i=0; i<total; i++)); do
+            [[ "${statuses[$i]}" == "path missing" ]] && missing_raw_paths+=("${raw_paths[$i]}")
         done
-        if [[ ${#out_items[@]} -gt 0 ]]; then
-            printf '%s\n' "${out_items[@]}" | jq -s '.' > "$config_path"
-        else
-            echo "[]" > "$config_path"
-        fi
+        local missing_json
+        missing_json=$(printf '%s\n' "${missing_raw_paths[@]}" | jq -R . | jq -s .)
+        local new_json
+        new_json=$(jq --argjson missing "$missing_json" '[.[] | . as $project | select(($project.enabled != true) or (($missing | index($project.rootPath)) == null))]' "$config_path")
+        local kept_count
+        kept_count=$(printf '%s\n' "$new_json" | jq 'length')
+        printf '%s\n' "$new_json" > "$config_path"
         echo -e "\n${GREEN}Removed $missing_count projects. $kept_count projects remain.${NC}"
         return
     fi
@@ -1028,12 +1029,17 @@ cdp-status() {
     [[ -n "$tag_filter" ]] && filter_label=" ($tag_filter)"
 
     # Print header
-    local shown_count=$total
+    local shown_count=0
+    for ((i=0; i<total; i++)); do
+        if ! $dirty_only || [[ "${needs_attention[$i]}" == "true" ]]; then
+            shown_count=$((shown_count + 1))
+        fi
+    done
     echo ""
     echo -e "${CYAN}cdp project status ${GRAY}(${shown_count} projects${filter_label})${NC}"
-    printf '%.0s-' {1..100}; echo ""
-    printf "  %-4s %-${max_name_len}s %-${max_branch_len}s %-14s %-10s %s\n" "#" "Project" "Branch" "Status" "Sync" "Last Commit"
-    printf '%.0s-' {1..100}; echo ""
+    printf '%.0s-' {1..110}; echo ""
+    printf "  %-4s %-${max_name_len}s %-${max_branch_len}s %-24s %-10s %s\n" "#" "Project" "Branch" "Status" "Sync" "Last Commit"
+    printf '%.0s-' {1..110}; echo ""
 
     local idx=1
     for ((i=0; i<total; i++)); do
@@ -1050,13 +1056,13 @@ cdp-status() {
         local num
         num=$(printf "%02d" $idx)
 
-        printf "  ${GRAY}%-4s${NC} ${GREEN}%s${NC} ${BOLD_CYAN}%s${NC} ${status_colors[$i]}%-14s${NC} ${sync_colors[$i]}%-10s${NC} ${GRAY}%s${NC}\n" \
+        printf "  ${GRAY}%-4s${NC} ${GREEN}%s${NC} ${BOLD_CYAN}%s${NC} ${status_colors[$i]}%-24s${NC} ${sync_colors[$i]}%-10s${NC} ${GRAY}%s${NC}\n" \
             "$num" "$(cdp_pad_text "$display_name" "$max_name_len")" "$(cdp_pad_text "$display_branch" "$max_branch_len")" "${statuses[$i]}" "${syncs[$i]}" "${last_commits[$i]}"
 
         idx=$((idx + 1))
     done
 
-    printf '%.0s-' {1..100}; echo ""
+    printf '%.0s-' {1..110}; echo ""
 
     local summary_parts=()
     [[ $attention_count -gt 0 ]] && summary_parts+=("$attention_count repos need attention")
@@ -1080,6 +1086,7 @@ cdp-status() {
         done
         [[ $ahead_count -gt 0 ]] && echo -e "${GRAY}  Tip: cdp status --push  Push $ahead_count repos ahead of remote${NC}"
     fi
+    return 0
 }
 
 cdp-workspace() {
@@ -1221,6 +1228,7 @@ cdp-workspace() {
                     local proj_path
                     proj_path=$(jq -r --arg n "$proj_name" '.[] | select(.enabled == true) | select(.name == $n) | .rootPath' "$config_path" 2>/dev/null | head -1)
                     proj_path="${proj_path%$'\r'}"
+                    proj_path=$(convert_windows_to_wsl "$proj_path")
                     [[ -z "$proj_path" || ! -d "$proj_path" ]] && { echo -e "${YELLOW}  Skipping '$proj_name' (not found)${NC}"; continue; }
 
                     if $first; then
@@ -1244,6 +1252,7 @@ cdp-workspace() {
                     local proj_path
                     proj_path=$(jq -r --arg n "$proj_name" '.[] | select(.enabled == true) | select(.name == $n) | .rootPath' "$config_path" 2>/dev/null | head -1)
                     proj_path="${proj_path%$'\r'}"
+                    proj_path=$(convert_windows_to_wsl "$proj_path")
                     echo -e "${CYAN}  $proj_name${NC} -> ${GRAY}$proj_path${NC}"
                 done <<< "$ws_projects_list"
                 echo ""

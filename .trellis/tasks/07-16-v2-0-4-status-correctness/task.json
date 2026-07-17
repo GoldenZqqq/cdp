@@ -3,7 +3,7 @@
   "name": "v2-0-4-status-correctness",
   "title": "修复 status 跨平台正确性",
   "description": "修复 WSL Windows 路径、Git worktree、behind-only 汇总、dirty/untracked 组合与动作选择准确性。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

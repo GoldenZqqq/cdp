@@ -97,6 +97,9 @@ jobs:
       - name: Run shell CLI parser tests
         run: bash ./tests/cdp.Cli.Tests.sh
 
+      - name: Run shell status tests
+        run: bash ./tests/cdp.Status.Tests.sh
+
       - name: Run bash doctor smoke test
         shell: bash
         run: |
@@ -169,6 +172,9 @@ jobs:
 
       - name: Run shell CLI parser tests
         run: bash ./tests/cdp.Cli.Tests.sh
+
+      - name: Run shell status tests
+        run: bash ./tests/cdp.Status.Tests.sh
 
       - name: Run zsh smoke test
         shell: zsh {0}

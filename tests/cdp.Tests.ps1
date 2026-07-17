@@ -13,6 +13,31 @@ BeforeAll {
         $projects = ConvertFrom-Json -InputObject $jsonContent
         @($projects)
     }
+
+    function Invoke-TestGit {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$Path,
+
+            [Parameter(Mandatory = $true)]
+            [string[]]$Arguments
+        )
+
+        $output = @(& git -C $Path @Arguments 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            throw "git -C $Path $($Arguments -join ' ') failed: $($output -join [Environment]::NewLine)"
+        }
+        $output
+    }
+
+    function New-TestGitRepository {
+        param([Parameter(Mandatory = $true)][string]$Path)
+
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+        Invoke-TestGit -Path $Path -Arguments @('init', '--quiet', '-b', 'main') | Out-Null
+        Invoke-TestGit -Path $Path -Arguments @('config', 'user.email', 'tests@example.invalid') | Out-Null
+        Invoke-TestGit -Path $Path -Arguments @('config', 'user.name', 'cdp tests') | Out-Null
+    }
 }
 
 Describe 'cdp module manifest' {
@@ -785,5 +810,142 @@ Describe 'cdp invocation parser' {
                 $Name -eq 'api' -and $ConfigPath -eq 'C:\Temp\projects.json'
             }
         }
+    }
+}
+
+Describe 'cdp project status correctness' {
+    It 'recognizes linked Git worktrees' {
+        $repoPath = Join-Path $TestDrive 'worktree-source'
+        $worktreePath = Join-Path $TestDrive 'linked-worktree'
+        New-TestGitRepository -Path $repoPath
+        'initial' | Set-Content -LiteralPath (Join-Path $repoPath 'tracked.txt') -Encoding UTF8
+        Invoke-TestGit -Path $repoPath -Arguments @('add', 'tracked.txt') | Out-Null
+        Invoke-TestGit -Path $repoPath -Arguments @('commit', '--quiet', '-m', 'initial') | Out-Null
+        Invoke-TestGit -Path $repoPath -Arguments @('worktree', 'add', '--quiet', '-b', 'linked', $worktreePath) | Out-Null
+
+        $project = [PSCustomObject]@{ name = 'LinkedWorktree'; rootPath = $worktreePath; enabled = $true }
+        $status = InModuleScope cdp -Parameters @{ Project = $project } {
+            Get-CdpGitProjectInfo -Project $Project
+        }
+
+        $status.IsGitRepo | Should -BeTrue
+        $status.Branch | Should -Be 'linked'
+        $status.StatusLabel | Should -Be 'clean'
+    }
+
+    It 'reports tracked and untracked changes together' {
+        $repoPath = Join-Path $TestDrive 'mixed-changes'
+        New-TestGitRepository -Path $repoPath
+        'initial' | Set-Content -LiteralPath (Join-Path $repoPath 'tracked.txt') -Encoding UTF8
+        Invoke-TestGit -Path $repoPath -Arguments @('add', 'tracked.txt') | Out-Null
+        Invoke-TestGit -Path $repoPath -Arguments @('commit', '--quiet', '-m', 'initial') | Out-Null
+        'changed' | Set-Content -LiteralPath (Join-Path $repoPath 'tracked.txt') -Encoding UTF8
+        'new' | Set-Content -LiteralPath (Join-Path $repoPath 'untracked.txt') -Encoding UTF8
+
+        $project = [PSCustomObject]@{ name = 'MixedChanges'; rootPath = $repoPath; enabled = $true }
+        $status = InModuleScope cdp -Parameters @{ Project = $project } {
+            Get-CdpGitProjectInfo -Project $Project
+        }
+
+        $status.DirtyCount | Should -Be 1
+        $status.UntrackedCount | Should -Be 1
+        $status.StatusLabel | Should -Be '1 dirty + 1 untracked'
+        $status.NeedsAttention | Should -BeTrue
+    }
+
+    It 'reports behind-only repositories as needing attention' {
+        $remotePath = Join-Path $TestDrive 'remote.git'
+        $seedPath = Join-Path $TestDrive 'seed'
+        $followerPath = Join-Path $TestDrive 'follower'
+        New-TestGitRepository -Path $seedPath
+        'initial' | Set-Content -LiteralPath (Join-Path $seedPath 'tracked.txt') -Encoding UTF8
+        Invoke-TestGit -Path $seedPath -Arguments @('add', 'tracked.txt') | Out-Null
+        Invoke-TestGit -Path $seedPath -Arguments @('commit', '--quiet', '-m', 'initial') | Out-Null
+        & git init --bare --quiet $remotePath
+        if ($LASTEXITCODE -ne 0) { throw 'Failed to create test bare remote.' }
+        Invoke-TestGit -Path $remotePath -Arguments @('symbolic-ref', 'HEAD', 'refs/heads/main') | Out-Null
+        Invoke-TestGit -Path $seedPath -Arguments @('remote', 'add', 'origin', $remotePath) | Out-Null
+        Invoke-TestGit -Path $seedPath -Arguments @('push', '--quiet', '-u', 'origin', 'main') | Out-Null
+        & git clone --quiet $remotePath $followerPath
+        if ($LASTEXITCODE -ne 0) { throw 'Failed to clone test remote.' }
+        'second' | Add-Content -LiteralPath (Join-Path $seedPath 'tracked.txt') -Encoding UTF8
+        Invoke-TestGit -Path $seedPath -Arguments @('add', 'tracked.txt') | Out-Null
+        Invoke-TestGit -Path $seedPath -Arguments @('commit', '--quiet', '-m', 'second') | Out-Null
+        Invoke-TestGit -Path $seedPath -Arguments @('push', '--quiet') | Out-Null
+        Invoke-TestGit -Path $followerPath -Arguments @('fetch', '--quiet') | Out-Null
+
+        $project = [PSCustomObject]@{ name = 'BehindOnly'; rootPath = $followerPath; enabled = $true }
+        $status = InModuleScope cdp -Parameters @{ Project = $project } {
+            Get-CdpGitProjectInfo -Project $Project
+        }
+
+        $status.DirtyCount | Should -Be 0
+        $status.UntrackedCount | Should -Be 0
+        $status.BehindCount | Should -Be 1
+        $status.NeedsAttention | Should -BeTrue
+
+        Invoke-TestGit -Path $followerPath -Arguments @('config', 'user.email', 'tests@example.invalid') | Out-Null
+        Invoke-TestGit -Path $followerPath -Arguments @('config', 'user.name', 'cdp tests') | Out-Null
+        'local' | Set-Content -LiteralPath (Join-Path $followerPath 'local.txt') -Encoding UTF8
+        Invoke-TestGit -Path $followerPath -Arguments @('add', 'local.txt') | Out-Null
+        Invoke-TestGit -Path $followerPath -Arguments @('commit', '--quiet', '-m', 'local') | Out-Null
+        $diverged = InModuleScope cdp -Parameters @{ Project = $project } {
+            Get-CdpGitProjectInfo -Project $Project
+        }
+        $diverged.AheadCount | Should -Be 1
+        $diverged.BehindCount | Should -Be 1
+    }
+
+    It 'keeps disabled missing entries when status fix removes scanned missing projects' {
+        $configPath = Join-Path $TestDrive 'status-fix-projects.json'
+        $existingPath = Join-Path $TestDrive 'existing-project'
+        $missingPath = Join-Path $TestDrive 'shared-missing'
+        New-Item -ItemType Directory -Path $existingPath | Out-Null
+        @(
+            [PSCustomObject]@{ name = 'Existing'; rootPath = $existingPath; enabled = $true },
+            [PSCustomObject]@{ name = 'EnabledMissing'; rootPath = $missingPath; enabled = $true },
+            [PSCustomObject]@{ name = 'DisabledMissing'; rootPath = $missingPath; enabled = $false }
+        ) | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath -Encoding UTF8
+
+        Show-CdpProjectStatus -ConfigPath $configPath -Fix
+        $projects = @(Read-TestProjects -Path $configPath)
+
+        $projects.name | Should -Contain 'Existing'
+        $projects.name | Should -Not -Contain 'EnabledMissing'
+        $projects.name | Should -Contain 'DisabledMissing'
+    }
+
+    It 'handles detached and no-upstream repositories without false sync counts' {
+        $repoPath = Join-Path $TestDrive 'detached-repo'
+        New-TestGitRepository -Path $repoPath
+        'initial' | Set-Content -LiteralPath (Join-Path $repoPath 'tracked.txt') -Encoding UTF8
+        Invoke-TestGit -Path $repoPath -Arguments @('add', 'tracked.txt') | Out-Null
+        Invoke-TestGit -Path $repoPath -Arguments @('commit', '--quiet', '-m', 'initial') | Out-Null
+        Invoke-TestGit -Path $repoPath -Arguments @('checkout', '--quiet', '--detach') | Out-Null
+
+        $project = [PSCustomObject]@{ name = 'Detached'; rootPath = $repoPath; enabled = $true }
+        $status = InModuleScope cdp -Parameters @{ Project = $project } {
+            Get-CdpGitProjectInfo -Project $Project
+        }
+
+        $status.IsGitRepo | Should -BeTrue
+        $status.Branch | Should -Not -BeNullOrEmpty
+        $status.AheadCount | Should -Be 0
+        $status.BehindCount | Should -Be 0
+    }
+
+    It 'distinguishes missing paths and non-Git directories' {
+        $plainPath = Join-Path $TestDrive 'plain-directory'
+        New-Item -ItemType Directory -Path $plainPath | Out-Null
+        $plain = [PSCustomObject]@{ name = 'Plain'; rootPath = $plainPath; enabled = $true }
+        $missing = [PSCustomObject]@{ name = 'Missing'; rootPath = (Join-Path $TestDrive 'missing'); enabled = $true }
+
+        $plainStatus = InModuleScope cdp -Parameters @{ Project = $plain } { Get-CdpGitProjectInfo -Project $Project }
+        $missingStatus = InModuleScope cdp -Parameters @{ Project = $missing } { Get-CdpGitProjectInfo -Project $Project }
+
+        $plainStatus.IsGitRepo | Should -BeFalse
+        $plainStatus.StatusLabel | Should -Be 'not a git repo'
+        $missingStatus.PathExists | Should -BeFalse
+        $missingStatus.StatusLabel | Should -Be 'path missing'
     }
 }

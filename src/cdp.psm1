@@ -2364,8 +2364,12 @@ function Get-CdpGitProjectInfo {
 
     $info.PathExists = $true
 
-    $gitDir = Join-Path $rootPath ".git"
-    if (-not (Test-Path -LiteralPath $gitDir)) {
+    $insideWorkTree = $false
+    try {
+        $probe = (& git -C $rootPath rev-parse --is-inside-work-tree 2>$null)
+        $insideWorkTree = $LASTEXITCODE -eq 0 -and $probe -eq 'true'
+    } catch {}
+    if (-not $insideWorkTree) {
         $info.StatusLabel = "not a git repo"
         return $info
     }
@@ -2405,7 +2409,10 @@ function Get-CdpGitProjectInfo {
         $info.LastCommitRelative = (& git -C $rootPath log -1 --format="%cr" 2>$null)
     } catch {}
 
-    if ($info.DirtyCount -gt 0) {
+    if ($info.DirtyCount -gt 0 -and $info.UntrackedCount -gt 0) {
+        $info.StatusLabel = "$($info.DirtyCount) dirty + $($info.UntrackedCount) untracked"
+        $info.NeedsAttention = $true
+    } elseif ($info.DirtyCount -gt 0) {
         $info.StatusLabel = "$($info.DirtyCount) dirty"
         $info.NeedsAttention = $true
     } elseif ($info.UntrackedCount -gt 0) {
@@ -2697,7 +2704,14 @@ function Show-CdpProjectStatus {
         }
         $resolvedConfig = if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $ConfigPath } else { Get-DefaultConfigPath }
         $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $resolvedConfig -Raw -Encoding UTF8)
-        $cleaned = @(@($allProjects) | Where-Object { Test-Path -LiteralPath ([string]$_.rootPath) })
+        $missingPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($project in $missingProjects) {
+            [void]$missingPaths.Add((Get-CdpComparablePath -Path $project.RootPath))
+        }
+        $cleaned = @(@($allProjects) | Where-Object {
+            $_.enabled -ne $true -or
+                -not $missingPaths.Contains((Get-CdpComparablePath -Path ([string]$_.rootPath)))
+        })
         ConvertTo-Json -InputObject $cleaned -Depth 10 | Out-File -FilePath $resolvedConfig -Encoding UTF8
         Clear-CdpProjectConfigCache -ConfigPath $resolvedConfig
         Write-Host "`nRemoved $($missingProjects.Count) projects. $($cleaned.Count) projects remain." -ForegroundColor Green
@@ -2714,8 +2728,13 @@ function Show-CdpProjectStatus {
         foreach ($proj in $aheadProjects) {
             Write-Host "  $($proj.Name) (^$($proj.AheadCount))... " -ForegroundColor Cyan -NoNewline
             try {
-                $result = & git -C $proj.RootPath push 2>&1
-                Write-Host "done" -ForegroundColor Green
+                $pushOutput = @(& git -C $proj.RootPath push 2>&1)
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "done" -ForegroundColor Green
+                } else {
+                    $failure = @($pushOutput | Select-Object -Last 1) -join ''
+                    Write-Host "failed: $failure" -ForegroundColor Red
+                }
             } catch {
                 Write-Host "failed: $($_.Exception.Message)" -ForegroundColor Red
             }
@@ -2744,15 +2763,15 @@ function Show-CdpProjectStatus {
     $filterLabel = if ($DirtyOnly) { " (dirty only)" } elseif (-not [string]::IsNullOrWhiteSpace($TagFilter)) { " ($TagFilter)" } else { "" }
     Write-Host "`ncdp project status " -ForegroundColor Cyan -NoNewline
     Write-Host "($($statusList.Count) projects$filterLabel)" -ForegroundColor DarkGray
-    Write-Host ("-" * 100) -ForegroundColor DarkGray
+    Write-Host ("-" * 110) -ForegroundColor DarkGray
 
     Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
     Write-Host ("{0,-$nameWidth} " -f "Project") -ForegroundColor Cyan -NoNewline
     Write-Host ("{0,-$branchWidth} " -f "Branch") -ForegroundColor DarkGray -NoNewline
-    Write-Host ("{0,-14} " -f "Status") -ForegroundColor DarkGray -NoNewline
+    Write-Host ("{0,-24} " -f "Status") -ForegroundColor DarkGray -NoNewline
     Write-Host ("{0,-10} " -f "Sync") -ForegroundColor DarkGray -NoNewline
     Write-Host "Last Commit" -ForegroundColor DarkGray
-    Write-Host ("-" * 100) -ForegroundColor DarkGray
+    Write-Host ("-" * 110) -ForegroundColor DarkGray
 
     $index = 1
     foreach ($item in $statusList) {
@@ -2776,7 +2795,7 @@ function Show-CdpProjectStatus {
         $statusIcon = if ($item.DirtyCount -gt 0) { "x" } elseif ($item.UntrackedCount -gt 0) { "!" } else { "+" }
         $statusColor = if ($item.DirtyCount -gt 0) { "Red" } elseif ($item.UntrackedCount -gt 0) { "Yellow" } else { "Green" }
         $statusText = "$statusIcon $($item.StatusLabel)"
-        Write-Host ("{0,-14} " -f $statusText) -ForegroundColor $statusColor -NoNewline
+        Write-Host ("{0,-24} " -f $statusText) -ForegroundColor $statusColor -NoNewline
 
         $syncParts = @()
         if ($item.AheadCount -gt 0) { $syncParts += "^$($item.AheadCount)" }
@@ -2789,7 +2808,7 @@ function Show-CdpProjectStatus {
         $index++
     }
 
-    Write-Host ("-" * 100) -ForegroundColor DarkGray
+    Write-Host ("-" * 110) -ForegroundColor DarkGray
 
     $attentionCount = @($statusList | Where-Object { $_.NeedsAttention -and $_.IsGitRepo }).Count
     $missingCount = @($statusList | Where-Object { -not $_.PathExists }).Count

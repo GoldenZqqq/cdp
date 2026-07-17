@@ -7,6 +7,10 @@
 - Reworked CLI argument parsing so `status` filters, tags, actions, and custom config paths are interpreted independently of order.
 - Prevented `workspace --open` and its launcher value from leaking into the workspace project list.
 - Preserved custom config paths for short project-management commands.
+- Recognized linked Git worktrees and retained both dirty and untracked counts in status output.
+- Resolved shared Windows project paths before bash/zsh status and workspace filesystem access.
+- Limited `status --fix` to the enabled missing projects shown in its action preview, preserving disabled entries.
+- Corrected behind-only shell summaries and native Git push failure reporting.
 
 ## 1.8.0
 
