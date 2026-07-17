@@ -175,6 +175,9 @@ cdp status --dirty
 # Combine filters and use an explicit config
 cdp status --dirty '@work' E:\Projects\projects.json
 
+# Return the same dirty-only selection as structured PowerShell objects
+Show-CdpProjectStatus -DirtyOnly -PassThru
+
 # Create and launch a multi-project workspace
 cdp workspace --add fullstack api web --open codex
 cdp workspace fullstack

@@ -114,6 +114,7 @@ v2.0.4 - Stability Fixes
 - Fixed: status recognizes linked worktrees and reports dirty plus untracked changes together
 - Fixed: shell status and workspace resolve shared Windows paths before filesystem access
 - Fixed: status --fix removes only the enabled missing projects shown in its action preview
+- Fixed: status -DirtyOnly filters structured -PassThru results consistently
 
 v2.0.3 - CJK Column Alignment
 - Fixed: Long project names (especially CJK/Chinese) no longer misalign the Branch/Status/Sync/Last Commit columns

@@ -175,6 +175,9 @@ cdp status --dirty
 # 组合过滤条件并使用显式配置文件
 cdp status --dirty '@work' E:\Projects\projects.json
 
+# 将同一 dirty-only 结果返回为结构化 PowerShell 对象
+Show-CdpProjectStatus -DirtyOnly -PassThru
+
 # 创建并启动多项目工作区
 cdp workspace --add fullstack api web --open codex
 cdp workspace fullstack

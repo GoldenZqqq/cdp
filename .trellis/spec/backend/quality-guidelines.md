@@ -203,3 +203,108 @@ Correct: ask Git, keep raw and resolved paths separate, and mutate only the scan
 raw rootPath -> resolve for filesystem/Git -> normalized status
 normalized missing enabled set -> remove matching enabled config entries only
 ```
+
+## Scenario: Build Cross-Version PowerShell Regression Fixtures
+
+### 1. Scope / Trigger
+
+Apply this contract when adding Pester coverage for status actions, workspace launch, onEnter hooks, argument completers, or any behavior with process, environment, filesystem, Git, or user-config side effects. It keeps the PowerShell 5.1 and 7 suites identical and prevents regression tests from mutating the developer machine.
+
+### 2. Signatures
+
+The project test boundary is:
+
+```powershell
+Invoke-Pester -Path .\tests -PassThru
+
+$config = New-PesterConfiguration
+$config.Run.Path = '.\tests'
+$config.Run.PassThru = $true
+$config.CodeCoverage.Enabled = $true
+$config.CodeCoverage.Path = '.\src\cdp.psm1'
+Invoke-Pester -Configuration $config
+```
+
+Behavior fixtures call public functions directly or use the module boundary:
+
+```powershell
+InModuleScope cdp -Parameters @{ Value = $value } {
+    # Call one internal boundary and assert observable results.
+}
+```
+
+### 3. Contracts
+
+- PowerShell 5.1 and 7 execute the same `*.Tests.ps1` files and assertions.
+- New suites remain below 600 lines; add a focused file instead of extending an oversized legacy test file.
+- Configs, state files, repositories, remotes, and missing paths live under `$TestDrive`.
+- Git synchronization tests use local bare remotes only. They prove success through refs and prove failure through an unavailable local path.
+- Windows Terminal, editors, and AI CLIs are mocked or use an explicit production dry-run mode.
+- onEnter tests execute controlled environment assignments or expected throws only; they do not start external commands.
+- Environment variables, location, and module config cache are restored after each scenario that changes them.
+- Argument completer tests use `TabExpansion2` so the registered command boundary, not a copied scriptblock, is exercised.
+- Capture `Write-Host` output with information-stream redirection (`6>&1`) when success/failure text is part of the contract.
+
+### 4. Validation & Error Matrix
+
+- Real user config/state path accessed -> invalid test; redirect to `$TestDrive`.
+- Network remote, `wt.exe`, or AI CLI started -> invalid test; replace with local fixture, mock, or dry run.
+- PS7-only syntax or runtime feature -> compatibility failure; rewrite for Windows PowerShell 5.1.
+- Environment or current location not restored -> isolation failure, even if assertions pass.
+- Push ref changes but output says failure -> product regression; assert both the ref and success text.
+- Hook throws -> caller must not throw; warning output is asserted.
+- Coverage percent does not exceed the recorded task baseline -> acceptance failure.
+- Parallel default `Invoke-Pester -CI` runs in one checkout -> report collision risk at `testResults.xml`; run sequentially or configure unique result paths.
+
+### 5. Good / Base / Bad Cases
+
+Good:
+
+```text
+$TestDrive repo -> local bare remote -> status --push
+mocked Start-Process -> exact wt.exe ArgumentList assertions
+temporary CDP_CONFIG -> TabExpansion2 -> enabled project completion
+```
+
+Base compatibility:
+
+```text
+the same test file passes under powershell.exe 5.1 and pwsh 7
+full suite runs without requiring Windows Terminal or an installed launcher
+```
+
+Bad:
+
+```text
+push to a GitHub test branch
+read the developer's Project Manager JSON
+call wt.exe and assert only that no exception occurred
+copy the completer scriptblock into the test
+```
+
+### 6. Tests Required
+
+- Status: structured filters plus local push success and failure, asserting both state and rendered outcome.
+- Workspace: persisted add/list JSON, paths containing spaces, missing config entries, and exact mocked launch arguments.
+- onEnter: env values, controlled PowerShell/string hooks, and exception isolation.
+- Completion: subcommand, enabled project, disabled-project exclusion, and launcher prefixes through `TabExpansion2`.
+- Run targeted scenarios first, then full Pester on PS5.1 and PS7, PSScriptAnalyzer, code coverage, shell regressions, syntax, and `git diff --check`.
+- Report executed/analyzed command counts with the percentage so coverage change is auditable.
+
+### 7. Wrong vs Correct
+
+Wrong: a smoke test reports success because an external program happened to be installed.
+
+```powershell
+{ Invoke-CdpWorkspace -Name team } | Should -Not -Throw
+```
+
+Correct: isolate the side effect and assert the exact contract.
+
+```powershell
+Mock Start-Process {}
+Invoke-CdpWorkspace -Name team -ConfigPath $testConfig
+Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
+    $FilePath -eq 'wt.exe' -and $ArgumentList -contains $expectedProjectPath
+}
+```

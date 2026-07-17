@@ -3,7 +3,7 @@
   "name": "v2-0-4-powershell-regression-tests",
   "title": "补齐 PowerShell v2 回归测试",
   "description": "为 status、workspace、onEnter、completion 与路由组合参数补齐 PowerShell 5.1/7 Pester 覆盖。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

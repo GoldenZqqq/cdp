@@ -2688,6 +2688,9 @@ function Show-CdpProjectStatus {
     Write-Host "`r                              `r" -NoNewline
 
     if ($PassThru) {
+        if ($DirtyOnly) {
+            return @($statusList | Where-Object { $_.NeedsAttention })
+        }
         return $statusList
     }
 
@@ -2728,7 +2731,7 @@ function Show-CdpProjectStatus {
         foreach ($proj in $aheadProjects) {
             Write-Host "  $($proj.Name) (^$($proj.AheadCount))... " -ForegroundColor Cyan -NoNewline
             try {
-                $pushOutput = @(& git -C $proj.RootPath push 2>&1)
+                $pushOutput = @(& git -C $proj.RootPath push --porcelain 2>&1)
                 if ($LASTEXITCODE -eq 0) {
                     Write-Host "done" -ForegroundColor Green
                 } else {

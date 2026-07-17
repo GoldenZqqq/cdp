@@ -11,6 +11,7 @@
 - Resolved shared Windows project paths before bash/zsh status and workspace filesystem access.
 - Limited `status --fix` to the enabled missing projects shown in its action preview, preserving disabled entries.
 - Corrected behind-only shell summaries and native Git push failure reporting.
+- Applied `-DirtyOnly` filtering consistently to structured `-PassThru` status results.
 
 ## 1.8.0
 
