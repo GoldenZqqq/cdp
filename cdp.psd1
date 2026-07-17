@@ -115,6 +115,12 @@ v2.0.4 - Stability Fixes
 - Fixed: shell status and workspace resolve shared Windows paths before filesystem access
 - Fixed: status --fix removes only the enabled missing projects shown in its action preview
 - Fixed: status -DirtyOnly filters structured -PassThru results consistently
+- Fixed: shell launchers preserve empty arguments for Codex, Claude, Gemini, and custom commands
+- Fixed: shell workspaces iterate every project without sharing the project stream with child processes
+- Fixed: zsh path operations preserve executable lookup instead of shadowing PATH
+- Fixed: shell repository scans iterate every result without sharing the repository stream with child processes
+- Fixed: zsh completion uses native indexing and includes the workspace command
+- Improved: Ubuntu and macOS CI share one repository-managed bash/zsh v2 regression entry
 
 v2.0.3 - CJK Column Alignment
 - Fixed: Long project names (especially CJK/Chinese) no longer misalign the Branch/Status/Sync/Last Commit columns

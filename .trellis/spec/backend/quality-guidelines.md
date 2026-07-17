@@ -308,3 +308,116 @@ Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
     $FilePath -eq 'wt.exe' -and $ArgumentList -contains $expectedProjectPath
 }
 ```
+
+## Scenario: Run One Cross-Shell V2 Regression Contract
+
+### 1. Scope / Trigger
+
+Apply this contract whenever `src/cdp.sh`, shell dependency handling, switching, hooks, launchers, workspace/scan iteration, Windows path conversion, bash/zsh completion, or the Ubuntu/macOS CI jobs change. It prevents bash-only success from hiding zsh regressions and prevents CI-only inline fixtures from drifting away from local tests.
+
+### 2. Signatures
+
+The repository-owned test entry is invoked directly by both supported shells:
+
+```text
+bash tests/cdp.Shell.V2.Tests.sh
+zsh tests/cdp.Shell.V2.Tests.sh
+```
+
+The zsh completion boundary separates the real compsys wrapper from its deterministic helper:
+
+```text
+_cdp_zsh_completions
+  -> _cdp_zsh_complete_words <CURRENT> <words...>
+```
+
+Controlled test environment keys are:
+
+```text
+CDP_TEST_REPO_ROOT   optional repository root override
+CDP_TEST_JQ_EXE      optional jq executable bridge for a WSL host tool
+CDP_TEST_FAKE_FZF    optional in-process fzf stub
+CDP_STATE_PATH       temporary recent-project state
+CDP_OPEN_DRY_RUN     disables GUI/AI launcher execution
+CDP_TEST_TMUX_LOG    records fake tmux arguments
+```
+
+### 3. Contracts
+
+- The same test file must run under bash and zsh without a caller pre-sourcing helpers.
+- Config, state, repositories, workspaces, fake executables, and logs live under one validated `mktemp -d` root and are removed by its trap.
+- Dependency-negative checks override `PATH` only in child scopes and explicitly remove test functions; later tests retain the original executable search path.
+- Never bind the exact shell variable name `path` in zsh-compatible code. In zsh it is a special array tied to `PATH`; use `input_path`, `project_path`, `raw_project_path`, or `config_entry_path`.
+- Loops whose bodies start `jq`, `tmux`, Windows executable bridges, or other child processes read their item stream from a dedicated fd such as fd 3. Child stdin must not be the iterator stream.
+- Launcher metadata with optional empty fields uses a non-whitespace delimiter such as ASCII file separator (`\034`); tab is forbidden because shell `read` collapses adjacent IFS whitespace.
+- NUL-delimited directory iteration uses `read -d $'\0'` so bash and zsh share the same parser.
+- `_cdp_zsh_completions` reads real `words`/`CURRENT`; `_cdp_zsh_complete_words` owns the testable behavior. Both use local `noksharrays` semantics because compsys positions are 1-based even though the rest of the shared script enables `KSH_ARRAYS`.
+- Ubuntu and macOS CI install dependencies and call the repository entry. They do not copy lifecycle fixtures into workflow YAML.
+
+### 4. Validation & Error Matrix
+
+- Missing `jq`, `git`, or `fzf` -> deterministic nonzero result containing the named dependency; no system uninstall or global `PATH` mutation.
+- Missing config -> `Configuration file not found`; invalid top-level JSON -> schema/array error.
+- `onEnter` environment/bash hook -> controlled environment values are visible after switching; failing legacy hook -> warning and successful caller isolation.
+- Empty launcher argument -> dry-run output reports the intended label and never passes that label as the command argument.
+- Workspace or scan with two items plus child commands -> both items are observed; one item proves stdin leakage.
+- zsh path operation -> `command -v basename` and other executable lookup still work afterward.
+- Completion -> subcommand, enabled project, disabled exclusion, `workspace`, and launcher candidates are asserted in both adapters.
+- Windows path input -> deterministic `/mnt/<drive>/...` output without requiring a real mounted Windows drive in CI.
+
+### 5. Good / Base / Bad Cases
+
+Good:
+
+```text
+Git Bash bash entry + WSL zsh entry -> identical scenario groups pass
+workspace/scan loop <&3 -> jq/tmux cannot consume the next project
+zsh helper with local noksharrays -> CURRENT=2 resolves the second word
+```
+
+Base compatibility:
+
+```text
+native Ubuntu jq/fzf/git and native macOS zsh run with no test bridge variables
+paths containing spaces remain one config value and one tmux argument
+```
+
+Bad:
+
+```text
+local path="$1"
+while read item; do jq ...; done <<< "$items"
+printf "codex\t\tCodex\n" | read command argument label
+copy a 50-line smoke fixture into each CI job
+```
+
+### 6. Tests Required
+
+- Dependency/config: missing `jq`, `git`, `fzf`, missing config, and invalid JSON.
+- Lifecycle: direct switch, recent, pin/unpin, clean, alias/tag, launcher dry run, and status smoke.
+- Hooks: object `env` plus bash hook success and legacy failure isolation.
+- Workspace: add/list, path with spaces, fake tmux launch, missing-project skip, and every-project iteration.
+- Scan: shallow init plus nested multi-repository scan, asserting the persisted JSON length.
+- Completion: bash adapter and zsh helper assert subcommand, `workspace`, enabled project, disabled exclusion, and launcher candidates.
+- Path: Windows conversion and a post-operation executable lookup assertion under zsh.
+- Final gate: both PowerShell versions, PSScriptAnalyzer, CLI/status shell suites, bash/zsh shared entry, bash/zsh syntax, and `git diff --check`.
+
+### 7. Wrong vs Correct
+
+Wrong: share the loop's stdin with arbitrary child processes and shadow zsh's executable path array.
+
+```bash
+local path="$1"
+while IFS= read -r project; do
+    jq -r ... "$config"
+done <<< "$projects"
+```
+
+Correct: use semantic path names and a dedicated iterator descriptor.
+
+```bash
+local project_path="$1"
+while IFS= read -r project <&3; do
+    jq -r ... "$config"
+done 3<<< "$projects"
+```

@@ -100,58 +100,8 @@ jobs:
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
 
-      - name: Run bash doctor smoke test
-        shell: bash
-        run: |
-          set -euo pipefail
-          tmpdir="$(mktemp -d)"
-          mkdir -p "$tmpdir/project"
-          cat > "$tmpdir/projects.json" <<JSON
-          [
-            {
-              "name": "SmokeProject",
-              "rootPath": "$tmpdir/project",
-              "enabled": true
-            }
-          ]
-          JSON
-
-          export CDP_STATE_PATH="$tmpdir/state.json"
-          source ./src/cdp.sh
-          cdp-doctor "$tmpdir/projects.json"
-          cdp doctor "$tmpdir/projects.json"
-          cdp SmokeProject "$tmpdir/projects.json"
-          test "$PWD" = "$tmpdir/project"
-          export CDP_OPEN_DRY_RUN=1
-          cdp SmokeProject "$tmpdir/projects.json" --open codex
-          unset CDP_OPEN_DRY_RUN
-          cdp recent 1
-          test "$(jq -r '.recentProjects[0].name' "$CDP_STATE_PATH")" = "SmokeProject"
-          cdp pin SmokeProject "$tmpdir/projects.json"
-          test "$(jq -r '.[0].pinned' "$tmpdir/projects.json")" = "true"
-          cdp unpin SmokeProject "$tmpdir/projects.json"
-          test "$(jq -r '.[0].pinned' "$tmpdir/projects.json")" = "false"
-          cdp clean "$tmpdir/projects.json"
-          test "$(jq -r '.[0].pinned' "$tmpdir/projects.json")" = "false"
-          cdp alias SmokeProject smoke "$tmpdir/projects.json"
-          cdp tag SmokeProject work "$tmpdir/projects.json"
-          cdp smoke "$tmpdir/projects.json"
-          test "$PWD" = "$tmpdir/project"
-          cdp @work "$tmpdir/projects.json"
-          test "$PWD" = "$tmpdir/project"
-
-          initroot="$tmpdir/init-repos"
-          mkdir -p "$initroot/gamma/.git"
-          cdp init "$initroot" "$tmpdir/init-projects.json" 2
-          test "$(jq length "$tmpdir/init-projects.json")" = "1"
-
-          scanroot="$tmpdir/repos"
-          mkdir -p "$scanroot/alpha/.git" "$scanroot/nested/beta/.git"
-          echo "[]" > "$tmpdir/scan-projects.json"
-          cdp-scan "$scanroot" "$tmpdir/scan-projects.json" 3
-          test "$(jq length "$tmpdir/scan-projects.json")" = "2"
-
-          cdp status "$tmpdir/projects.json"
+      - name: Run bash v2 regression tests
+        run: bash ./tests/cdp.Shell.V2.Tests.sh
 
   macos:
     name: macOS smoke
@@ -176,34 +126,5 @@ jobs:
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
 
-      - name: Run zsh smoke test
-        shell: zsh {0}
-        run: |
-          set -euo pipefail
-          tmpdir="$(mktemp -d)"
-          mkdir -p "$tmpdir/project"
-          cat > "$tmpdir/projects.json" <<JSON
-          [
-            {
-              "name": "SmokeProject",
-              "rootPath": "$tmpdir/project",
-              "enabled": true
-            }
-          ]
-          JSON
-
-          export CDP_STATE_PATH="$tmpdir/state.json"
-          source ./src/cdp.sh
-          cdp-doctor "$tmpdir/projects.json"
-          cdp doctor "$tmpdir/projects.json"
-          cdp SmokeProject "$tmpdir/projects.json"
-          test "$PWD" = "$tmpdir/project"
-          cdp recent 1
-          cdp pin SmokeProject "$tmpdir/projects.json"
-          cdp unpin SmokeProject "$tmpdir/projects.json"
-          cdp clean "$tmpdir/projects.json"
-          cdp alias SmokeProject smoke "$tmpdir/projects.json"
-          cdp tag SmokeProject work "$tmpdir/projects.json"
-          cdp smoke "$tmpdir/projects.json"
-          test "$PWD" = "$tmpdir/project"
-          cdp status "$tmpdir/projects.json"
+      - name: Run zsh v2 regression tests
+        run: zsh ./tests/cdp.Shell.V2.Tests.sh

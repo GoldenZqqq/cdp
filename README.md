@@ -243,6 +243,8 @@ Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WS
 
 The bash/zsh status and workspace commands use the same Windows-to-WSL path resolution, so a shared Project Manager config works for switching, repository inspection, and workspace launch.
 
+Built-in bash/zsh launcher presets keep editor arguments separate from no-argument AI CLIs, so `codex`, `claude`, and `gemini` start without an unintended display-label argument. Workspace launch and repository scan isolate iteration from child-process input so every configured project is handled. The zsh adapter also preserves executable lookup during path operations and keeps completion indexing consistent, including `workspace` completion.
+
 ---
 
 ## Features

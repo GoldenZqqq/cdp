@@ -149,10 +149,10 @@ cdp_picker_rows() {
 
 # Function to convert Windows path to WSL path
 convert_windows_to_wsl() {
-    local path="$1"
+    local input_path="$1"
 
     # Check if path looks like Windows path (C:\... or C:/...)
-    if [[ "$path" =~ ^([A-Za-z]):[/\\](.*)$ ]]; then
+    if [[ "$input_path" =~ ^([A-Za-z]):[/\\](.*)$ ]]; then
         local drive
         drive="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
         local remainder="${BASH_REMATCH[2]}"
@@ -163,7 +163,7 @@ convert_windows_to_wsl() {
         echo "/mnt/$drive/$remainder"
     else
         # Already a Unix path or unknown format
-        echo "$path"
+        echo "$input_path"
     fi
 }
 
@@ -378,10 +378,10 @@ get_default_config() {
 
     local index=1
     local -a config_paths=()
-    while IFS='|' read -r path source; do
-        config_paths+=("$path")
+    while IFS='|' read -r config_entry_path source; do
+        config_paths+=("$config_entry_path")
         echo -e "  ${YELLOW}[$index]${NC} ${GREEN}$source${NC}"
-        echo -e "      ${GRAY}$path${NC}"
+        echo -e "      ${GRAY}$config_entry_path${NC}"
         ((index++))
     done <<< "$available_configs"
 
@@ -561,7 +561,7 @@ find_git_repos() {
     fi
 
     local child
-    while IFS= read -r -d '' child; do
+    while IFS= read -r -d $'\0' child; do
         [[ "$(basename "$child")" == ".git" ]] && continue
         find_git_repos "$child" $((depth - 1))
     done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
@@ -575,20 +575,20 @@ project_name_exists() {
 }
 
 unique_project_name() {
-    local path="$1"
+    local project_path="$1"
     local config_path="$2"
     local base_name
     local parent_name
     local candidate
     local index=2
 
-    base_name=$(basename "$path")
+    base_name=$(basename "$project_path")
     if ! project_name_exists "$base_name" "$config_path"; then
         echo "$base_name"
         return
     fi
 
-    parent_name=$(basename "$(dirname "$path")")
+    parent_name=$(basename "$(dirname "$project_path")")
     if [[ -n "$parent_name" ]]; then
         candidate="${parent_name}-${base_name}"
     else
@@ -665,22 +665,22 @@ resolve_workspace_launcher() {
     opener_lower="$(printf '%s' "$opener" | tr '[:upper:]' '[:lower:]')"
     case "$opener_lower" in
         code|vscode)
-            printf "code\t.\tVS Code\n"
+            printf 'code\034.\034VS Code\n'
             ;;
         cursor)
-            printf "cursor\t.\tCursor\n"
+            printf 'cursor\034.\034Cursor\n'
             ;;
         codex)
-            printf "codex\t\tCodex\n"
+            printf 'codex\034\034Codex\n'
             ;;
         claude)
-            printf "claude\t\tClaude\n"
+            printf 'claude\034\034Claude\n'
             ;;
         gemini)
-            printf "gemini\t\tGemini\n"
+            printf 'gemini\034\034Gemini\n'
             ;;
         *)
-            printf "%s\t\t%s\n" "$opener" "$opener"
+            printf '%s\034\034%s\n' "$opener" "$opener"
             ;;
     esac
 }
@@ -693,7 +693,7 @@ cdp_open_workspace() {
     local command_arg
     local label
 
-    IFS=$'\t' read -r command_name command_arg label < <(resolve_workspace_launcher "$opener")
+    IFS=$'\034' read -r command_name command_arg label < <(resolve_workspace_launcher "$opener")
 
     if [[ -n "$CDP_OPEN_DRY_RUN" ]]; then
         echo -e "${GRAY}Would open $project_name with $label.${NC}"
@@ -1222,7 +1222,7 @@ cdp-workspace() {
             if $has_tmux; then
                 local session_name="cdp-${ws_name}"
                 local first=true
-                while IFS= read -r proj_name; do
+                while IFS= read -r proj_name <&3; do
                     proj_name="${proj_name%$'\r'}"
                     [[ -z "$proj_name" ]] && continue
                     local proj_path
@@ -1240,13 +1240,13 @@ cdp-workspace() {
                         [[ -n "$ws_open" ]] && tmux send-keys -t "$session_name" "$ws_open" Enter
                     fi
                     echo -e "${GREEN}  Opened window: $proj_name${NC}"
-                done <<< "$ws_projects_list"
+                done 3<<< "$ws_projects_list"
 
                 if ! $first; then
                     tmux attach-session -t "$session_name" 2>/dev/null || tmux switch-client -t "$session_name" 2>/dev/null
                 fi
             else
-                while IFS= read -r proj_name; do
+                while IFS= read -r proj_name <&3; do
                     proj_name="${proj_name%$'\r'}"
                     [[ -z "$proj_name" ]] && continue
                     local proj_path
@@ -1254,7 +1254,7 @@ cdp-workspace() {
                     proj_path="${proj_path%$'\r'}"
                     proj_path=$(convert_windows_to_wsl "$proj_path")
                     echo -e "${CYAN}  $proj_name${NC} -> ${GRAY}$proj_path${NC}"
-                done <<< "$ws_projects_list"
+                done 3<<< "$ws_projects_list"
                 echo ""
                 echo -e "${YELLOW}Install tmux for multi-window workspace launching.${NC}"
             fi
@@ -1590,7 +1590,7 @@ cdp-ls() {
     # Count projects
     local count=$(line_count "$enabled_projects")
     local name_width=14
-    while IFS=$'\t' read -r name pinned path; do
+    while IFS=$'\t' read -r name pinned project_path; do
         if (( ${#name} > name_width )); then
             name_width=${#name}
         fi
@@ -1605,11 +1605,11 @@ cdp-ls() {
     echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
 
     local index=1
-    while IFS=$'\t' read -r name pinned path; do
+    while IFS=$'\t' read -r name pinned project_path; do
         local display_path
         local display_name
         local pin_text=""
-        display_path=$(convert_windows_to_wsl "$path")
+        display_path=$(convert_windows_to_wsl "$project_path")
         display_name=$(truncate_text "$name" "$name_width")
         if [[ "$pinned" == "true" ]]; then
             pin_text="*"
@@ -1662,8 +1662,8 @@ cdp-recent() {
     local name
     local last_used
     local visits
-    local path
-    while IFS=$'\t' read -r name last_used visits path; do
+    local project_path
+    while IFS=$'\t' read -r name last_used visits project_path; do
         if (( ${#name} > name_width )); then
             name_width=${#name}
         fi
@@ -1678,13 +1678,13 @@ cdp-recent() {
     echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
 
     local index=1
-    while IFS=$'\t' read -r name last_used visits path; do
+    while IFS=$'\t' read -r name last_used visits project_path; do
         local display_name
         local display_last
         local display_path
         display_name=$(truncate_text "$name" "$name_width")
         display_last=$(truncate_text "$last_used" 24)
-        display_path=$(convert_windows_to_wsl "$path")
+        display_path=$(convert_windows_to_wsl "$project_path")
         printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%-24s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_last" "$visits" "$display_path"
         ((index++))
     done <<< "$recent_projects"
@@ -1696,7 +1696,7 @@ cdp-recent() {
 # Function to add current directory as a project
 cdp-add() {
     local name="$1"
-    local path="$2"
+    local project_path="$2"
     local config_path="$3"
 
     # Check if jq is installed
@@ -1706,16 +1706,16 @@ cdp-add() {
     fi
 
     # Determine path to add
-    if [[ -z "$path" ]]; then
-        path="$PWD"
+    if [[ -z "$project_path" ]]; then
+        project_path="$PWD"
     fi
 
     # Resolve to absolute path
-    path=$(cd "$path" 2>/dev/null && pwd -P || echo "$path")
+    project_path=$(cd "$project_path" 2>/dev/null && pwd -P || echo "$project_path")
 
     # Determine project name
     if [[ -z "$name" ]]; then
-        name=$(basename "$path")
+        name=$(basename "$project_path")
     fi
 
     # Get config path
@@ -1727,17 +1727,17 @@ cdp-add() {
     initialize_config "$config_path"
 
     # Check if project already exists
-    local existing=$(jq -r --arg path "$path" '.[] | select(.rootPath == $path) | .name' "$config_path" 2>/dev/null)
+    local existing=$(jq -r --arg path "$project_path" '.[] | select(.rootPath == $path) | .name' "$config_path" 2>/dev/null)
 
     if [[ -n "$existing" ]]; then
         echo -e "${YELLOW}Project already exists: $existing${NC}"
-        echo -e "${GRAY}Path: $path${NC}"
+        echo -e "${GRAY}Path: $project_path${NC}"
         return 0
     fi
 
     # Add new project
     local temp_file=$(mktemp)
-    jq --arg name "$name" --arg path "$path" \
+    jq --arg name "$name" --arg path "$project_path" \
         '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
         "$config_path" > "$temp_file"
 
@@ -1745,7 +1745,7 @@ cdp-add() {
 
     echo -e "${GREEN}Project added successfully!${NC}"
     echo -e "  ${CYAN}Name:${NC} $name"
-    echo -e "  ${GRAY}Path:${NC} $path"
+    echo -e "  ${GRAY}Path:${NC} $project_path"
     echo -e "  ${GRAY}Config:${NC} $config_path"
 }
 
@@ -1856,13 +1856,13 @@ cdp-clean() {
     mv "$temp_file" "$config_path"
 
     local missing_count=0
-    while IFS=$'\t' read -r name path; do
-        [[ -z "$name" && -z "$path" ]] && continue
+    while IFS=$'\t' read -r name raw_project_path; do
+        [[ -z "$name" && -z "$raw_project_path" ]] && continue
         local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$path")
+        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
         if [[ ! -d "$resolved_path" ]]; then
             temp_file=$(mktemp)
-            jq --arg path "$path" 'map(if .rootPath == $path then .enabled = false else . end)' \
+            jq --arg path "$raw_project_path" 'map(if .rootPath == $path then .enabled = false else . end)' \
                 "$config_path" > "$temp_file"
             mv "$temp_file" "$config_path"
             ((missing_count += 1))
@@ -1974,7 +1974,7 @@ cdp-scan() {
     local repo
 
     if [[ -n "$repos" ]]; then
-        while IFS= read -r repo; do
+        while IFS= read -r repo <&3; do
             [[ -z "$repo" ]] && continue
             ((found_count += 1))
 
@@ -1992,7 +1992,7 @@ cdp-scan() {
                 "$config_path" > "$temp_file"
             mv "$temp_file" "$config_path"
             ((added_count += 1))
-        done <<< "$repos"
+        done 3<<< "$repos"
     fi
 
     echo -e "${CYAN}Git repositories found:${NC} $found_count"
@@ -2095,10 +2095,10 @@ cdp-doctor() {
     invalid_count=$(jq '[.[] | select((.name | type != "string") or (.rootPath | type != "string") or (.enabled | type != "boolean"))] | length' "$config_path")
     duplicate_count=$(jq '[group_by(.name)[] | select(length > 1)] | length' "$config_path")
 
-    while IFS='|' read -r name path; do
-        [[ -z "$name" && -z "$path" ]] && continue
+    while IFS='|' read -r name raw_project_path; do
+        [[ -z "$name" && -z "$raw_project_path" ]] && continue
         local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$path")
+        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
         if [[ ! -d "$resolved_path" ]]; then
             ((missing_path_count++))
         fi
@@ -2181,17 +2181,17 @@ cdp-config() {
     local index=1
     local -a config_paths=()
     local -a config_sources=()
-    while IFS='|' read -r path source; do
-        config_paths+=("$path")
+    while IFS='|' read -r config_entry_path source; do
+        config_paths+=("$config_entry_path")
         config_sources+=("$source")
 
         local is_current=""
-        if [[ "$path" == "$current_config" ]]; then
+        if [[ "$config_entry_path" == "$current_config" ]]; then
             is_current=" ${CYAN}(current)${NC}"
         fi
 
         echo -e "  ${YELLOW}[$index]${NC} ${GREEN}$source${NC}$is_current"
-        echo -e "      ${GRAY}$path${NC}"
+        echo -e "      ${GRAY}$config_entry_path${NC}"
         ((index++))
     done <<< "$available_configs"
 
@@ -2290,18 +2290,22 @@ if [[ -n "${BASH_VERSION:-}" ]]; then
     complete -F _cdp_completions cdp
 elif [[ -n "${ZSH_VERSION:-}" ]]; then
     autoload -Uz compinit 2>/dev/null
-    _cdp_zsh_completions() {
-        local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan)
+    _cdp_zsh_complete_words() {
+        setopt localoptions noksharrays
+        local completion_current="$1"
+        shift
+        local -a completion_words=("$@")
+        local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan workspace)
         local launchers=(code cursor codex claude gemini)
-        local cur="${words[$CURRENT]}"
-        local prev="${words[$((CURRENT-1))]}"
+        local cur="${completion_words[$completion_current]}"
+        local prev="${completion_words[$((completion_current-1))]}"
 
         if [[ "$prev" == "--open" || "$prev" == "-o" ]]; then
             compadd -a launchers
             return
         fi
 
-        if [[ $CURRENT -eq 2 ]]; then
+        if [[ $completion_current -eq 2 ]]; then
             local projects=()
             local config_path
             config_path=$(get_default_config 2>/dev/null)
@@ -2313,7 +2317,7 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
             return
         fi
 
-        if [[ "${words[2]}" =~ ^(pin|unpin|alias|unalias|tag|untag)$ && $CURRENT -eq 3 ]]; then
+        if [[ "${completion_words[2]}" =~ ^(pin|unpin|alias|unalias|tag|untag)$ && $completion_current -eq 3 ]]; then
             local projects=()
             local config_path
             config_path=$(get_default_config 2>/dev/null)
@@ -2323,6 +2327,10 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
             compadd -a projects
             return
         fi
+    }
+    _cdp_zsh_completions() {
+        setopt localoptions noksharrays
+        _cdp_zsh_complete_words "$CURRENT" "${words[@]}"
     }
     compdef _cdp_zsh_completions cdp 2>/dev/null || true
 fi

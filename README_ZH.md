@@ -243,6 +243,8 @@ Windows PowerShell 可以读取 Cursor / VS Code Project Manager 配置；WSL/Li
 
 bash/zsh 的 status 与 workspace 命令使用相同的 Windows 到 WSL 路径解析，因此共享 Project Manager 配置可以同时用于切换、仓库检查和工作区启动。
 
+bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因此 `codex`、`claude` 和 `gemini` 启动时不会误带显示标签参数。workspace 启动与仓库扫描还会隔离迭代和子进程输入，确保每个已配置项目都被处理。zsh 适配器也会在路径操作中保持命令查找能力，并维持一致的补全索引，包括 `workspace` 补全。
+
 ---
 
 ## 核心特性

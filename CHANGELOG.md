@@ -2,6 +2,10 @@
 
 ## 2.0.4
 
+### Added
+
+- Added one repository-managed bash/zsh v2 regression entry covering dependencies, lifecycle, hooks, workspaces, completion, scans, and cross-platform paths.
+
 ### Fixed
 
 - Reworked CLI argument parsing so `status` filters, tags, actions, and custom config paths are interpreted independently of order.
@@ -12,6 +16,11 @@
 - Limited `status --fix` to the enabled missing projects shown in its action preview, preserving disabled entries.
 - Corrected behind-only shell summaries and native Git push failure reporting.
 - Applied `-DirtyOnly` filtering consistently to structured `-PassThru` status results.
+- Preserved empty launcher arguments in bash/zsh so Codex, Claude, Gemini, and custom commands no longer receive their display label as an argument.
+- Isolated bash/zsh workspace project iteration from child-process stdin so every configured project is visited.
+- Prevented zsh path variables from shadowing executable lookup during conversion, listing, recent, add, clean, doctor, and config selection flows.
+- Isolated bash/zsh repository scan iteration from child-process stdin so every discovered repository is imported.
+- Restored zsh completion indexing under the shared array compatibility mode and added the missing `workspace` completion candidate.
 
 ## 1.8.0
 

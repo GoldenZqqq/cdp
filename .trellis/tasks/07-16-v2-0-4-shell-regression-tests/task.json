@@ -3,7 +3,7 @@
   "name": "v2-0-4-shell-regression-tests",
   "title": "补齐 bash zsh v2 回归测试",
   "description": "将 shell smoke 扩展为可重复断言的状态、workspace、hook、补全和跨平台路径回归测试。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
