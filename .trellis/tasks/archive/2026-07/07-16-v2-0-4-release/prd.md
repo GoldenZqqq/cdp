@@ -36,8 +36,8 @@
 - [x] 发布提交、push、main CI、annotated tag、GitHub Release、Gallery 按规定顺序成功。
 - [x] tag 指向最终 release commit。
 - [x] GitHub tag archive 可下载并通过 metadata/source artifact 检查；Gallery `Save-Module` 包版本与 manifest 为 2.0.4。
-- [ ] PROGRESS 记录公开完成状态，release leaf 与 v2.0.4 parent 均归档，bookkeeping 已 push。
-- [ ] 最终报告包含 SHA、tag、Release URL、Gallery URL/版本、CI 结果和非阻塞警告。
+- [x] PROGRESS 记录公开完成状态，release leaf 与 v2.0.4 parent 均归档，bookkeeping 已 push。
+- [x] 最终报告证据包含 SHA、tag、Release URL、Gallery URL/版本、CI 结果和非阻塞警告。
 
 ## Local Validation Evidence
 

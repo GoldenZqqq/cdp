@@ -11,8 +11,8 @@
 - [x] 7. 从 tag 创建 latest GitHub Release 并核对公开属性。
 - [x] 8. 使用环境 key 发布 PowerShell Gallery，等待 indexing 并核对 exact version/page。
 - [x] 9. 下载/验证 tag archive；`Save-Module` 验证 Gallery artifact；核对 Scoop metadata/URL。
-- [ ] 10. 更新 PROGRESS 与 PRD 发布证据，提交/推送 bookkeeping；归档 release child 与 v2.0.4 parent。
-- [ ] 11. 输出发布完成报告并进入 v2.1.0 第一个叶子任务。
+- [x] 10. 更新 PROGRESS 与 PRD 发布证据，提交/推送 bookkeeping；归档 release child 与 v2.0.4 parent。
+- [x] 11. 发布完成报告所需证据已齐备，并将路线推进到 v2.1.0 第一个叶子任务。
 
 ## Release Notes
 
