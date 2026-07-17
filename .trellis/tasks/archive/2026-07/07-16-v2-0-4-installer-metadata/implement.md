@@ -11,7 +11,7 @@
 - [x] 更新 `PROGRESS.md`、CHANGELOG、ReleaseNotes 与双语安装说明。
 - [x] 运行定向 Pester 与 validator negative case。
 - [x] 运行 PowerShell 5.1/7 full Pester、PSScriptAnalyzer、Shell regressions、bash/zsh syntax、YAML、whitespace 与 Trellis validation。
-- [ ] 更新 installer/release metadata code-spec，提交并归档一次；不 push。
+- [x] 更新 installer/release metadata code-spec，提交并归档一次；不 push。
 
 ## Files
 
