@@ -24,7 +24,7 @@ local validated
 
 - `cdp.psd1`、PowerShell/Bash runtime、tests、Scoop、CHANGELOG、PROGRESS target 已由 metadata validator 绑定为 2.0.4。
 - release commit 更新 `PROGRESS.md` 为“本地 release candidate 已验证，远程发布 pending”，并包含当前 release task planning/status。
-- annotated tag `v2.0.4` 必须 peel 到该 commit SHA。
+- annotated tag `v2.0.4` 必须 peel 到最终通过 main CI 的 release content commit；若首次 push 在打 tag 前暴露 release-blocking CI 缺陷，则先追加最小修复提交并以新 SHA 为 tag 边界。
 
 ## Validation Matrix
 

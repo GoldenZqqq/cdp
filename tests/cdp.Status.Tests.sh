@@ -3,7 +3,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-test_root="$(mktemp -d "${TMPDIR:-/tmp}/cdp-status-tests.XXXXXX")"
+test_tmp_base="$(CDPATH= cd -- "${TMPDIR:-/tmp}" && pwd -P)"
+test_root="$(mktemp -d "$test_tmp_base/cdp-status-tests.XXXXXX")"
 trap 'rm -rf "$test_root"' EXIT
 
 source "$repo_root/src/cdp.sh"
@@ -124,7 +125,22 @@ if [[ "$windows_status" == *"path missing"* || "$windows_status" == *"not a git 
     echo "Windows project path was not resolved before status inspection." >&2
     exit 1
 fi
-workspace_output=$(cdp-workspace mapped --config "$windows_config" 2>&1)
-assert_contains "$workspace_output" "$linked_worktree"
+
+fake_bin="$test_root/fake-bin"
+tmux_log="$test_root/tmux.log"
+mkdir -p "$fake_bin"
+printf '%s\n' \
+    '#!/bin/sh' \
+    'printf "<%s>" "$@" >> "$CDP_TEST_TMUX_LOG"' \
+    'printf "\n" >> "$CDP_TEST_TMUX_LOG"' > "$fake_bin/tmux"
+chmod +x "$fake_bin/tmux"
+workspace_output=$(
+    export CDP_TEST_TMUX_LOG="$tmux_log"
+    export PATH="$fake_bin:$PATH"
+    cdp-workspace mapped --config "$windows_config" 2>&1
+)
+assert_contains "$workspace_output" "Opened window: WindowsMapped"
+tmux_calls="$(cat "$tmux_log")"
+assert_contains "$tmux_calls" "<-c><$linked_worktree>"
 
 echo "cdp status shell tests: ok"

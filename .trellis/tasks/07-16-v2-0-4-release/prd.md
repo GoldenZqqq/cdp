@@ -51,3 +51,10 @@
 - Scoop JSON 与 workflow YAML 可解析；`git diff --check` 与 Trellis validation 通过。
 - `main...origin/main`：0 behind / 11 ahead；release 渠道初始版本均为 2.0.3，2.0.4 尚不存在。
 - Gallery key 仅核验为 PRESENT，未读取或输出值。
+
+## Remote Validation Evidence
+
+- 首次 main CI run `29557952851` 在 SHA `36204d2d1c34dacd88e24d7959bfcc7ba98c7148` 暴露两个 pre-tag blocker：Ubuntu runner 的真实 `tmux` 被测试误启动；macOS runner 的尾斜杠 `TMPDIR` 造成逻辑/物理路径比较漂移。
+- 两项均发生在 shell fixture 隔离边界，tag/Release/Gallery 尚未创建；按发布状态机先提交最小测试修复并重新运行完整 main CI。
+- 首轮 run 最终状态为 failure；PowerShell 7 与 Windows PowerShell 5.1 jobs 成功，Ubuntu 与 macOS shell jobs 失败。
+- 修复后已在本地重跑完整 release matrix 并全部通过；新 SHA 的 main CI 仍为下一道发布门禁。

@@ -44,4 +44,13 @@ GitHub Release notes 从 `CHANGELOG.md` 2.0.4 段生成，聚焦：
 
 ## Spec Review
 
-Phase 3.3 复核无需新增 code-spec：本任务执行的 canonical version、双端 metadata validation、发布顺序与 artifact verification 约束，已由 `.trellis/spec/backend/quality-guidelines.md` 的 release scenario 和仓库 `AGENTS.md` 覆盖；本任务未引入新的代码契约或非显然陷阱。
+首次 main CI 暴露两项 runner-specific fixture 陷阱，已补入 `.trellis/spec/backend/quality-guidelines.md`：测试必须规范化带尾斜杠的 `TMPDIR`，且任何 workspace 调用都必须 shadow 预装的真实 `tmux`。canonical version、发布顺序与 artifact verification 仍由既有 release scenario 和仓库 `AGENTS.md` 覆盖。
+
+## Main CI Attempt 1
+
+- Run: `29557952851`，release candidate SHA `36204d2d1c34dacd88e24d7959bfcc7ba98c7148`。
+- Run 最终为 failure：PowerShell 7 与 Windows PowerShell 5.1 jobs 通过，Ubuntu 与 macOS shell jobs 失败。
+- Ubuntu status suite 命中 runner 预装的真实 `tmux`，在无交互终端 attach 失败并留下 server。
+- macOS zsh v2 suite 因 `$TMPDIR` 带尾斜杠，fixture expected path 含 `//`，实际物理路径为 `/`。
+- 两项均为测试隔离/路径规范化缺陷；tag 尚未创建。修复后追加 release-blocking commit、重新 push 并等待新 SHA 的完整 CI。
+- 修复后本地完整矩阵再次通过：PowerShell 7/5.1 各 58/58、两端 metadata validator、Analyzer、Git Bash CLI/status/bash v2、WSL bash/zsh v2、syntax、JSON/YAML、Trellis 与 whitespace。

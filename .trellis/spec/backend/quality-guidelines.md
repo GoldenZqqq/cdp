@@ -345,7 +345,9 @@ CDP_TEST_TMUX_LOG    records fake tmux arguments
 ### 3. Contracts
 
 - The same test file must run under bash and zsh without a caller pre-sourcing helpers.
+- Normalize the temporary base with a physical `pwd` before `mktemp -d`; runner-provided `TMPDIR` may end in `/`, and logical double-slash paths must not become expected filesystem identities.
 - Config, state, repositories, workspaces, fake executables, and logs live under one validated `mktemp -d` root and are removed by its trap.
+- Every test that reaches workspace launch shadows `tmux` with a fixture executable, even when workspace behavior is not the test's primary subject. Runner images may preinstall real `tmux`, which must never create or attach a session during tests.
 - Dependency-negative checks override `PATH` only in child scopes and explicitly remove test functions; later tests retain the original executable search path.
 - Never bind the exact shell variable name `path` in zsh-compatible code. In zsh it is a special array tied to `PATH`; use `input_path`, `project_path`, `raw_project_path`, or `config_entry_path`.
 - Loops whose bodies start `jq`, `tmux`, Windows executable bridges, or other child processes read their item stream from a dedicated fd such as fd 3. Child stdin must not be the iterator stream.
@@ -361,6 +363,8 @@ CDP_TEST_TMUX_LOG    records fake tmux arguments
 - `onEnter` environment/bash hook -> controlled environment values are visible after switching; failing legacy hook -> warning and successful caller isolation.
 - Empty launcher argument -> dry-run output reports the intended label and never passes that label as the command argument.
 - Workspace or scan with two items plus child commands -> both items are observed; one item proves stdin leakage.
+- Trailing-slash `TMPDIR` -> generated project paths and physical `$PWD` use the same normalized root.
+- Preinstalled runner `tmux` -> the test still calls only the fixture executable and leaves no server/session behind.
 - zsh path operation -> `command -v basename` and other executable lookup still work afterward.
 - Completion -> subcommand, enabled project, disabled exclusion, `workspace`, and launcher candidates are asserted in both adapters.
 - Windows path input -> deterministic `/mnt/<drive>/...` output without requiring a real mounted Windows drive in CI.
@@ -397,6 +401,7 @@ copy a 50-line smoke fixture into each CI job
 - Lifecycle: direct switch, recent, pin/unpin, clean, alias/tag, launcher dry run, and status smoke.
 - Hooks: object `env` plus bash hook success and legacy failure isolation.
 - Workspace: add/list, path with spaces, fake tmux launch, missing-project skip, and every-project iteration.
+- Isolation: run with a trailing-slash `TMPDIR` and with a real `tmux` earlier on the host PATH; assertions still use the normalized root and fixture tmux.
 - Scan: shallow init plus nested multi-repository scan, asserting the persisted JSON length.
 - Completion: bash adapter and zsh helper assert subcommand, `workspace`, enabled project, disabled exclusion, and launcher candidates.
 - Path: Windows conversion and a post-operation executable lookup assertion under zsh.

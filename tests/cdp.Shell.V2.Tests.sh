@@ -10,9 +10,10 @@ else
     script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
     repo_root="$(CDPATH= cd -- "$script_dir/.." && pwd)"
 fi
-test_root="$(mktemp -d "${TMPDIR:-/tmp}/cdp-shell-v2.XXXXXX")"
+test_tmp_base="$(CDPATH= cd -- "${TMPDIR:-/tmp}" && pwd -P)"
+test_root="$(mktemp -d "$test_tmp_base/cdp-shell-v2.XXXXXX")"
 case "$test_root" in
-    "${TMPDIR:-/tmp}"/cdp-shell-v2.*) ;;
+    "$test_tmp_base"/cdp-shell-v2.*) ;;
     *) echo "Unexpected test root: $test_root" >&2; exit 1 ;;
 esac
 trap 'rm -rf -- "$test_root"' EXIT INT TERM

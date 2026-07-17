@@ -72,6 +72,7 @@ Release status: the local v2.0.4 release candidate has passed the complete Power
 - Release 2.0.4 candidate: Git Bash CLI parser, status, and shared shell v2 regressions passed.
 - Release 2.0.4 candidate: WSL bash/zsh shared regressions and bash/zsh syntax checks passed.
 - Release 2.0.4 candidate: Scoop JSON, workflow YAML, Trellis task validation, and `git diff --check` passed.
+- Release 2.0.4 candidate: repaired pre-tag CI fixture isolation for runner-provided `tmux` and trailing-slash `TMPDIR`, then repeated the complete local validation matrix successfully.
 
 - PowerShell 7 Pester: `Invoke-Pester -Path ./tests -CI` passed 7 tests.
 - PSScriptAnalyzer: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
