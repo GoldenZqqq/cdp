@@ -21,6 +21,10 @@
 - Prevented zsh path variables from shadowing executable lookup during conversion, listing, recent, add, clean, doctor, and config selection flows.
 - Isolated bash/zsh repository scan iteration from child-process stdin so every discovered repository is imported.
 - Restored zsh completion indexing under the shared array compatibility mode and added the missing `workspace` completion candidate.
+- Selected PowerShell 5.1/7 CurrentUser and AllUsers install roots from the active edition's discoverable `PSModulePath` entry.
+- Verified source installations against the exact target module path and manifest version instead of accepting an older module elsewhere.
+- Updated the Scoop manifest to 2.0.4 and made it reuse the root installer without nested fzf setup.
+- Added a PowerShell 5.1/7 release-metadata validator for runtime headers, tests, Scoop, changelog, progress, and release notes.
 
 ## 1.8.0
 

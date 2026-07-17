@@ -1,22 +1,15 @@
 {
-    "version": "1.8.0",
+    "version": "2.0.4",
     "description": "A fast project directory switcher for PowerShell, WSL, and Vibe Coding CLI workflows.",
     "homepage": "https://github.com/GoldenZqqq/cdp",
     "license": "MIT",
-    "url": "https://github.com/GoldenZqqq/cdp/archive/refs/tags/v1.8.0.zip",
+    "url": "https://github.com/GoldenZqqq/cdp/archive/refs/tags/v2.0.4.zip",
     "hash": "skip",
-    "extract_dir": "cdp-1.8.0",
+    "extract_dir": "cdp-2.0.4",
     "depends": "fzf",
     "installer": {
         "script": [
-            "$modulePath = \"$env:USERPROFILE\\Documents\\PowerShell\\Modules\\cdp\"",
-            "if (!(Test-Path \"$env:USERPROFILE\\Documents\\PowerShell\\Modules\")) {",
-            "    $modulePath = \"$env:USERPROFILE\\Documents\\WindowsPowerShell\\Modules\\cdp\"",
-            "}",
-            "if (Test-Path $modulePath) { Remove-Item $modulePath -Recurse -Force }",
-            "New-Item -ItemType Directory -Path $modulePath -Force | Out-Null",
-            "Copy-Item \"$dir\\cdp.psd1\" -Destination $modulePath",
-            "Copy-Item \"$dir\\src\" -Destination $modulePath -Recurse"
+            "& \"$dir\\Install.ps1\" -Scope CurrentUser -Force -SkipFzf"
         ]
     },
     "uninstaller": {

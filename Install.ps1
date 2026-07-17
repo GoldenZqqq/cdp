@@ -13,6 +13,12 @@
     Installation scope: 'CurrentUser' (default) or 'AllUsers'.
     AllUsers requires administrator privileges.
 
+.PARAMETER Force
+    Overwrite an existing module installation without prompting.
+
+.PARAMETER SkipFzf
+    Skip fzf setup when a package manager already owns the dependency.
+
 .EXAMPLE
     .\Install.ps1
     # Installs module for current user only
@@ -24,6 +30,10 @@
 .EXAMPLE
     .\Install.ps1 -Scope AllUsers
     # Installs for all users (requires admin)
+
+.EXAMPLE
+    .\Install.ps1 -Force -SkipFzf
+    # Reinstalls non-interactively when fzf is managed separately
 #>
 
 [CmdletBinding()]
@@ -33,7 +43,13 @@ param(
 
     [Parameter(Mandatory = $false)]
     [ValidateSet('CurrentUser', 'AllUsers')]
-    [string]$Scope = 'CurrentUser'
+    [string]$Scope = 'CurrentUser',
+
+    [Parameter(Mandatory = $false)]
+    [switch]$Force,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$SkipFzf
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,6 +57,11 @@ $ErrorActionPreference = 'Stop'
 # Module information
 $ModuleName = 'cdp'
 $ScriptRoot = $PSScriptRoot
+$installationFunctions = Join-Path $ScriptRoot 'scripts\Cdp.Installation.ps1'
+if (-not (Test-Path -LiteralPath $installationFunctions)) {
+    throw "Installation helper not found: $installationFunctions"
+}
+. $installationFunctions
 
 function Update-CurrentProcessPath {
     $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
@@ -116,16 +137,8 @@ if ($Scope -eq 'AllUsers') {
     }
 }
 
-# Determine installation path
-if ($Scope -eq 'CurrentUser') {
-    $modulePath = Join-Path ([Environment]::GetFolderPath('MyDocuments')) "PowerShell\Modules\$ModuleName"
-    if (-not (Test-Path (Join-Path ([Environment]::GetFolderPath('MyDocuments')) "PowerShell"))) {
-        # Fallback to WindowsPowerShell for older versions
-        $modulePath = Join-Path ([Environment]::GetFolderPath('MyDocuments')) "WindowsPowerShell\Modules\$ModuleName"
-    }
-} else {
-    $modulePath = Join-Path $env:ProgramFiles "PowerShell\Modules\$ModuleName"
-}
+# Determine an edition-specific path that the current process can discover.
+$modulePath = Resolve-CdpModuleInstallPath -Scope $Scope -ModuleName $ModuleName
 
 Write-Host "Installation Details:" -ForegroundColor Yellow
 Write-Host "  Module Name: $ModuleName" -ForegroundColor Gray
@@ -134,13 +147,15 @@ Write-Host "  Target Path: $modulePath`n" -ForegroundColor Gray
 
 # Check if module already exists
 if (Test-Path $modulePath) {
-    $response = Read-Host "Module already exists. Overwrite? (y/N)"
-    if ($response -ne 'y' -and $response -ne 'Y') {
-        Write-Host "Installation cancelled." -ForegroundColor Yellow
-        exit 0
+    if (-not $Force) {
+        $response = Read-Host "Module already exists. Overwrite? (y/N)"
+        if ($response -ne 'y' -and $response -ne 'Y') {
+            Write-Host "Installation cancelled." -ForegroundColor Yellow
+            exit 0
+        }
     }
     Write-Host "Removing existing module..." -ForegroundColor Yellow
-    Remove-Item -Path $modulePath -Recurse -Force
+    Remove-Item -LiteralPath $modulePath -Recurse -Force
 }
 
 # Create module directory
@@ -149,20 +164,21 @@ New-Item -ItemType Directory -Path $modulePath -Force | Out-Null
 
 # Copy module files
 Write-Host "Copying module files..." -ForegroundColor Cyan
-Copy-Item -Path (Join-Path $ScriptRoot "cdp.psd1") -Destination $modulePath -Force
-Copy-Item -Path (Join-Path $ScriptRoot "src") -Destination $modulePath -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $ScriptRoot "cdp.psd1") -Destination $modulePath -Force
+Copy-Item -LiteralPath (Join-Path $ScriptRoot "src") -Destination $modulePath -Recurse -Force
 
 # Verify installation
 Write-Host "Verifying installation..." -ForegroundColor Cyan
-$installedModule = Get-Module -ListAvailable -Name $ModuleName
-if ($installedModule) {
-    Write-Host "`nModule installed successfully!" -ForegroundColor Green
-    Write-Host "  Version: $($installedModule.Version)" -ForegroundColor Gray
-    Write-Host "  Path: $($installedModule.ModuleBase)" -ForegroundColor Gray
-} else {
-    Write-Host "`nWarning: Module installed but not detected in module path." -ForegroundColor Yellow
-    Write-Host "You may need to restart PowerShell." -ForegroundColor Yellow
-}
+$installedManifestPath = Join-Path $modulePath 'cdp.psd1'
+$installedManifest = Test-ModuleManifest -Path $installedManifestPath -ErrorAction Stop
+$availableModules = @(Get-Module -ListAvailable -Name $ModuleName -Refresh)
+$installedModule = Select-CdpInstalledModule `
+    -AvailableModules $availableModules `
+    -ModulePath $modulePath `
+    -ExpectedVersion $installedManifest.Version
+Write-Host "`nModule installed successfully!" -ForegroundColor Green
+Write-Host "  Version: $($installedModule.Version)" -ForegroundColor Gray
+Write-Host "  Path: $($installedModule.ModuleBase)" -ForegroundColor Gray
 
 # Add to profile if requested
 if ($AddToProfile) {
@@ -191,14 +207,18 @@ Import-Module cdp
     }
 }
 
-# Check and install fzf
-Write-Host "`nChecking dependencies..." -ForegroundColor Cyan
-if (Get-Command fzf -ErrorAction SilentlyContinue) {
-    Write-Host "  fzf: Already installed" -ForegroundColor Green
+# Check and install fzf unless the package manager owns that dependency.
+if ($SkipFzf) {
+    Write-Host "`nSkipping fzf dependency setup." -ForegroundColor Gray
 } else {
-    Write-Host "  fzf: Not found" -ForegroundColor Yellow
-    Write-Host "`nInstalling fzf..." -ForegroundColor Cyan
-    [void](Install-FzfDependency)
+    Write-Host "`nChecking dependencies..." -ForegroundColor Cyan
+    if (Get-Command fzf -ErrorAction SilentlyContinue) {
+        Write-Host "  fzf: Already installed" -ForegroundColor Green
+    } else {
+        Write-Host "  fzf: Not found" -ForegroundColor Yellow
+        Write-Host "`nInstalling fzf..." -ForegroundColor Cyan
+        [void](Install-FzfDependency)
+    }
 }
 
 # Usage instructions

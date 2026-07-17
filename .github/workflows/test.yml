@@ -33,6 +33,10 @@ jobs:
           Invoke-Pester -Path ./tests -CI
         shell: powershell
 
+      - name: Validate release metadata
+        run: .\scripts\Test-ReleaseMetadata.ps1
+        shell: powershell
+
       - name: Run PSScriptAnalyzer errors
         run: |
           $results = Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error
@@ -65,6 +69,10 @@ jobs:
         run: |
           Import-Module Pester -MinimumVersion 5.5.0 -Force
           Invoke-Pester -Path ./tests -CI
+        shell: pwsh
+
+      - name: Validate release metadata
+        run: .\scripts\Test-ReleaseMetadata.ps1
         shell: pwsh
 
       - name: Run PSScriptAnalyzer errors

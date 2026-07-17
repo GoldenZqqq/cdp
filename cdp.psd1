@@ -121,6 +121,10 @@ v2.0.4 - Stability Fixes
 - Fixed: shell repository scans iterate every result without sharing the repository stream with child processes
 - Fixed: zsh completion uses native indexing and includes the workspace command
 - Improved: Ubuntu and macOS CI share one repository-managed bash/zsh v2 regression entry
+- Fixed: PowerShell 5.1 and 7 installers select an edition-specific path present in PSModulePath
+- Fixed: source installation verifies the exact target module path and manifest version
+- Fixed: Scoop metadata targets 2.0.4 and reuses the root installer without nested fzf setup
+- Improved: CI rejects version drift across runtime headers, tests, Scoop, changelog, progress, and release notes
 
 v2.0.3 - CJK Column Alignment
 - Fixed: Long project names (especially CJK/Chinese) no longer misalign the Branch/Status/Sync/Last Commit columns

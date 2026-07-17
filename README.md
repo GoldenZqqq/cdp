@@ -83,7 +83,7 @@ It is built for:
 
 ## Quick Start
 
-### Windows PowerShell
+### PowerShell on Windows
 
 If you are comfortable with PowerShell Gallery, install the module and `fzf` directly:
 
@@ -110,7 +110,9 @@ cd cdp
 .\Install.ps1 -AddToProfile
 ```
 
-`Install.ps1` tries `winget`, `scoop`, then `chocolatey` for `fzf`. If the current terminal still cannot find `fzf` after installation, restart PowerShell and run `cdp doctor`.
+`Install.ps1` selects the current PowerShell edition's discoverable CurrentUser or AllUsers module root from `PSModulePath`, then verifies the exact installed path and version. It tries `winget`, `scoop`, then `chocolatey` for `fzf`. If the current terminal still cannot find `fzf` after installation, restart PowerShell and run `cdp doctor`.
+
+For non-interactive automation, use `.\Install.ps1 -Force`. Add `-SkipFzf` only when the calling package manager already owns the `fzf` dependency. `-Scope AllUsers` still requires an elevated PowerShell session.
 
 ### WSL / Linux / macOS
 

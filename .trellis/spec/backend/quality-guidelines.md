@@ -421,3 +421,114 @@ while IFS= read -r project <&3; do
     jq -r ... "$config"
 done 3<<< "$projects"
 ```
+
+## Scenario: Install and Validate One Canonical Release Version
+
+### 1. Scope / Trigger
+
+Apply this contract whenever `Install.ps1`, PowerShell module search paths, `cdp.psd1` version/release notes, runtime version headers, tests, Scoop, changelog, progress, or Windows CI release checks change. It prevents an installer from writing to a directory the active edition cannot discover and prevents a release from publishing mutually inconsistent version metadata.
+
+### 2. Signatures
+
+The shared installation boundaries are:
+
+```powershell
+Resolve-CdpModuleInstallPath -Scope <CurrentUser|AllUsers> -Edition <Core|Desktop> `
+    -ModuleSearchPath <PSModulePath> -DocumentsPath <path> -ProgramFilesPath <path>
+
+Select-CdpInstalledModule -AvailableModules <object[]> `
+    -ModulePath <exact-target> -ExpectedVersion <version>
+```
+
+The source installer automation boundary is:
+
+```text
+Install.ps1 [-Scope CurrentUser|AllUsers] [-Force] [-SkipFzf]
+```
+
+The repository release check is:
+
+```text
+pwsh -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
+powershell.exe -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
+```
+
+### 3. Contracts
+
+- `cdp.psd1` `ModuleVersion` is the only canonical version. Every other version string is a checked mirror.
+- Required discoverable roots are: Core CurrentUser `<Documents>/PowerShell/Modules`, Desktop CurrentUser `<Documents>/WindowsPowerShell/Modules`, Core AllUsers `<ProgramFiles>/PowerShell/Modules`, and Desktop AllUsers `<ProgramFiles>/WindowsPowerShell/Modules`.
+- The normalized required root must be present in the current/injected `PSModulePath`; do not guess from directory existence or silently install to an undiscoverable path.
+- Installation success requires an available module whose normalized `ModuleBase` equals the exact target and whose version equals the copied manifest. A same-name module elsewhere is irrelevant.
+- `-Force` only skips overwrite confirmation. `-SkipFzf` only skips dependency setup when the caller already declares `fzf`; default interactive behavior remains.
+- Scoop owns the `fzf` dependency and calls the root installer. It must not copy module-path selection logic.
+- The metadata validator checks release-notes first version, PowerShell/Bash headers, Bash runtime version, two Pester expectations, Scoop current/template metadata, changelog first heading, and progress release target.
+- `PROGRESS.md` distinguishes latest externally verified public release from the current local target. It never claims publication before channel verification.
+- Installer/metadata validators do not accept, read, print, or persist Gallery API keys.
+- In Windows PowerShell 5.1 negative process tests, native stderr redirected with `2>&1` becomes an ErrorRecord. Temporarily use `ErrorActionPreference=Continue` only around the expected failing child and restore it in `finally` before asserting exit code/output.
+
+### 4. Validation & Error Matrix
+
+- Edition/scope root absent from `PSModulePath` -> resolver throws; copy does not start.
+- AllUsers without administrator privileges -> installer exits nonzero before mutation.
+- Existing module without `-Force` and user declines -> clean cancellation; no overwrite.
+- Only an old module at another `ModuleBase` -> exact verification fails.
+- Target module version differs from copied manifest -> exact verification fails with found/expected versions.
+- Any checked metadata version, Scoop URL, extract directory, dependency, or installer command drifts -> validator lists the mismatched key and exits nonzero.
+- Current repository is consistent -> validator reports the canonical version and exits zero under PowerShell 5.1 and 7.
+- Missing metadata file or invalid manifest/JSON -> validator exits nonzero before release work.
+
+### 5. Good / Base / Bad Cases
+
+Good:
+
+```text
+PS7 CurrentUser -> Documents/PowerShell/Modules/cdp present in PSModulePath
+PS5 AllUsers -> ProgramFiles/WindowsPowerShell/Modules/cdp present in PSModulePath
+Scoop -> Install.ps1 -Scope CurrentUser -Force -SkipFzf
+manifest 2.0.4 -> every checked mirror 2.0.4
+```
+
+Base compatibility:
+
+```text
+interactive Install.ps1 still prompts before overwrite and manages fzf by default
+PowerShell 5.1 and 7 run the same Pester file and metadata validator
+```
+
+Bad:
+
+```text
+if Documents/PowerShell exists, install there regardless of PSEdition
+Get-Module -ListAvailable cdp returns anything -> claim installation success
+Scoop maintains its own copied module-path algorithm
+update manifest version but forget Scoop/CHANGELOG/tests/PROGRESS
+```
+
+### 6. Tests Required
+
+- Path matrix: CurrentUser/AllUsers crossed with Core/Desktop, using isolated Documents, ProgramFiles, and `PSModulePath` values.
+- Resolver error: required edition root missing from injected `PSModulePath`.
+- Exact selection: target path/version succeeds; same version elsewhere fails; wrong version at target fails.
+- Metadata positive: current repository passes in PowerShell 5.1 and 7.
+- Metadata negative: copy required files to `$TestDrive`, mutate Scoop version, run the validator in a separate same-edition process, assert nonzero and `scoop.version` output.
+- CI runs full Pester and the validator explicitly in both Windows jobs.
+- Final gate also includes PSScriptAnalyzer on installer/scripts/module, Scoop JSON and workflow YAML parsing, shell regressions/syntax, secret-reference search, Trellis validation, and `git diff --check`.
+
+### 7. Wrong vs Correct
+
+Wrong: infer the destination from an unrelated directory and accept an arbitrary old module.
+
+```powershell
+$modulePath = "$HOME/Documents/PowerShell/Modules/cdp"
+if (Get-Module -ListAvailable cdp) { 'installed' }
+```
+
+Correct: resolve one discoverable edition root and verify only the target identity.
+
+```powershell
+$modulePath = Resolve-CdpModuleInstallPath -Scope CurrentUser -ModuleName cdp
+$manifest = Test-ModuleManifest (Join-Path $modulePath 'cdp.psd1')
+$candidates = @(Get-Module -ListAvailable -Name cdp -Refresh)
+Select-CdpInstalledModule -AvailableModules $candidates `
+    -ModulePath $modulePath -ExpectedVersion $manifest.Version
+```

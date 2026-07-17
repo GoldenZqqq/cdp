@@ -18,9 +18,23 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Release polish checklist is complete. Version 1.6.3 has been published to GitHub Releases and PowerShell Gallery.
+Latest verified public release: v2.0.3 on GitHub Releases and PowerShell Gallery (verified 2026-07-17).
 
-Current release step: build version 1.8.0 with AI CLI workspace launching.
+Current release target: v2.0.4.
+
+Release status: local stabilization and metadata validation in progress. Push, tag, GitHub Release, PowerShell Gallery publication, and post-release channel verification remain pending until all v2.0.4 leaf tasks are complete.
+
+## 2.0.4 Stability Checklist
+
+- [x] Fix CLI argument parsing and cross-platform status correctness.
+- [x] Add PowerShell and bash/zsh v2 regression suites.
+- [x] Select source-install module paths by PowerShell edition and discoverable `PSModulePath` roots.
+- [x] Verify source installs against the exact target path and manifest version.
+- [x] Update Scoop metadata to 2.0.4 and reuse the root installer.
+- [x] Add canonical release-metadata validation to PowerShell 5.1 and 7 CI jobs.
+- [x] Pass 58/58 Pester tests under PowerShell 7 and Windows PowerShell 5.1.
+- [x] Pass PSScriptAnalyzer Error, Git Bash CLI/status/shared regressions, WSL bash/zsh shared regressions, and shell syntax checks.
+- [ ] Push the completed v2.0.4 commits, pass remote CI, create the tag and GitHub Release, publish PowerShell Gallery, and verify all public channels.
 
 ## 1.7.0 Recent Projects Checklist
 

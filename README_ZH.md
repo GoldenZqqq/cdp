@@ -83,7 +83,7 @@ $ cdp status
 
 ## 快速开始
 
-### Windows PowerShell
+### Windows 上的 PowerShell
 
 如果已经习惯 PowerShell Gallery，可以直接安装模块并安装 `fzf`：
 
@@ -110,7 +110,9 @@ cd cdp
 .\Install.ps1 -AddToProfile
 ```
 
-`Install.ps1` 会依次尝试 `winget`、`scoop`、`chocolatey` 安装 `fzf`；如果安装后当前终端还找不到 `fzf`，重启 PowerShell 后运行 `cdp doctor`。
+`Install.ps1` 会从 `PSModulePath` 中选择当前 PowerShell edition 可发现的 CurrentUser 或 AllUsers 模块目录，再精确核对本次安装路径与版本。它会依次尝试 `winget`、`scoop`、`chocolatey` 安装 `fzf`；如果安装后当前终端还找不到 `fzf`，重启 PowerShell 后运行 `cdp doctor`。
+
+非交互自动化可使用 `.\Install.ps1 -Force`；只有调用方包管理器已经负责 `fzf` 依赖时才添加 `-SkipFzf`。`-Scope AllUsers` 仍需要在管理员 PowerShell 中运行。
 
 ### WSL / Linux / macOS
 
