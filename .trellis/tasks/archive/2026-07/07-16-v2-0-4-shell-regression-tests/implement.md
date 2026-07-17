@@ -12,7 +12,7 @@
 - [x] 在 Git Bash 运行 bash 模式，在 WSL Arch 运行 zsh 模式。
 - [x] 将 CI 内联 smoke 替换为共享入口调用。
 - [x] 运行 PowerShell、shell、syntax、whitespace 与 Trellis 全量门禁。
-- [ ] 更新 task 证据与 shell testing code-spec，提交并归档一次。
+- [x] 更新 task 证据与 shell testing code-spec，提交并归档一次。
 
 ## Files
 
