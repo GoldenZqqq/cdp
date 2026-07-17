@@ -33,9 +33,9 @@
 
 - [x] 5 个前置子任务完成；release candidate 工作树只含 `PROGRESS.md` 与当前 release task artifacts。
 - [x] PowerShell 5.1/7 `58/58`、两端 metadata validator、PSScriptAnalyzer、Git Bash/WSL shell、syntax、YAML 与 whitespace 全部通过。
-- [ ] 发布提交、push、main CI、annotated tag、GitHub Release、Gallery 按规定顺序成功。
-- [ ] tag 指向最终 release commit。
-- [ ] GitHub tag archive 可下载并通过 metadata/source artifact 检查；Gallery `Save-Module` 包版本与 manifest 为 2.0.4。
+- [x] 发布提交、push、main CI、annotated tag、GitHub Release、Gallery 按规定顺序成功。
+- [x] tag 指向最终 release commit。
+- [x] GitHub tag archive 可下载并通过 metadata/source artifact 检查；Gallery `Save-Module` 包版本与 manifest 为 2.0.4。
 - [ ] PROGRESS 记录公开完成状态，release leaf 与 v2.0.4 parent 均归档，bookkeeping 已 push。
 - [ ] 最终报告包含 SHA、tag、Release URL、Gallery URL/版本、CI 结果和非阻塞警告。
 
@@ -58,3 +58,15 @@
 - 两项均发生在 shell fixture 隔离边界，tag/Release/Gallery 尚未创建；按发布状态机先提交最小测试修复并重新运行完整 main CI。
 - 首轮 run 最终状态为 failure；PowerShell 7 与 Windows PowerShell 5.1 jobs 成功，Ubuntu 与 macOS shell jobs 失败。
 - 修复后已在本地重跑完整 release matrix 并全部通过；新 SHA 的 main CI 仍为下一道发布门禁。
+
+## Publication Evidence
+
+- 最终 release SHA 与 annotated tag peeled SHA：`b85177a234ecaa6a6e5ade42fb73966f29fc1a6a`；远端 peeled tag 相同。
+- Main CI run `29558638580`：Windows PowerShell 5.1、PowerShell 7、Ubuntu Bash、macOS zsh 四个 jobs 全部 success。
+- Pages deployment run `29558637771`：success。
+- GitHub Release：https://github.com/GoldenZqqq/cdp/releases/tag/v2.0.4；public、latest、非 draft、非 prerelease。
+- PowerShell Gallery：https://www.powershellgallery.com/packages/cdp/2.0.4；latest/exact version 均为 2.0.4，版本页 HTTP 200。
+- Tag ZIP：HTTP 200；metadata validator、manifest 2.0.4、PowerShell parse 与 bash syntax 通过。
+- Gallery `Save-Module`：manifest 2.0.4 与 `src/cdp.psm1` 存在，并在 PowerShell 7/5.1 下核验。
+- 非阻塞 warning：`actions/checkout@v4` Node 20 deprecation、Homebrew tap trust、Gallery `licenseUrl` deprecation。
+- 临时 artifact 目录 `C:\Users\DELL\AppData\Local\Temp\cdp-release-verification-2.0.4` 的递归清理被执行策略拒绝，验证文件保留；所有清理尝试均在执行前被拒绝。

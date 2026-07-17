@@ -6,11 +6,11 @@
 - [x] 2. 运行 `git pull --rebase --autostash`，确认无 behind/冲突。
 - [x] 3. 执行完整本地 release validation matrix。
 - [x] 4. 更新 PROGRESS release-candidate 状态与 task 证据，提交 `chore: 准备 2.0.4 发布`。
-- [ ] 5. `git push origin main`，等待并记录 release SHA 对应 main CI。
-- [ ] 6. 创建/push annotated `v2.0.4`，核对三处 SHA。
-- [ ] 7. 从 tag 创建 latest GitHub Release 并核对公开属性。
-- [ ] 8. 使用环境 key 发布 PowerShell Gallery，等待 indexing 并核对 exact version/page。
-- [ ] 9. 下载/验证 tag archive；`Save-Module` 验证 Gallery artifact；核对 Scoop metadata/URL。
+- [x] 5. `git push origin main`，等待并记录 release SHA 对应 main CI。
+- [x] 6. 创建/push annotated `v2.0.4`，核对三处 SHA。
+- [x] 7. 从 tag 创建 latest GitHub Release 并核对公开属性。
+- [x] 8. 使用环境 key 发布 PowerShell Gallery，等待 indexing 并核对 exact version/page。
+- [x] 9. 下载/验证 tag archive；`Save-Module` 验证 Gallery artifact；核对 Scoop metadata/URL。
 - [ ] 10. 更新 PROGRESS 与 PRD 发布证据，提交/推送 bookkeeping；归档 release child 与 v2.0.4 parent。
 - [ ] 11. 输出发布完成报告并进入 v2.1.0 第一个叶子任务。
 
@@ -54,3 +54,13 @@ GitHub Release notes 从 `CHANGELOG.md` 2.0.4 段生成，聚焦：
 - macOS zsh v2 suite 因 `$TMPDIR` 带尾斜杠，fixture expected path 含 `//`，实际物理路径为 `/`。
 - 两项均为测试隔离/路径规范化缺陷；tag 尚未创建。修复后追加 release-blocking commit、重新 push 并等待新 SHA 的完整 CI。
 - 修复后本地完整矩阵再次通过：PowerShell 7/5.1 各 58/58、两端 metadata validator、Analyzer、Git Bash CLI/status/bash v2、WSL bash/zsh v2、syntax、JSON/YAML、Trellis 与 whitespace。
+
+## Main CI Attempt 2 and Publication
+
+- Final release SHA: `b85177a234ecaa6a6e5ade42fb73966f29fc1a6a`。
+- CI run `29558638580` 与 Pages run `29558637771` 全部 success。
+- Annotated `v2.0.4` 的 HEAD/local peeled/remote peeled SHA 三处一致。
+- GitHub Release：https://github.com/GoldenZqqq/cdp/releases/tag/v2.0.4，公开且 latest。
+- Gallery：https://www.powershellgallery.com/packages/cdp/2.0.4，latest/exact 2.0.4，HTTP 200。
+- Tag archive 与 Gallery `Save-Module` 制品核验通过；未执行真实用户模块目录安装。
+- 非阻塞 warnings：Node 20 action runtime、Homebrew tap trust、Gallery `licenseUrl` deprecation。

@@ -18,11 +18,11 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Latest verified public release: v2.0.3 on GitHub Releases and PowerShell Gallery (verified 2026-07-17).
+Latest verified public release: v2.0.4 on GitHub Releases and PowerShell Gallery (verified 2026-07-17).
 
 Current release target: v2.0.4.
 
-Release status: the local v2.0.4 release candidate has passed the complete PowerShell, shell, metadata, syntax, and repository validation matrix. Push, remote CI, tag, GitHub Release, PowerShell Gallery publication, and post-release channel verification remain pending.
+Release status: v2.0.4 is published and verified. The annotated tag points to the final CI-green release commit; GitHub Release, PowerShell Gallery, tag archive, and saved Gallery package checks all passed.
 
 ## 2.0.4 Stability Checklist
 
@@ -34,7 +34,7 @@ Release status: the local v2.0.4 release candidate has passed the complete Power
 - [x] Add canonical release-metadata validation to PowerShell 5.1 and 7 CI jobs.
 - [x] Pass 58/58 Pester tests under PowerShell 7 and Windows PowerShell 5.1.
 - [x] Pass PSScriptAnalyzer Error, Git Bash CLI/status/shared regressions, WSL bash/zsh shared regressions, and shell syntax checks.
-- [ ] Push the completed v2.0.4 commits, pass remote CI, create the tag and GitHub Release, publish PowerShell Gallery, and verify all public channels.
+- [x] Push the completed v2.0.4 commits, pass remote CI, create the tag and GitHub Release, publish PowerShell Gallery, and verify all public channels.
 
 ## 1.7.0 Recent Projects Checklist
 
@@ -73,6 +73,10 @@ Release status: the local v2.0.4 release candidate has passed the complete Power
 - Release 2.0.4 candidate: WSL bash/zsh shared regressions and bash/zsh syntax checks passed.
 - Release 2.0.4 candidate: Scoop JSON, workflow YAML, Trellis task validation, and `git diff --check` passed.
 - Release 2.0.4 candidate: repaired pre-tag CI fixture isolation for runner-provided `tmux` and trailing-slash `TMPDIR`, then repeated the complete local validation matrix successfully.
+- Release 2.0.4: commit/tag `b85177a234ecaa6a6e5ade42fb73966f29fc1a6a`; main CI run `29558638580` passed all four jobs, and Pages deployment run `29558637771` passed.
+- Release 2.0.4: GitHub Release is public/latest at https://github.com/GoldenZqqq/cdp/releases/tag/v2.0.4.
+- Release 2.0.4: PowerShell Gallery latest/exact version is 2.0.4 and https://www.powershellgallery.com/packages/cdp/2.0.4 returned HTTP 200.
+- Release 2.0.4: tag ZIP metadata, manifest, PowerShell parse, and shell syntax passed; `Save-Module` manifest 2.0.4 was verified under PowerShell 7 and Windows PowerShell 5.1.
 
 - PowerShell 7 Pester: `Invoke-Pester -Path ./tests -CI` passed 7 tests.
 - PSScriptAnalyzer: `Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error` reported no errors.
