@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
-- **Last Active**: 2026-07-15
+- **Total Sessions**: 7
+- **Last Active**: 2026-07-17
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~211 | Active |
+| `journal-1.md` | ~246 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 7 | 2026-07-17 | 发布 v2.0.4 稳定性版本 | `36204d2`, `b85177a`, `c2ab3d5` | `main` |
 | 6 | 2026-07-15 | 设计并发布 cdp 官方官网 | `a7e0acd37b6468f2f7fb80576ecab711bd15efd1` | `main` |
 | 5 | 2026-07-10 | Add workspace mode and onEnter hooks | `cb08ceb`, `a1ab6f2` | `main` |
 | 4 | 2026-07-10 | Rewrite bilingual READMEs as project workbench | `953ce5d` | `main` |

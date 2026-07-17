@@ -209,3 +209,38 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: 发布 v2.0.4 稳定性版本
+
+**Date**: 2026-07-17
+**Task**: 发布 v2.0.4 稳定性版本
+**Branch**: `main`
+
+### Summary
+
+完成 v2.0.4 release candidate、修复 CI runner fixture 隔离、通过四平台 CI，发布并核验 GitHub Release 与 PowerShell Gallery，归档 release leaf 和 v2.0.4 parent。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `36204d2` | (see git log) |
+| `b85177a` | (see git log) |
+| `c2ab3d5` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
