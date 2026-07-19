@@ -310,3 +310,36 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: 完成 bash zsh 模块化
+
+**Date**: 2026-07-19
+**Task**: 完成 bash zsh 模块化
+**Branch**: `main`
+
+### Summary
+
+将 shell 源码拆为 14 个领域分片，保留确定性生成的单文件 cdp.sh；离线安装、bash/zsh、Bash 3.2、ShellCheck、Pester 88/88、发布元数据和 Scoop 摘要全部通过。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `156551f` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
