@@ -151,20 +151,21 @@ cdp_picker_rows() {
 convert_windows_to_wsl() {
     local input_path="$1"
 
-    # Check if path looks like Windows path (C:\... or C:/...)
-    if [[ "$input_path" =~ ^([A-Za-z]):[/\\](.*)$ ]]; then
+    case "$input_path" in
+    [A-Za-z]:/*|[A-Za-z]:\\*)
         local drive
-        drive="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
-        local remainder="${BASH_REMATCH[2]}"
+        drive="$(printf '%s' "${input_path%%:*}" | tr '[:upper:]' '[:lower:]')"
+        local remainder="${input_path#?:}"
+        remainder="${remainder#?}"
 
-        # Replace backslashes with forward slashes
         remainder="${remainder//\\//}"
 
         echo "/mnt/$drive/$remainder"
-    else
-        # Already a Unix path or unknown format
+        ;;
+    *)
         echo "$input_path"
-    fi
+        ;;
+    esac
 }
 
 # Function to get stored config choice path

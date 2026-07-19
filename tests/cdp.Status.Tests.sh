@@ -141,7 +141,10 @@ fi
 assert_project_names "$fix_config" '["Existing","DisabledMissing"]'
 
 converted=$(convert_windows_to_wsl 'C:\Work\api')
-[[ "$converted" == '/mnt/c/Work/api' ]]
+if [[ "$converted" != '/mnt/c/Work/api' ]]; then
+    echo "Expected Windows path conversion /mnt/c/Work/api, got: $converted" >&2
+    exit 1
+fi
 
 windows_config="$test_root/windows-projects.json"
 windows_workspaces="$test_root/workspaces.json"

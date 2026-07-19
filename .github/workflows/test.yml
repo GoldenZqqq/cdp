@@ -120,6 +120,10 @@ jobs:
           tar -tzf "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | grep -Fx 'cdp-2.0.5/src/cdp.sh'
           actual_hash="$(sha256sum "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | awk '{print $1}')"
           expected_hash="$(jq -r '.hash' scoop/cdp.json)"
+          tar_hash="$(gzip -dc "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | sha256sum | awk '{print $1}')"
+          tar --version | head -n 1
+          gzip --version | head -n 1
+          printf 'Uncompressed tar hash: %s\n' "$tar_hash"
           printf 'Scoop package hash: actual=%s expected=%s\n' "$actual_hash" "$expected_hash"
           test "$actual_hash" = "$expected_hash"
 
