@@ -223,7 +223,7 @@ Describe 'project configuration helpers' {
             [PSCustomObject]@{ name = ''; rootPath = ''; enabled = $true }
         ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
 
-        $summary = Repair-ProjectConfig -ConfigPath $configPath -PassThru
+        $summary = Repair-ProjectConfig -ConfigPath $configPath -PassThru -Confirm:$false
         $projects = @(Read-TestProjects -Path $configPath)
 
         $summary.ProjectCount | Should -Be 4
@@ -252,7 +252,7 @@ Describe 'project configuration helpers' {
         $previousConfig = $env:CDP_CONFIG
         $env:CDP_CONFIG = $configPath
         try {
-            Invoke-Cdp clean
+            Invoke-Cdp clean --yes
 
             $projects = @(Read-TestProjects -Path $configPath)
             $projects.Count | Should -Be 1
@@ -268,7 +268,7 @@ Describe 'project configuration helpers' {
         $repoPath = Join-Path $scanRoot 'InitApiProject'
         New-Item -ItemType Directory -Path (Join-Path $repoPath '.git') -Force | Out-Null
 
-        $result = Initialize-Cdp -RootPath $scanRoot -ConfigPath $configPath -PassThru
+        $result = Initialize-Cdp -RootPath $scanRoot -ConfigPath $configPath -PassThru -Confirm:$false
         $projects = @(Read-TestProjects -Path $configPath)
 
         $result.ConfigPath | Should -Be $configPath
@@ -285,7 +285,7 @@ Describe 'project configuration helpers' {
         $previousUserProfile = $env:USERPROFILE
         $env:USERPROFILE = $TestDrive
         try {
-            Invoke-Cdp init $scanRoot
+            Invoke-Cdp init $scanRoot --yes
 
             $configPath = Join-Path $TestDrive '.cdp\projects.json'
             $projects = @(Read-TestProjects -Path $configPath)
@@ -624,7 +624,7 @@ Describe 'project configuration helpers' {
             }
         ) | ConvertTo-Json -Depth 4 | Set-Content -Path $configPath -Encoding UTF8
 
-        $result = Import-GitProjects -RootPath $scanRoot -ConfigPath $configPath -MaxDepth 3 -PassThru
+        $result = Import-GitProjects -RootPath $scanRoot -ConfigPath $configPath -MaxDepth 3 -PassThru -Confirm:$false
         $projects = @(Read-TestProjects -Path $configPath)
 
         $result.FoundCount | Should -Be 2
@@ -644,7 +644,7 @@ Describe 'project configuration helpers' {
         $previousConfig = $env:CDP_CONFIG
         $env:CDP_CONFIG = $configPath
         try {
-            Invoke-Cdp scan $scanRoot
+            Invoke-Cdp scan $scanRoot --yes
         } finally {
             $env:CDP_CONFIG = $previousConfig
         }

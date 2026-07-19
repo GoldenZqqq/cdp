@@ -286,7 +286,7 @@ cdp tag HookProject work "$config_path" >/dev/null
     cdp '@work' "$config_path" >/dev/null
     assert_equals "$project_path" "$PWD"
 )
-cdp clean "$config_path" >/dev/null
+cdp clean "$config_path" --yes >/dev/null
 assert_equals "false" "$(jq -r '.[] | select(.name == "HookProject") | .pinned' "$config_path")"
 
 recent_output=$(cdp recent 5 2>&1)
@@ -321,17 +321,19 @@ printf '%s\n' \
 chmod +x "$fake_bin/tmux"
 
 workspace_launch=""
-if ! workspace_launch=$(
+set +e
+workspace_launch=$(
     export CDP_TEST_TMUX_LOG="$tmux_log"
     export PATH="$fake_bin:$PATH"
-    cdp-workspace team --config "$config_path" 2>&1
-); then
-    fail "workspace launch failed: $workspace_launch"
-fi
+    cdp-workspace team --config "$config_path" --yes 2>&1
+)
+workspace_status=$?
+set -e
+[[ $workspace_status -ne 0 ]] || fail "workspace launch should report the missing project"
 export PATH="$original_path"
 command -v basename >/dev/null 2>&1 || fail "basename missing after workspace; PATH=$PATH"
 assert_contains "$workspace_launch" "Opened window: HookProject"
-assert_contains "$workspace_launch" "Skipping 'MissingProject'"
+assert_contains "$workspace_launch" "project/path unavailable"
 tmux_calls="$(cat "$tmux_log")"
 assert_contains "$tmux_calls" "<new-session><-d><-s><cdp-team><-c><$project_path><-n><HookProject><codex>"
 assert_not_contains "$tmux_calls" "<send-keys>"
@@ -340,10 +342,10 @@ echo "  workspace isolation: ok"
 init_root="$test_root/init-repos"
 scan_root="$test_root/scan-repos"
 mkdir -p "$init_root/gamma/.git" "$scan_root/alpha/.git" "$scan_root/nested/beta/.git"
-cdp-init "$init_root" "$test_root/init-projects.json" 2 >/dev/null
+cdp-init "$init_root" "$test_root/init-projects.json" 2 --yes >/dev/null
 assert_equals "1" "$(jq length "$test_root/init-projects.json")"
 printf '%s\n' '[]' > "$test_root/scan-projects.json"
-cdp-scan "$scan_root" "$test_root/scan-projects.json" 3 >/dev/null
+cdp-scan "$scan_root" "$test_root/scan-projects.json" 3 --yes >/dev/null
 assert_equals "2" "$(jq length "$test_root/scan-projects.json")"
 echo "  init and scan: ok"
 

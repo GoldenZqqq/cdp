@@ -34,7 +34,9 @@ BeforeAll {
             return Join-Path $PSHOME 'powershell.exe'
         }
 
-        Join-Path $PSHOME 'pwsh.exe'
+        $windowsExecutable = Join-Path $PSHOME 'pwsh.exe'
+        if (Test-Path -LiteralPath $windowsExecutable) { return $windowsExecutable }
+        Join-Path $PSHOME 'pwsh'
     }
 }
 

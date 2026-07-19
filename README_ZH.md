@@ -139,8 +139,9 @@ cdp
 cd E:\Projects\my-api
 cdp-add
 
-# 首次使用：创建配置并可扫描 Git 仓库
-cdp init E:\Projects
+# 首次使用：先预览，再创建配置并可扫描 Git 仓库
+cdp init E:\Projects --dry-run
+cdp init E:\Projects --yes
 
 # 从任意位置打开项目选择器
 cdp
@@ -153,14 +154,14 @@ cdp api -Open codex
 cdp api -Open code
 
 # 批量导入某个目录下的 Git 仓库
-cdp-scan E:\Projects
+cdp-scan E:\Projects --yes
 
 # 查看当前配置健康状态
 cdp doctor
 
 # 安全修复失效路径、重复项目和缺失字段
-cdp clean
-cdp doctor --fix
+cdp clean --dry-run
+cdp clean --yes
 
 # 查看当前版本、配置和升级命令
 cdp version
@@ -187,7 +188,12 @@ Show-CdpProjectStatus -DirtyOnly -PassThru
 
 # 创建并启动多项目工作区
 cdp workspace --add fullstack api web --open codex
-cdp workspace fullstack
+cdp workspace fullstack --yes
+
+# 预览或确认项目删除与当前配置选择
+cdp remove api --dry-run
+cdp remove api --yes
+cdp config 1 --yes
 
 # 查看、信任、撤销或跳过项目命令 Hook
 cdp hook list
@@ -308,12 +314,12 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | 列出最近访问过的项目 |
 | `Set-ProjectPin` | `cdp pin`, `cdp-pin` | 将项目固定在选择器和列表顶部 |
 | `Clear-ProjectPin` | `cdp unpin`, `cdp-unpin` | 取消项目置顶 |
-| `Add-Project` | `cdp-add` | 添加当前目录或指定路径 |
+| `Add-Project` | `cdp add`, `cdp-add` | 添加当前目录或指定路径 |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | 扫描 Git 仓库并批量导入配置 |
-| `Remove-Project` | `cdp-rm` | 删除项目，支持交互选择 |
+| `Remove-Project` | `cdp remove`, `cdp-rm` | 删除项目，支持交互选择 |
 | `Get-ProjectList` | `cdp-ls` | 列出已启用项目 |
 | `Edit-ProjectConfig` | `cdp-edit` | 打开配置文件 |
-| `Set-ProjectConfig` | `cdp-config` | 切换当前使用的配置文件 |
+| `Set-ProjectConfig` | `cdp config`, `cdp-config` | 切换当前使用的配置文件 |
 
 ### WSL / Linux
 
@@ -334,10 +340,11 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | `cdp recent` / `cdp-recent` | 列出最近访问过的项目 |
 | `cdp pin api` / `cdp-pin api` | 将项目固定在选择器和列表顶部 |
 | `cdp unpin api` / `cdp-unpin api` | 取消项目置顶 |
-| `cdp-add` | 添加当前目录或指定路径 |
+| `cdp add` / `cdp-add` | 添加当前目录或指定路径 |
+| `cdp remove` / `cdp-rm` | 删除唯一匹配的项目；必须使用 `--yes` 或用 `--dry-run` 预览 |
 | `cdp-scan ~/code` / `cdp scan ~/code` | 扫描 Git 仓库并批量导入配置 |
 | `cdp-ls` | 列出已启用项目 |
-| `cdp-config` | 切换当前使用的配置文件 |
+| `cdp config 1` / `cdp-config 1` | 切换当前配置；必须使用 `--yes` 或用 `--dry-run` 预览 |
 
 ---
 
@@ -358,7 +365,7 @@ cd E:\Projects\my-api
 cdp-add
 
 # 或者一次性扫描某个目录下的 Git 仓库
-cdp-scan E:\Projects
+cdp-scan E:\Projects --yes
 ```
 
 自定义配置文件格式：
@@ -408,6 +415,12 @@ cdp-scan E:\Projects
 最近访问记录保存在独立状态文件 `~/.cdp/state.json`，不会写回 `projects.json`。自动化或测试场景可以用 `CDP_STATE_PATH` 指向临时状态文件。
 
 cdp 通过同目录原子替换持久化项目、最近访问和 workspace JSON。并发修改会被拒绝而不是互相覆盖，并保留最新三份 `*.cdp-backup.*` 供显式恢复；项目配置损坏但存在有效备份时，`cdp doctor` 会给出诊断。
+
+### 安全变更
+
+PowerShell 变更函数支持原生 `-WhatIf` 与 `-Confirm`；加 `-PassThru` 可获得 `Action`、`Target`、`Status`、`Changed`、`Error` 字段。bash/zsh 变更命令支持 `--dry-run` 与 `--yes`，并为每个目标打印一行结果。添加项目、置顶、别名/标签、workspace 定义和 Hook 信任属于低风险操作，默认执行行为保持不变。修复、删除、扫描/导入、初始化、status fix/push、当前配置选择及外部 workspace 启动必须显式授权。shell 高影响命令不会从 stdin 读取确认；使用 `--yes` 执行，或用 `--dry-run` 在不写 JSON、不 push Git、不启动 workspace 进程的情况下预览。
+
+`cdp config` / `cdp-config` 使用列表中的数字选择配置。shell 自动化应显式传入序号，例如 `cdp config 1 --yes`；PowerShell 可使用 `Set-ProjectConfig -Selection 1 -Confirm:$false`。
 
 ---
 
@@ -468,11 +481,11 @@ Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber
 cdp-ls
 
 # 安全修复配置
-cdp clean
-cdp doctor --fix
+cdp clean --dry-run
+cdp clean --yes
 
 # 切换配置文件
-cdp-config
+cdp-config 1 --yes
 ```
 
 ---

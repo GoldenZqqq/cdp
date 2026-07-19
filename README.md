@@ -139,8 +139,9 @@ cdp
 cd E:\Projects\my-api
 cdp-add
 
-# First run: create config and optionally scan Git repositories
-cdp init E:\Projects
+# First run: preview, then create config and optionally scan Git repositories
+cdp init E:\Projects --dry-run
+cdp init E:\Projects --yes
 
 # Open the project picker from anywhere
 cdp
@@ -153,14 +154,14 @@ cdp api -Open codex
 cdp api -Open code
 
 # Bulk import Git repositories under a directory
-cdp-scan E:\Projects
+cdp-scan E:\Projects --yes
 
 # Check your setup
 cdp doctor
 
 # Safely repair missing paths, duplicates, and missing fields
-cdp clean
-cdp doctor --fix
+cdp clean --dry-run
+cdp clean --yes
 
 # Show the current version, config, and upgrade command
 cdp version
@@ -187,7 +188,12 @@ Show-CdpProjectStatus -DirtyOnly -PassThru
 
 # Create and launch a multi-project workspace
 cdp workspace --add fullstack api web --open codex
-cdp workspace fullstack
+cdp workspace fullstack --yes
+
+# Preview or approve project removal and active-config selection
+cdp remove api --dry-run
+cdp remove api --yes
+cdp config 1 --yes
 
 # Review, trust, revoke, or bypass project command hooks
 cdp hook list
@@ -308,12 +314,12 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | Lists recently visited projects |
 | `Set-ProjectPin` | `cdp pin`, `cdp-pin` | Keeps a project at the top of pickers and lists |
 | `Clear-ProjectPin` | `cdp unpin`, `cdp-unpin` | Removes a project pin |
-| `Add-Project` | `cdp-add` | Adds the current directory or a specific path |
+| `Add-Project` | `cdp add`, `cdp-add` | Adds the current directory or a specific path |
 | `Import-GitProjects -RootPath E:\Projects` | `cdp-scan`, `cdp scan` | Scans Git repositories and imports them into the config |
-| `Remove-Project` | `cdp-rm` | Removes a project, with interactive selection support |
+| `Remove-Project` | `cdp remove`, `cdp-rm` | Removes a project, with interactive selection support |
 | `Get-ProjectList` | `cdp-ls` | Lists enabled projects |
 | `Edit-ProjectConfig` | `cdp-edit` | Opens the config file |
-| `Set-ProjectConfig` | `cdp-config` | Changes the active config file |
+| `Set-ProjectConfig` | `cdp config`, `cdp-config` | Changes the active config file |
 
 ### WSL / Linux
 
@@ -334,10 +340,11 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | `cdp recent` / `cdp-recent` | Lists recently visited projects |
 | `cdp pin api` / `cdp-pin api` | Keeps a project at the top of pickers and lists |
 | `cdp unpin api` / `cdp-unpin api` | Removes a project pin |
-| `cdp-add` | Adds the current directory or a specific path |
+| `cdp add` / `cdp-add` | Adds the current directory or a specific path |
+| `cdp remove` / `cdp-rm` | Removes one matched project; requires `--yes` or supports `--dry-run` |
 | `cdp-scan ~/code` / `cdp scan ~/code` | Scans Git repositories and imports them into the config |
 | `cdp-ls` | Lists enabled projects |
-| `cdp-config` | Changes the active config file |
+| `cdp config 1` / `cdp-config 1` | Changes the active config file; requires `--yes` or supports `--dry-run` |
 
 ---
 
@@ -358,7 +365,7 @@ cd E:\Projects\my-api
 cdp-add
 
 # Or scan Git repositories under a directory in one pass
-cdp-scan E:\Projects
+cdp-scan E:\Projects --yes
 ```
 
 Custom config format:
@@ -408,6 +415,12 @@ Command hooks are skipped by default. Authorize one switch with `cdp api -AllowH
 Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
 
 cdp persists project, recent-state, and workspace JSON through same-directory atomic replacement. Concurrent changes are rejected instead of overwritten, and the three newest `*.cdp-backup.*` files are retained for explicit recovery. `cdp doctor` reports when a damaged project config has a valid backup.
+
+### Safe mutations
+
+PowerShell mutation functions support native `-WhatIf` and `-Confirm`; use `-PassThru` to receive `Action`, `Target`, `Status`, `Changed`, and `Error` fields. Bash/zsh mutations accept `--dry-run` and `--yes` and print one result line per target. Low-risk add, pin, alias/tag, workspace-definition, and hook-trust changes keep their default execution behavior. Repair, remove, scan/import, init, status fix/push, active-config selection, and external workspace launch require explicit approval. Shell high-impact commands never read confirmation from stdin: pass `--yes`, or use `--dry-run` to preview without writing JSON, pushing Git, or starting workspace processes.
+
+`cdp config` / `cdp-config` accepts a numbered selection from the displayed list. In shell automation, provide the number as an argument, for example `cdp config 1 --yes`. PowerShell can use `Set-ProjectConfig -Selection 1 -Confirm:$false`.
 
 ---
 
@@ -468,11 +481,11 @@ Install-Module -Name cdp -Scope CurrentUser -Force -AllowClobber
 cdp-ls
 
 # Safely repair config
-cdp clean
-cdp doctor --fix
+cdp clean --dry-run
+cdp clean --yes
 
 # Change config file
-cdp-config
+cdp-config 1 --yes
 ```
 
 ---

@@ -354,6 +354,84 @@ raw rootPath -> resolve for filesystem/Git -> normalized status
 normalized missing enabled set -> remove matching enabled config entries only
 ```
 
+## Scenario: Preview and Approve Mutating Commands
+
+### 1. Scope / Trigger
+
+Apply whenever a command writes cdp state, changes the active config, pushes
+Git, or starts a multi-project workspace process. Preview must be decided
+before the first persistent or external side effect.
+
+### 2. Signatures
+
+```text
+PowerShell: <mutation> [-WhatIf] [-Confirm] [-PassThru]
+shell:      <mutation> [--dry-run|--yes]
+
+PowerShell action result:
+Action, Target, Status, Changed, Error
+
+shell action result:
+action=<name> target=<target> status=<state> changed=<true|false> [error=<reason>]
+```
+
+### 3. Contracts
+
+- Low-risk add, pin/unpin, alias/tag, workspace-definition, and hook-trust
+  changes preview but execute by default.
+- High-risk repair, remove, scan/import, init, status fix/push, active-config
+  selection, and workspace launch require native High-impact confirmation in
+  PowerShell or `--yes` in shell.
+- PowerShell returns action results only with `-PassThru`; existing domain and
+  aggregate fields may be carried as additional properties for compatibility.
+- Shell never reads confirmation from stdin. `cdp-config` consumes an explicit
+  numeric selection; automatic config discovery is read-only and deterministic.
+- Dry-run validates targets and plans actions but never writes JSON/config
+  choice, pushes Git, creates tmux/terminal processes, or persists hook trust.
+- Batch actions continue after item failure and retain a failed result/nonzero
+  final status after processing later targets.
+
+### 4. Validation & Error Matrix
+
+- `--dry-run --yes` -> parser error; no side effect.
+- Safety option on read-only list/status/doctor/switch -> parser error.
+- High-risk shell action without `--yes` -> show plan, return nonzero.
+- `-WhatIf` / `--dry-run` with valid targets -> preview result, success, bytes unchanged.
+- Per-target native failure -> failed result; continue remaining targets.
+- Config fingerprint race -> failed result under `-PassThru`, otherwise exception;
+  active bytes remain the concurrent writer's version.
+
+### 5. Good / Base / Bad Cases
+
+- Good: `cdp status --push --dry-run`, inspect remote/upstream, then rerun with `--yes`.
+- Base: `cdp pin api` keeps compatibility; `cdp pin api --dry-run` previews.
+- Bad: prompt with `read`, `Read-Host`, or `ShouldContinue` after a batch stream
+  starts; write config before checking approval; stop after the first failed push.
+
+### 6. Tests Required
+
+- PowerShell 5.1/7: every mutation exposes native common parameters and WhatIf
+  preserves exact bytes; workspace WhatIf calls no process API.
+- bash/zsh/Bash 3.2: low-risk dry-run, high-risk refusal/dry-run/yes, config
+  selection without stdin confirmation, and no-write assertions.
+- Status/workspace batch fixtures put a failure before a success and assert both
+  results plus the successful later native side effect.
+- CI runs `cdp.SafeMutations.Tests.ps1` and `cdp.SafeMutations.Tests.sh`.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```text
+initialize/write -> prompt -> stop on first failure
+```
+
+Correct:
+
+```text
+parse -> validate -> plan -> approve/preview -> execute each -> aggregate status
+```
+
 ## Scenario: Build Cross-Version PowerShell Regression Fixtures
 
 ### 1. Scope / Trigger

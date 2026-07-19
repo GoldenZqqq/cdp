@@ -31,6 +31,8 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - [x] Retain three bounded backups and expose explicit recovery helpers.
 - [x] Diagnose valid backups when the active project config is damaged.
 - [x] Bind persistent command-hook trust to config, project, and command fingerprints without storing command text.
+- [x] Add PowerShell ShouldProcess/WhatIf/Confirm and shell dry-run/yes safety boundaries to mutating commands.
+- [x] Return or print per-target action results and continue safe batch processing after item failures.
 - [ ] Complete the remaining v2.1.0 engineering, performance, CI, media, and documentation tasks.
 - [ ] Pass the full cross-platform release gate and publish/verify every public channel.
 
@@ -39,8 +41,8 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - PowerShell 7.5.2: Pester `71/71`; PSScriptAnalyzer Error severity reported no findings.
 - Bash, zsh, and Bash 3.2: persistence, stale-fingerprint, invalid JSON, lock,
   flush/replacement failure, backup recovery, doctor diagnostics, and syntax checks passed.
-- Shell installer digest: `1e24985aadfc1d8d716c3463e268d426f74bfa468a044386ffa50dd379873484`.
-- Deterministic Scoop package digest: `732276c93fdf9954fb77867932e86e510d3a1ce8dcb4bbe03d431fa9c87c3a48`.
+- Shell installer digest: `9b265198fbeea63f49ee56de4beadb3a8cc78b8617484e179509b0d868cbc390`.
+- Deterministic Scoop package digest: `b3e59cb048f514f3dabebd02776f66af72a888a3871f0d5f14dcb2f2676899a7`.
 
 ## 2.0.5 Security Checklist
 

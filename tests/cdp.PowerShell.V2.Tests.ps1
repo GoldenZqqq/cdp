@@ -154,6 +154,34 @@ Describe 'cdp v2 status filters and actions' {
         $output | Should -Not -Match '\bdone\b'
     }
 
+    It 'continues later pushes and returns per-target results after a failure' {
+        $failedFixture = New-TestUpstreamFixtureV2 -Root $TestDrive -Name 'batch-failed'
+        $successFixture = New-TestUpstreamFixtureV2 -Root $TestDrive -Name 'batch-success'
+        foreach ($fixture in @($failedFixture, $successFixture)) {
+            'ahead' | Add-Content -LiteralPath (Join-Path $fixture.RepositoryPath 'tracked.txt') -Encoding UTF8
+            Invoke-TestGitV2 -Path $fixture.RepositoryPath -Arguments @('add', 'tracked.txt') | Out-Null
+            Invoke-TestGitV2 -Path $fixture.RepositoryPath -Arguments @('commit', '--quiet', '-m', 'ahead') | Out-Null
+        }
+        Invoke-TestGitV2 -Path $failedFixture.RepositoryPath -Arguments @(
+            'remote', 'set-url', 'origin', (Join-Path $TestDrive 'batch-unavailable.git')
+        ) | Out-Null
+        $successBefore = Invoke-TestGitV2 -Path $successFixture.RemotePath -Arguments @('rev-parse', 'refs/heads/main')
+
+        $configPath = Join-Path $TestDrive 'batch-push-projects.json'
+        Write-TestConfigV2 -Path $configPath -Projects @(
+            [PSCustomObject]@{ name = 'Failed'; rootPath = $failedFixture.RepositoryPath; enabled = $true },
+            [PSCustomObject]@{ name = 'Success'; rootPath = $successFixture.RepositoryPath; enabled = $true }
+        )
+
+        $results = @(Show-CdpProjectStatus -ConfigPath $configPath -Push -Confirm:$false -PassThru)
+
+        $successAfter = Invoke-TestGitV2 -Path $successFixture.RemotePath -Arguments @('rev-parse', 'refs/heads/main')
+        $results.Count | Should -Be 2
+        @($results | Where-Object Status -eq failed).Target | Should -Be @('Failed')
+        @($results | Where-Object Status -eq succeeded).Target | Should -Be @('Success')
+        $successAfter | Should -Not -Be $successBefore
+    }
+
     It 'does not mutate status targets during a dry run' {
         $configPath = Join-Path $TestDrive 'status-dry-run-projects.json'
         Write-TestConfigV2 -Path $configPath -Projects @(
@@ -225,7 +253,7 @@ Describe 'cdp v2 workspace behavior' {
             Mock Start-Process {}
 
             $output = @(& {
-                Invoke-CdpWorkspace -Name 'team' -Open 'codex' -ConfigPath $ConfigPath
+                Invoke-CdpWorkspace -Name 'team' -Open 'codex' -ConfigPath $ConfigPath -Confirm:$false
             } 6>&1) -join [Environment]::NewLine
 
             Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {

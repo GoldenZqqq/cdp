@@ -3,7 +3,7 @@
   "name": "v2-1-0-safe-mutations",
   "title": "为变更性命令增加安全确认",
   "description": "为 fix、push、remove、repair 等动作增加 ShouldProcess、WhatIf、dry-run、确认和可审计结果。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

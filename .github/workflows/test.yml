@@ -108,6 +108,9 @@ jobs:
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
 
+      - name: Run shell safe mutation tests
+        run: bash ./tests/cdp.SafeMutations.Tests.sh
+
       - name: Run bash v2 regression tests
         run: bash ./tests/cdp.Shell.V2.Tests.sh
 
@@ -148,6 +151,9 @@ jobs:
 
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
+
+      - name: Run shell safe mutation tests
+        run: bash ./tests/cdp.SafeMutations.Tests.sh
 
       - name: Run zsh v2 regression tests
         run: zsh ./tests/cdp.Shell.V2.Tests.sh

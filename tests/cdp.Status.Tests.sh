@@ -177,7 +177,7 @@ chmod +x "$fake_bin/tmux"
 workspace_output=$(
     export CDP_TEST_TMUX_LOG="$tmux_log"
     export PATH="$fake_bin:$PATH"
-    cdp-workspace mapped --config "$windows_config" 2>&1
+    cdp-workspace mapped --config "$windows_config" --yes 2>&1
 )
 assert_contains "$workspace_output" "Opened window: WindowsMapped"
 tmux_calls="$(cat "$tmux_log")"

@@ -12,6 +12,11 @@
 - Routed project, recent-state, workspace, repair, scan, metadata, and status-fix writes through the same PowerShell and shell persistence contract.
 - Invalid state files are no longer silently replaced with empty data.
 - Command hook trust automatically becomes stale when the config path, project identity, or command fingerprint changes.
+- Added PowerShell `ShouldProcess`, `-WhatIf`, `-Confirm`, and opt-in structured action results across mutation boundaries.
+- Added shell `--dry-run` and `--yes` safety contracts, including explicit approval for repair, remove, scan/import, init, status actions, config selection, and external workspace launch.
+- Batch status/workspace actions now report each target, preserve later targets after a failure, and expose a non-success result when any target fails.
+- Status push plans now include the resolved remote and upstream before execution.
+- Config discovery is read-only; only explicit config-selection commands persist the active choice.
 
 ## 2.0.5
 

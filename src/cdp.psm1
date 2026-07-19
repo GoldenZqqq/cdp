@@ -18,6 +18,55 @@ $script:CdpFzfCommand = $null
 $script:CdpStateFingerprint = 'missing'
 $script:CdpStateWritable = $true
 
+function New-CdpActionResult {
+    param(
+        [Parameter(Mandatory = $true)][string]$Action,
+        [Parameter(Mandatory = $true)][string]$Target,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('preview', 'succeeded', 'skipped', 'canceled', 'failed')]
+        [string]$Status,
+        [Parameter(Mandatory = $true)][bool]$Changed,
+        [Parameter(Mandatory = $false)][AllowEmptyString()][string]$Error = '',
+        [Parameter(Mandatory = $false)][object]$Details
+    )
+
+    $result = [PSCustomObject][ordered]@{
+        Action = $Action
+        Target = $Target
+        Status = $Status
+        Changed = $Changed
+        Error = $Error
+    }
+    if ($null -ne $Details) {
+        $result | Add-Member -NotePropertyName Details -NotePropertyValue $Details
+        foreach ($property in $Details.PSObject.Properties) {
+            if (-not $result.PSObject.Properties[$property.Name]) {
+                $result | Add-Member -NotePropertyName $property.Name -NotePropertyValue $property.Value
+            }
+        }
+    }
+    $result
+}
+
+function Read-CdpJsonArrayMutationDocument {
+    param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+    if (Test-Path -LiteralPath $LiteralPath -PathType Leaf) {
+        return Read-CdpJsonDocument -LiteralPath $LiteralPath
+    }
+    [PSCustomObject]@{
+        Path = $LiteralPath
+        Fingerprint = 'missing'
+        Value = @()
+    }
+}
+
+function Get-CdpUserHome {
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) { return $env:USERPROFILE }
+    if (-not [string]::IsNullOrWhiteSpace($env:HOME)) { return $env:HOME }
+    (Get-Location).Path
+}
+
 function Get-CdpFileFingerprint {
     param([Parameter(Mandatory = $true)][string]$LiteralPath)
 
@@ -534,7 +583,7 @@ function Get-CdpHookTrustPath {
     if (-not [string]::IsNullOrWhiteSpace($env:CDP_HOOK_TRUST_PATH)) {
         return [Environment]::ExpandEnvironmentVariables($env:CDP_HOOK_TRUST_PATH)
     }
-    Join-Path $env:USERPROFILE '.cdp\hook-trust.json'
+    Join-Path (Get-CdpUserHome) '.cdp\hook-trust.json'
 }
 
 function Get-CdpNormalizedConfigPath {
@@ -678,12 +727,16 @@ function Show-CdpHookTrustList {
 }
 
 function Add-CdpHookTrust {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param([string]$ConfigPath, [string]$Name)
 
     $projects = @(Get-CdpHookProjects -ConfigPath $ConfigPath)
     $matches = @(Get-CdpProjectMatches -Projects $projects -Query $Name)
     if ($matches.Count -ne 1) { throw "Hook trust requires one project match; found $($matches.Count)." }
     $identity = Get-CdpHookIdentity -ConfigPath $ConfigPath -Project $matches[0]
+    if (-not $PSCmdlet.ShouldProcess([string]$matches[0].name, 'Trust current hook fingerprint')) {
+        return
+    }
     $store = Read-CdpHookTrustStore
     $entries = @($store.Value.entries | Where-Object {
         -not ($_.configFingerprint -eq $identity.ConfigFingerprint -and
@@ -701,6 +754,7 @@ function Add-CdpHookTrust {
 }
 
 function Remove-CdpHookTrust {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param([string]$ConfigPath, [string]$Name)
 
     $store = Read-CdpHookTrustStore
@@ -711,6 +765,10 @@ function Remove-CdpHookTrust {
         if ($matches.Count -ne 1) { throw "Hook revoke requires one project match; found $($matches.Count)." }
         $projectFingerprint = (Get-CdpHookIdentity -ConfigPath $ConfigPath -Project $matches[0]).ProjectFingerprint
     }
+    $target = if ($Name -eq '--all') { 'all hooks for active config' } else { $Name }
+    if (-not $PSCmdlet.ShouldProcess($target, 'Revoke hook trust')) {
+        return
+    }
     $store.Value.entries = @($store.Value.entries | Where-Object {
         $_.configFingerprint -ne $configFingerprint -or
         ($projectFingerprint -and $_.projectFingerprint -ne $projectFingerprint)
@@ -720,6 +778,7 @@ function Remove-CdpHookTrust {
 }
 
 function Invoke-CdpHookCommand {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param([string]$Action, [string]$Name, [string]$ConfigPath)
 
     try {
@@ -727,8 +786,18 @@ function Invoke-CdpHookCommand {
         if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { throw "Configuration file not found." }
         switch ($Action) {
             'list' { Show-CdpHookTrustList -ConfigPath $ConfigPath }
-            'trust' { Add-CdpHookTrust -ConfigPath $ConfigPath -Name $Name }
-            'revoke' { Remove-CdpHookTrust -ConfigPath $ConfigPath -Name $Name }
+            'trust' {
+                $parameters = @{ ConfigPath = $ConfigPath; Name = $Name }
+                if ($WhatIfPreference) { $parameters.WhatIf = $true }
+                if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+                Add-CdpHookTrust @parameters
+            }
+            'revoke' {
+                $parameters = @{ ConfigPath = $ConfigPath; Name = $Name }
+                if ($WhatIfPreference) { $parameters.WhatIf = $true }
+                if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+                Remove-CdpHookTrust @parameters
+            }
             default { throw "Unknown hook action." }
         }
     } catch {
@@ -891,7 +960,7 @@ function Switch-Project {
     }
 
     # Initialize config file if it doesn't exist and not using Project Manager
-    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+    $customConfigPath = Join-Path (Get-CdpUserHome) ".cdp\projects.json"
     if ($ConfigPath -eq $customConfigPath) {
         Initialize-ConfigFile -ConfigPath $ConfigPath
     }
@@ -1088,7 +1157,7 @@ function Get-ProjectList {
     }
 
     # Initialize config file if it doesn't exist and not using Project Manager
-    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+    $customConfigPath = Join-Path (Get-CdpUserHome) ".cdp\projects.json"
     if ($ConfigPath -eq $customConfigPath) {
         Initialize-ConfigFile -ConfigPath $ConfigPath
     }
@@ -1447,6 +1516,8 @@ function Split-CdpCommonOptions {
     $resolvedConfig = $null
     $allowHook = $false
     $noHook = $false
+    $dryRun = $false
+    $assumeYes = $false
     for ($i = 0; $i -lt $Tokens.Count; $i++) {
         $token = $Tokens[$i]
         if ($token -in @('--open', '-open', '-o')) {
@@ -1469,10 +1540,19 @@ function Split-CdpCommonOptions {
             $noHook = $true
             continue
         }
+        if ($token -in @('--dry-run', '-dry-run')) {
+            $dryRun = $true
+            continue
+        }
+        if ($token -in @('--yes', '-yes')) {
+            $assumeYes = $true
+            continue
+        }
         $positionals.Add($token)
     }
 
     if ($allowHook -and $noHook) { throw "The --allow-hook and --no-hook options cannot be used together." }
+    if ($dryRun -and $assumeYes) { throw "The --dry-run and --yes options cannot be used together." }
 
     [PSCustomObject]@{
         Tokens = @($positionals)
@@ -1480,6 +1560,8 @@ function Split-CdpCommonOptions {
         ConfigPath = $resolvedConfig
         AllowHook = $allowHook
         NoHook = $noHook
+        DryRun = $dryRun
+        Yes = $assumeYes
     }
 }
 
@@ -1501,17 +1583,22 @@ function Resolve-CdpCommandKind {
         '^(tag|add-tag)$' { return 'tag' }
         '^(untag|remove-tag)$' { return 'untag' }
         '^(clean|repair|fix)$' { return 'clean' }
+        '^(add|add-project)$' { return 'add' }
+        '^(remove|rm|delete)$' { return 'remove' }
         '^(init|setup)$' { return 'init' }
         '^(scan|import)$' { return 'scan' }
+        '^(config|select-config)$' { return 'config' }
         default { return $null }
     }
 }
 
 function ConvertFrom-CdpStatusTokens {
-    param([string[]]$Tokens, [string]$ConfigPath)
+    param([string[]]$Tokens, [string]$ConfigPath, [bool]$DryRun, [bool]$Yes)
 
     $result = New-CdpInvocation -Kind 'status'
     $result.ConfigPath = $ConfigPath
+    $result.DryRun = $DryRun
+    $result.Yes = $Yes
     foreach ($token in $Tokens) {
         if ($token -in @('--dirty', '-dirty', '-d')) { $result.DirtyOnly = $true; continue }
         if ($token -in @('--fix', '-fix')) { $result.Fix = $true; continue }
@@ -1537,18 +1624,22 @@ function ConvertFrom-CdpStatusTokens {
 }
 
 function ConvertFrom-CdpWorkspaceTokens {
-    param([string[]]$Tokens, [string]$ConfigPath, [string]$Open)
+    param([string[]]$Tokens, [string]$ConfigPath, [string]$Open, [bool]$DryRun, [bool]$Yes)
 
     $result = New-CdpInvocation -Kind 'workspace'
     $result.ConfigPath = $ConfigPath
     $result.Open = $Open
+    $result.DryRun = $DryRun
+    $result.Yes = $Yes
     if ($Tokens.Count -eq 0) {
+        if ($DryRun -or $Yes) { throw "Workspace safety options require --add or a workspace name." }
         if ($Open) { throw "The --open option requires a workspace name or --add action." }
         $result.WorkspaceAction = 'usage'
         return $result
     }
     $action = $Tokens[0].ToLowerInvariant()
     if ($action -in @('--list', '-l', 'list')) {
+        if ($DryRun -or $Yes) { throw "Workspace --list does not accept safety options." }
         if ($Open) { throw "The --open option is not valid with workspace --list." }
         if ($Tokens.Count -ne 1) { throw "Workspace --list does not accept project arguments." }
         $result.WorkspaceAction = 'list'
@@ -1581,10 +1672,12 @@ function Set-CdpTrailingConfigPath {
 }
 
 function ConvertFrom-CdpManagementTokens {
-    param([string]$Kind, [string[]]$Tokens, [string]$ConfigPath)
+    param([string]$Kind, [string[]]$Tokens, [string]$ConfigPath, [bool]$DryRun, [bool]$Yes)
 
     $result = New-CdpInvocation -Kind $Kind
     $result.ConfigPath = $ConfigPath
+    $result.DryRun = $DryRun
+    $result.Yes = $Yes
     if ($Kind -eq 'doctor') {
         $items = @($Tokens | Where-Object { if ($_ -in @('--fix', '-fix')) { $result.Fix = $true; $false } else { $true } })
         Set-CdpTrailingConfigPath -Result $result -Arguments $items -RequiredCount 0
@@ -1600,6 +1693,17 @@ function ConvertFrom-CdpManagementTokens {
         }
     } elseif ($Kind -in @('about', 'clean')) {
         Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 0
+    } elseif ($Kind -eq 'config') {
+        if ($Tokens.Count -gt 1) { throw "Config selection accepts one numeric selection." }
+        if ($Tokens.Count -eq 1) {
+            $selection = 0
+            if (-not [int]::TryParse($Tokens[0], [ref]$selection) -or $selection -lt 1) {
+                throw "Config selection must be a positive integer."
+            }
+            $result.Count = $selection
+        } else {
+            $result.Count = 0
+        }
     } elseif ($Kind -eq 'recent') {
         if ($Tokens.Count -gt 1) { throw "Recent count must be a positive integer." }
         if ($Tokens.Count -eq 1) {
@@ -1608,15 +1712,31 @@ function ConvertFrom-CdpManagementTokens {
             $result.Count = $recentCount
         }
         if ($result.Count -le 0) { throw "Recent count must be a positive integer." }
-    } elseif ($Kind -in @('pin', 'unpin')) {
+    } elseif ($Kind -in @('pin', 'unpin', 'remove')) {
         Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 1
         $result.Name = $Tokens[0]
+    } elseif ($Kind -eq 'add') {
+        if ($Tokens.Count -gt 3) { throw "Add accepts a name, path, and optional config path." }
+        if ($Tokens.Count -gt 0) { $result.Name = $Tokens[0] }
+        if ($Tokens.Count -gt 1) { $result.RootPath = $Tokens[1] }
+        if ($Tokens.Count -gt 2) {
+            if ($result.ConfigPath) { throw "The config path was specified more than once." }
+            $result.ConfigPath = $Tokens[2]
+        }
     } elseif ($Kind -in @('alias', 'unalias', 'tag', 'untag')) {
         Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 2
         $result.Name = $Tokens[0]
         $result.Value = $Tokens[1]
     } else {
         $result = ConvertFrom-CdpScanTokens -Kind $Kind -Tokens $Tokens -ConfigPath $ConfigPath
+    }
+    $result.DryRun = $DryRun
+    $result.Yes = $Yes
+    $isMutation = $Kind -in @('clean', 'add', 'remove', 'pin', 'unpin', 'alias', 'unalias', 'tag', 'untag', 'init', 'scan', 'config')
+    if ($Kind -eq 'doctor') { $isMutation = $result.Fix }
+    if ($Kind -eq 'hook') { $isMutation = $result.HookAction -in @('trust', 'revoke') }
+    if (($DryRun -or $Yes) -and -not $isMutation) {
+        throw "Safety options are only valid for mutating commands."
     }
     $result
 }
@@ -1644,7 +1764,9 @@ function ConvertFrom-CdpScanTokens {
 }
 
 function ConvertFrom-CdpSwitchTokens {
-    param([string[]]$Tokens, [string]$Query, [string]$ConfigPath, [string]$Open, [bool]$AllowHook, [bool]$NoHook)
+    param([string[]]$Tokens, [string]$Query, [string]$ConfigPath, [string]$Open, [bool]$AllowHook, [bool]$NoHook, [bool]$DryRun, [bool]$Yes)
+
+    if ($DryRun -or $Yes) { throw "Safety options are not valid for project switching." }
 
     $result = New-CdpInvocation -Kind 'switch'
     $result.Query = $Query
@@ -1682,16 +1804,16 @@ function ConvertFrom-CdpInvokeArguments {
     if ($kind -eq 'status') {
         if ($common.Open) { throw "The --open option is not valid for status." }
         if ($common.AllowHook -or $common.NoHook) { throw "Hook options are only valid for project switching." }
-        return ConvertFrom-CdpStatusTokens -Tokens $tokens -ConfigPath $common.ConfigPath
+        return ConvertFrom-CdpStatusTokens -Tokens $tokens -ConfigPath $common.ConfigPath -DryRun $common.DryRun -Yes $common.Yes
     }
     if ($kind -eq 'workspace') {
         if ($common.AllowHook -or $common.NoHook) { throw "Hook options are only valid for project switching." }
-        return ConvertFrom-CdpWorkspaceTokens -Tokens $tokens -ConfigPath $common.ConfigPath -Open $common.Open
+        return ConvertFrom-CdpWorkspaceTokens -Tokens $tokens -ConfigPath $common.ConfigPath -Open $common.Open -DryRun $common.DryRun -Yes $common.Yes
     }
     if ($kind) {
         if ($common.Open) { throw "The --open option is only valid for project and workspace commands." }
         if ($common.AllowHook -or $common.NoHook) { throw "Hook options are only valid for project switching." }
-        return ConvertFrom-CdpManagementTokens -Kind $kind -Tokens $tokens -ConfigPath $common.ConfigPath
+        return ConvertFrom-CdpManagementTokens -Kind $kind -Tokens $tokens -ConfigPath $common.ConfigPath -DryRun $common.DryRun -Yes $common.Yes
     }
     ConvertFrom-CdpSwitchTokens `
         -Tokens $tokens `
@@ -1699,12 +1821,14 @@ function ConvertFrom-CdpInvokeArguments {
         -ConfigPath $common.ConfigPath `
         -Open $common.Open `
         -AllowHook $common.AllowHook `
-        -NoHook $common.NoHook
+        -NoHook $common.NoHook `
+        -DryRun $common.DryRun `
+        -Yes $common.Yes
 }
 
 # Helper function to get stored config choice path
 function Get-StoredConfigChoice {
-    $configChoiceFile = Join-Path $env:USERPROFILE ".cdp\config"
+    $configChoiceFile = Join-Path (Get-CdpUserHome) ".cdp\config"
     if (Test-Path $configChoiceFile) {
         $storedPath = Get-Content -Path $configChoiceFile -Raw -ErrorAction SilentlyContinue
         if (-not [string]::IsNullOrWhiteSpace($storedPath)) {
@@ -1721,7 +1845,12 @@ function Save-ConfigChoice {
         [string]$ConfigPath
     )
 
-    $configChoiceFile = Join-Path $env:USERPROFILE ".cdp\config"
+    if ($WhatIfPreference) {
+        Write-Host "Would save active config choice: $ConfigPath" -ForegroundColor Gray
+        return
+    }
+
+    $configChoiceFile = Join-Path (Get-CdpUserHome) ".cdp\config"
     $configDir = Split-Path -Parent $configChoiceFile
 
     if (-not (Test-Path $configDir)) {
@@ -1738,7 +1867,7 @@ function Get-AllAvailableConfigs {
     # Check all possible locations
     $cursorPath = Join-Path $env:APPDATA "Cursor\User\globalStorage\alefragnani.project-manager\projects.json"
     $vscodePath = Join-Path $env:APPDATA "Code\User\globalStorage\alefragnani.project-manager\projects.json"
-    $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+    $customConfigPath = Join-Path (Get-CdpUserHome) ".cdp\projects.json"
 
     if (Test-Path $cursorPath) {
         $configs += [PSCustomObject]@{
@@ -1787,15 +1916,13 @@ function Get-DefaultConfigPath {
 
     # If no configs found, return default (will be created)
     if ($availableConfigs.Count -eq 0) {
-        $customConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+        $customConfigPath = Join-Path (Get-CdpUserHome) ".cdp\projects.json"
         return $customConfigPath
     }
 
-    # If only one config, use it and save the choice
+    # If only one config, use it without mutating the active-choice file.
     if ($availableConfigs.Count -eq 1) {
-        $selectedPath = $availableConfigs[0].Path
-        Save-ConfigChoice -ConfigPath $selectedPath
-        return $selectedPath
+        return $availableConfigs[0].Path
     }
 
     # Multiple configs found - let user choose
@@ -1811,9 +1938,9 @@ function Get-DefaultConfigPath {
     }
 
     Write-Host ""
-    Write-Host "Your choice will be saved. Use " -ForegroundColor Gray -NoNewline
+    Write-Host "Use " -ForegroundColor Gray -NoNewline
     Write-Host "cdp-config" -ForegroundColor Cyan -NoNewline
-    Write-Host " to change it later." -ForegroundColor Gray
+    Write-Host " to persist an active configuration choice." -ForegroundColor Gray
     Write-Host "Or set " -ForegroundColor Gray -NoNewline
     Write-Host "`$env:CDP_CONFIG" -ForegroundColor Cyan -NoNewline
     Write-Host " to override." -ForegroundColor Gray
@@ -1828,13 +1955,9 @@ function Get-DefaultConfigPath {
                 $selectedPath = $availableConfigs[$selectedIndex - 1].Path
                 $selectedSource = $availableConfigs[$selectedIndex - 1].Source
 
-                # Save the choice
-                Save-ConfigChoice -ConfigPath $selectedPath
-
                 Write-Host "`nUsing: $selectedSource" -ForegroundColor Green
                 Write-Host "Path: $selectedPath" -ForegroundColor Gray
-                Write-Host "Saved to: " -ForegroundColor Gray -NoNewline
-                Write-Host "~/.cdp/config" -ForegroundColor Cyan
+                Write-Host "Choice not persisted; use cdp-config to save it." -ForegroundColor Gray
                 Write-Host ""
                 return $selectedPath
             }
@@ -1850,6 +1973,10 @@ function Initialize-ConfigFile {
     )
 
     if (-not (Test-Path $ConfigPath)) {
+        if ($WhatIfPreference) {
+            Write-Host "Would create new config file at: $ConfigPath" -ForegroundColor Gray
+            return
+        }
         [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @() -ExpectedFingerprint 'missing')
         Write-Host "Created new config file at: $ConfigPath" -ForegroundColor Green
     }
@@ -1860,7 +1987,7 @@ function Get-CdpStatePath {
         return [Environment]::ExpandEnvironmentVariables($env:CDP_STATE_PATH)
     }
 
-    Join-Path $env:USERPROFILE ".cdp\state.json"
+    Join-Path (Get-CdpUserHome) ".cdp\state.json"
 }
 
 function New-CdpState {
@@ -2279,7 +2406,7 @@ function Resolve-CdpHealthConfigPath {
                             -Level Warning -Message "multiple configs found; run cdp-config to choose one"
                     }
                 } else {
-                    $ConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+                    $ConfigPath = Join-Path (Get-CdpUserHome) ".cdp\projects.json"
                     $configSource = "default custom config"
                 }
             }
@@ -2417,7 +2544,7 @@ function Add-Project {
         # Adds specific path with custom name
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory = $false)]
         [string]$Name,
@@ -2426,7 +2553,10 @@ function Add-Project {
         [string]$Path,
 
         [Parameter(Mandatory = $false)]
-        [string]$ConfigPath
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
     )
 
     # Determine path to add
@@ -2454,13 +2584,10 @@ function Add-Project {
         $ConfigPath = Get-DefaultConfigPath
     }
 
-    # Initialize config file if needed
-    Initialize-ConfigFile -ConfigPath $ConfigPath
-
     # Read existing projects
     try {
-        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
-        $projects = $document.Value
+        $document = Read-CdpJsonArrayMutationDocument -LiteralPath $ConfigPath
+        $projects = @($document.Value)
 
         # Check if project already exists
         $existingProject = $projects | Where-Object { $_.rootPath -eq $Path }
@@ -2480,6 +2607,15 @@ function Add-Project {
             tags = @()
         }
 
+        $actionTarget = "$Name ($Path)"
+        if (-not $PSCmdlet.ShouldProcess($actionTarget, "Add project to $ConfigPath")) {
+            if ($PassThru) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                return New-CdpActionResult -Action 'add-project' -Target $actionTarget -Status $status -Changed $false -Details $newProject
+            }
+            return
+        }
+
         $projects = @($projects) + $newProject
 
         # Save updated config
@@ -2490,9 +2626,16 @@ function Add-Project {
         Write-Host "  Path: $Path" -ForegroundColor Gray
         Write-Host "  Config: $ConfigPath" -ForegroundColor Gray
 
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'add-project' -Target $actionTarget -Status 'succeeded' -Changed $true -Details $newProject
+        }
+
     } catch {
         Write-Host "Error: Failed to add project." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'add-project' -Target ([string]$Name) -Status 'failed' -Changed $false -Error $_.Exception.Message
+        }
     }
 }
 
@@ -2527,7 +2670,7 @@ function Set-ProjectPin {
         # Removes the pin from the matching project
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Name,
@@ -2546,10 +2689,8 @@ function Set-ProjectPin {
         $ConfigPath = Get-DefaultConfigPath
     }
 
-    Initialize-ConfigFile -ConfigPath $ConfigPath
-
     try {
-        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $document = Read-CdpJsonArrayMutationDocument -LiteralPath $ConfigPath
         $projects = @($document.Value)
         $targetProjects = if ([string]::IsNullOrWhiteSpace($Name)) {
             $currentPath = Get-CdpComparablePath -Path (Get-Location).Path
@@ -2572,6 +2713,23 @@ function Set-ProjectPin {
         }
 
         $target = $targetProjects[0]
+        $stateText = if ($Pinned) { "Pin" } else { "Unpin" }
+        $currentPinned = $target.PSObject.Properties['pinned'] -and [bool]$target.pinned
+        if ($currentPinned -eq $Pinned) {
+            Write-Host "Project already has the requested pin state: $($target.name)" -ForegroundColor Yellow
+            if ($PassThru) {
+                return New-CdpActionResult -Action ($stateText.ToLowerInvariant()) -Target ([string]$target.name) -Status 'skipped' -Changed $false -Details $target
+            }
+            return
+        }
+        if (-not $PSCmdlet.ShouldProcess([string]$target.name, "$stateText project in $ConfigPath")) {
+            if ($PassThru) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                return New-CdpActionResult -Action ($stateText.ToLowerInvariant()) -Target ([string]$target.name) -Status $status -Changed $false -Details $target
+            }
+            return
+        }
+
         foreach ($project in $projects) {
             $sameName = [string]::Equals([string]$project.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase)
             $samePath = [string]::Equals([string]$project.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
@@ -2586,18 +2744,23 @@ function Set-ProjectPin {
 
         [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($projects) -ExpectedFingerprint $document.Fingerprint)
 
-        $stateText = if ($Pinned) { "Pinned" } else { "Unpinned" }
-        Write-Host "$stateText project: $($target.name)" -ForegroundColor Green
+        $completedText = if ($Pinned) { "Pinned" } else { "Unpinned" }
+        Write-Host "$completedText project: $($target.name)" -ForegroundColor Green
 
         if ($PassThru) {
-            return ($projects | Where-Object {
+            $updatedProject = ($projects | Where-Object {
                 [string]::Equals([string]$_.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase) -and
                 [string]::Equals([string]$_.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
             } | Select-Object -First 1)
+            return New-CdpActionResult -Action ($stateText.ToLowerInvariant()) -Target ([string]$target.name) -Status 'succeeded' -Changed $true -Details $updatedProject
         }
     } catch {
         Write-Host "Error: Failed to update project pin." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+        if ($PassThru) {
+            $action = if ($Pinned) { 'pin' } else { 'unpin' }
+            return New-CdpActionResult -Action $action -Target ([string]$Name) -Status 'failed' -Changed $false -Error $_.Exception.Message
+        }
     }
 }
 
@@ -2610,7 +2773,7 @@ function Clear-ProjectPin {
         Convenience wrapper for Set-ProjectPin -Pinned false.
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Name,
@@ -2622,10 +2785,19 @@ function Clear-ProjectPin {
         [switch]$PassThru
     )
 
-    Set-ProjectPin -Name $Name -ConfigPath $ConfigPath -Pinned:$false -PassThru:$PassThru
+    $parameters = @{
+        Name = $Name
+        ConfigPath = $ConfigPath
+        Pinned = $false
+        PassThru = $PassThru
+    }
+    if ($WhatIfPreference) { $parameters.WhatIf = $true }
+    if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+    Set-ProjectPin @parameters
 }
 
 function Update-CdpProjectStringList {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory = $false)]
         [string]$Name,
@@ -2656,10 +2828,8 @@ function Update-CdpProjectStringList {
         return
     }
 
-    Initialize-ConfigFile -ConfigPath $ConfigPath
-
     try {
-        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $document = Read-CdpJsonArrayMutationDocument -LiteralPath $ConfigPath
         $projects = @($document.Value)
         $targets = @(Get-CdpProjectMatches -Projects $projects -Query $Name)
 
@@ -2669,6 +2839,29 @@ function Update-CdpProjectStringList {
         }
 
         $target = $targets[0]
+        $currentValues = @(Get-CdpProjectStringList -Project $target -PropertyName $PropertyName)
+        $containsValue = @($currentValues | Where-Object {
+            [string]::Equals($_, $Value, [StringComparison]::OrdinalIgnoreCase)
+        }).Count -gt 0
+        $willChange = if ($Remove) { $containsValue } else { -not $containsValue }
+        $metadataKind = if ($PropertyName -eq 'aliases') { 'alias' } else { 'tag' }
+        $actionName = if ($Remove) { "remove-$metadataKind" } else { "add-$metadataKind" }
+        if (-not $willChange) {
+            Write-Host "Project metadata already has the requested state." -ForegroundColor Yellow
+            if ($PassThru) {
+                return New-CdpActionResult -Action $actionName -Target ([string]$target.name) -Status 'skipped' -Changed $false -Details $target
+            }
+            return
+        }
+        $operation = if ($Remove) { "Remove $metadataKind '$Value'" } else { "Add $metadataKind '$Value'" }
+        if (-not $PSCmdlet.ShouldProcess([string]$target.name, "$operation in $ConfigPath")) {
+            if ($PassThru) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                return New-CdpActionResult -Action $actionName -Target ([string]$target.name) -Status $status -Changed $false -Details $target
+            }
+            return
+        }
+
         foreach ($project in $projects) {
             $sameName = [string]::Equals([string]$project.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase)
             $samePath = [string]::Equals([string]$project.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
@@ -2694,39 +2887,57 @@ function Update-CdpProjectStringList {
         Write-Host "$action $PropertyName '$Value' for project: $($target.name)" -ForegroundColor Green
 
         if ($PassThru) {
-            return ($projects | Where-Object {
+            $updatedProject = ($projects | Where-Object {
                 [string]::Equals([string]$_.name, [string]$target.name, [StringComparison]::OrdinalIgnoreCase) -and
                 [string]::Equals([string]$_.rootPath, [string]$target.rootPath, [StringComparison]::OrdinalIgnoreCase)
             } | Select-Object -First 1)
+            return New-CdpActionResult -Action $actionName -Target ([string]$target.name) -Status 'succeeded' -Changed $true -Details $updatedProject
         }
     } catch {
         Write-Host "Error: Failed to update project metadata." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+        if ($PassThru) {
+            $metadataKind = if ($PropertyName -eq 'aliases') { 'alias' } else { 'tag' }
+            $actionName = if ($Remove) { "remove-$metadataKind" } else { "add-$metadataKind" }
+            return New-CdpActionResult -Action $actionName -Target ([string]$Name) -Status 'failed' -Changed $false -Error $_.Exception.Message
+        }
     }
 }
 
 function Add-ProjectAlias {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param([string]$Name, [string]$Alias, [string]$ConfigPath, [switch]$PassThru)
-    Update-CdpProjectStringList -Name $Name -Value $Alias -PropertyName aliases -ConfigPath $ConfigPath -PassThru:$PassThru
+    $parameters = @{ Name = $Name; Value = $Alias; PropertyName = 'aliases'; ConfigPath = $ConfigPath; PassThru = $PassThru }
+    if ($WhatIfPreference) { $parameters.WhatIf = $true }
+    if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+    Update-CdpProjectStringList @parameters
 }
 
 function Remove-ProjectAlias {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param([string]$Name, [string]$Alias, [string]$ConfigPath, [switch]$PassThru)
-    Update-CdpProjectStringList -Name $Name -Value $Alias -PropertyName aliases -ConfigPath $ConfigPath -Remove -PassThru:$PassThru
+    $parameters = @{ Name = $Name; Value = $Alias; PropertyName = 'aliases'; ConfigPath = $ConfigPath; Remove = $true; PassThru = $PassThru }
+    if ($WhatIfPreference) { $parameters.WhatIf = $true }
+    if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+    Update-CdpProjectStringList @parameters
 }
 
 function Add-ProjectTag {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param([string]$Name, [string]$Tag, [string]$ConfigPath, [switch]$PassThru)
-    Update-CdpProjectStringList -Name $Name -Value $Tag -PropertyName tags -ConfigPath $ConfigPath -PassThru:$PassThru
+    $parameters = @{ Name = $Name; Value = $Tag; PropertyName = 'tags'; ConfigPath = $ConfigPath; PassThru = $PassThru }
+    if ($WhatIfPreference) { $parameters.WhatIf = $true }
+    if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+    Update-CdpProjectStringList @parameters
 }
 
 function Remove-ProjectTag {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param([string]$Name, [string]$Tag, [string]$ConfigPath, [switch]$PassThru)
-    Update-CdpProjectStringList -Name $Name -Value $Tag -PropertyName tags -ConfigPath $ConfigPath -Remove -PassThru:$PassThru
+    $parameters = @{ Name = $Name; Value = $Tag; PropertyName = 'tags'; ConfigPath = $ConfigPath; Remove = $true; PassThru = $PassThru }
+    if ($WhatIfPreference) { $parameters.WhatIf = $true }
+    if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+    Update-CdpProjectStringList @parameters
 }
 
 function Get-CdpUniqueName {
@@ -2764,7 +2975,7 @@ function Repair-ProjectConfig {
         filled with false.
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$ConfigPath,
@@ -2777,10 +2988,8 @@ function Repair-ProjectConfig {
         $ConfigPath = Get-DefaultConfigPath
     }
 
-    Initialize-ConfigFile -ConfigPath $ConfigPath
-
     try {
-        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $document = Read-CdpJsonArrayMutationDocument -LiteralPath $ConfigPath
         $projects = @($document.Value)
         $usedNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         $usedPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
@@ -2829,6 +3038,35 @@ function Repair-ProjectConfig {
             $cleanProjects += $project
         }
 
+        $changeCount = 0
+        foreach ($value in $summary.Values) { $changeCount += [int]$value }
+        $details = [PSCustomObject]@{
+            ConfigPath = $ConfigPath
+            ProjectCount = $cleanProjects.Count
+            RemovedInvalid = $summary.RemovedInvalid
+            RemovedDuplicatePaths = $summary.RemovedDuplicatePaths
+            RenamedDuplicates = $summary.RenamedDuplicates
+            DisabledMissingPaths = $summary.DisabledMissingPaths
+            AddedPinnedFields = $summary.AddedPinnedFields
+            FixedEnabledFields = $summary.FixedEnabledFields
+        }
+
+        if ($changeCount -eq 0) {
+            Write-Host "No project configuration repairs are needed." -ForegroundColor Green
+            if ($PassThru) {
+                return New-CdpActionResult -Action 'repair-config' -Target $ConfigPath -Status 'skipped' -Changed $false -Details $details
+            }
+            return
+        }
+
+        if (-not $PSCmdlet.ShouldProcess($ConfigPath, "Apply $changeCount project configuration repairs")) {
+            if ($PassThru) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                return New-CdpActionResult -Action 'repair-config' -Target $ConfigPath -Status $status -Changed $false -Details $details
+            }
+            return
+        }
+
         [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($cleanProjects) -ExpectedFingerprint $document.Fingerprint)
 
         Write-Host "cdp config repaired: $ConfigPath" -ForegroundColor Green
@@ -2837,20 +3075,14 @@ function Repair-ProjectConfig {
         }
 
         if ($PassThru) {
-            [PSCustomObject]@{
-                ConfigPath = $ConfigPath
-                ProjectCount = $cleanProjects.Count
-                RemovedInvalid = $summary.RemovedInvalid
-                RemovedDuplicatePaths = $summary.RemovedDuplicatePaths
-                RenamedDuplicates = $summary.RenamedDuplicates
-                DisabledMissingPaths = $summary.DisabledMissingPaths
-                AddedPinnedFields = $summary.AddedPinnedFields
-                FixedEnabledFields = $summary.FixedEnabledFields
-            }
+            return New-CdpActionResult -Action 'repair-config' -Target $ConfigPath -Status 'succeeded' -Changed $true -Details $details
         }
     } catch {
         Write-Host "Error: Failed to repair project configuration." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'repair-config' -Target $ConfigPath -Status 'failed' -Changed $false -Error $_.Exception.Message
+        }
     }
 }
 
@@ -2867,6 +3099,8 @@ function Get-CdpGitProjectInfo {
         PathExists = $false
         IsGitRepo = $false
         Branch = ""
+        Remote = ""
+        Upstream = ""
         DirtyCount = 0
         UntrackedCount = 0
         AheadCount = 0
@@ -2900,6 +3134,17 @@ function Get-CdpGitProjectInfo {
         $info.Branch = (& git -C $rootPath branch --show-current 2>$null)
         if ([string]::IsNullOrWhiteSpace($info.Branch)) {
             $info.Branch = (& git -C $rootPath rev-parse --short HEAD 2>$null)
+        }
+    } catch {}
+
+    try {
+        $upstream = (& git -C $rootPath rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null)
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($upstream)) {
+            $info.Upstream = [string]$upstream
+            $separator = $info.Upstream.IndexOf('/')
+            if ($separator -gt 0) {
+                $info.Remote = $info.Upstream.Substring(0, $separator)
+            }
         }
     } catch {}
 
@@ -2974,8 +3219,67 @@ function Get-CdpWorkspaces {
     return @($allWs)
 }
 
+function Invoke-CdpWorkspaceLaunch {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Projects,
+        [Parameter(Mandatory = $true)][string[]]$ProjectNames,
+        [Parameter(Mandatory = $false)][object]$Launcher,
+        [Parameter(Mandatory = $false)][switch]$PassThru
+    )
+
+    $hasWt = $null -ne (Get-Command wt.exe -ErrorAction SilentlyContinue)
+    $results = @()
+    foreach ($projName in $ProjectNames) {
+        $project = @($Projects | Where-Object {
+            [string]::Equals([string]$_.name, $projName, [StringComparison]::OrdinalIgnoreCase)
+        } | Select-Object -First 1)
+        if ($project.Count -eq 0) {
+            Write-Host "  Project '$projName' not found in config, skipping." -ForegroundColor Yellow
+            $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status 'failed' -Changed $false -Error 'Project not found in active config.'
+            continue
+        }
+        $project = $project[0]
+        $projPath = [string]$project.rootPath
+        if (-not (Test-Path -LiteralPath $projPath)) {
+            Write-Host "  Path missing for '$projName', skipping." -ForegroundColor Yellow
+            $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status 'failed' -Changed $false -Error 'Project path is missing.'
+            continue
+        }
+        if (-not $hasWt) {
+            Write-Host "  $projName -> $projPath" -ForegroundColor Cyan
+            $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status 'skipped' -Changed $false -Error 'Windows Terminal is unavailable.'
+            continue
+        }
+
+        $wtArgs = @('-w', '0', 'new-tab', '-d', $projPath, '--title', $projName)
+        if ($null -ne $Launcher) {
+            $wtArgs += @('--', $Launcher.Command) + @($Launcher.Arguments)
+        }
+        if (-not $PSCmdlet.ShouldProcess("$projName ($projPath)", 'Launch Windows Terminal workspace tab')) {
+            $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+            $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status $status -Changed $false
+            continue
+        }
+        try {
+            Start-Process wt.exe -ArgumentList $wtArgs -ErrorAction Stop
+            Write-Host "  Opened tab: $projName" -ForegroundColor Green
+            $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status 'succeeded' -Changed $true
+        } catch {
+            Write-Host "  Failed to open tab '$projName': $($_.Exception.Message)" -ForegroundColor Red
+            $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status 'failed' -Changed $false -Error $_.Exception.Message
+        }
+    }
+    if (-not $hasWt) {
+        Write-Host "`nWindows Terminal (wt.exe) not found. Listed projects above." -ForegroundColor Yellow
+        Write-Host "Install Windows Terminal for multi-tab workspace launching." -ForegroundColor Gray
+    }
+    if (@($results | Where-Object Status -eq 'failed').Count -gt 0) { $global:LASTEXITCODE = 1 }
+    if ($PassThru) { return $results }
+}
+
 function Invoke-CdpWorkspace {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Name,
@@ -2993,7 +3297,10 @@ function Invoke-CdpWorkspace {
         [string]$Open,
 
         [Parameter(Mandatory = $false)]
-        [string]$ConfigPath
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
     )
 
     $wsPath = Get-CdpWorkspacesPath -ConfigPath $ConfigPath
@@ -3033,7 +3340,12 @@ function Invoke-CdpWorkspace {
             [void](Get-CdpWorkspaceLauncher -Open $Open)
         }
 
-        $workspaces = Get-CdpWorkspaces -WorkspacesPath $wsPath
+        $workspaceDocument = if (Test-Path -LiteralPath $wsPath) {
+            Read-CdpJsonDocument -LiteralPath $wsPath
+        } else {
+            [PSCustomObject]@{ Value = @(); Fingerprint = 'missing' }
+        }
+        $workspaces = @($workspaceDocument.Value)
         $existing = $workspaces | Where-Object { $_.name -eq $Add }
         if ($existing) {
             Write-Host "Workspace '$Add' already exists." -ForegroundColor Yellow
@@ -3048,9 +3360,20 @@ function Invoke-CdpWorkspace {
             $newWs | Add-Member -NotePropertyName open -NotePropertyValue $Open
         }
 
+        if (-not $PSCmdlet.ShouldProcess($Add, "Create workspace definition in $wsPath")) {
+            if ($PassThru) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                return New-CdpActionResult -Action 'add-workspace' -Target $Add -Status $status -Changed $false -Details $newWs
+            }
+            return
+        }
+
         $allWs = @($workspaces) + @($newWs)
         [void](Write-CdpJsonFile -LiteralPath $wsPath -Value @($allWs) -ExpectedFingerprint $workspaceDocument.Fingerprint)
         Write-Host "Workspace '$Add' created with $($Projects.Count) projects." -ForegroundColor Green
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'add-workspace' -Target $Add -Status 'succeeded' -Changed $true -Details $newWs
+        }
         return
     }
 
@@ -3080,41 +3403,15 @@ function Invoke-CdpWorkspace {
         $null
     }
 
-    $hasWt = $null -ne (Get-Command wt.exe -ErrorAction SilentlyContinue)
-
-    foreach ($projName in $ws.projects) {
-        $project = $configData.EnabledProjects | Where-Object {
-            [string]::Equals([string]$_.name, $projName, [StringComparison]::OrdinalIgnoreCase)
-        } | Select-Object -First 1
-
-        if (-not $project) {
-            Write-Host "  Project '$projName' not found in config, skipping." -ForegroundColor Yellow
-            continue
-        }
-
-        $projPath = [string]$project.rootPath
-        if (-not (Test-Path -LiteralPath $projPath)) {
-            Write-Host "  Path missing for '$projName', skipping." -ForegroundColor Yellow
-            continue
-        }
-
-        if ($hasWt) {
-            $wtArgs = @('-w', '0', 'new-tab', '-d', $projPath, '--title', $projName)
-            if ($null -ne $launcher) {
-                $wtArgs += @('--', $launcher.Command) + @($launcher.Arguments)
-            }
-            Start-Process wt.exe -ArgumentList $wtArgs
-            Write-Host "  Opened tab: $projName" -ForegroundColor Green
-        } else {
-            Write-Host "  $projName -> $projPath" -ForegroundColor Cyan
-        }
+    $launchParameters = @{
+        Projects = @($configData.EnabledProjects)
+        ProjectNames = @($ws.projects)
+        Launcher = $launcher
+        PassThru = $PassThru
     }
-
-    if (-not $hasWt) {
-        Write-Host ""
-        Write-Host "Windows Terminal (wt.exe) not found. Listed projects above." -ForegroundColor Yellow
-        Write-Host "Install Windows Terminal for multi-tab workspace launching." -ForegroundColor Gray
-    }
+    if ($WhatIfPreference) { $launchParameters.WhatIf = $true }
+    if ($PSBoundParameters.ContainsKey('Confirm')) { $launchParameters.Confirm = $PSBoundParameters['Confirm'] }
+    Invoke-CdpWorkspaceLaunch @launchParameters
 }
 
 function Show-CdpProjectStatus {
@@ -3224,17 +3521,11 @@ function Show-CdpProjectStatus {
     }
     Write-Host "`r                              `r" -NoNewline
 
-    if ($PassThru) {
-        if ($DirtyOnly) {
-            return @($statusList | Where-Object { $_.NeedsAttention })
-        }
-        return $statusList
-    }
-
     if ($Fix) {
         $missingProjects = @($statusList | Where-Object { -not $_.PathExists })
         if ($missingProjects.Count -eq 0) {
             Write-Host "`nNo path-missing projects to remove." -ForegroundColor Green
+            if ($PassThru) { return @() }
             return
         }
         Write-Host "`nRemoving $($missingProjects.Count) path-missing projects:" -ForegroundColor Yellow
@@ -3244,6 +3535,12 @@ function Show-CdpProjectStatus {
         }
         $resolvedConfig = if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $ConfigPath } else { Get-DefaultConfigPath }
         if (-not $PSCmdlet.ShouldProcess($resolvedConfig, "Remove $($missingProjects.Count) missing project entries")) {
+            if ($PassThru) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                return @($missingProjects | ForEach-Object {
+                    New-CdpActionResult -Action 'status-fix' -Target ([string]$_.Name) -Status $status -Changed $false -Details $_
+                })
+            }
             return
         }
         $allProjects = $document.Value
@@ -3255,8 +3552,24 @@ function Show-CdpProjectStatus {
             $_.enabled -ne $true -or
                 -not $missingPaths.Contains((Get-CdpComparablePath -Path ([string]$_.rootPath)))
         })
-        [void](Write-CdpJsonFile -LiteralPath $resolvedConfig -Value @($cleaned) -ExpectedFingerprint $document.Fingerprint)
+        try {
+            [void](Write-CdpJsonFile -LiteralPath $resolvedConfig -Value @($cleaned) -ExpectedFingerprint $document.Fingerprint)
+        } catch {
+            $errorMessage = $_.Exception.Message
+            Write-Host "`nFailed to remove missing projects: $errorMessage" -ForegroundColor Red
+            if ($PassThru) {
+                return @($missingProjects | ForEach-Object {
+                    New-CdpActionResult -Action 'status-fix' -Target ([string]$_.Name) -Status 'failed' -Changed $false -Error $errorMessage -Details $_
+                })
+            }
+            throw
+        }
         Write-Host "`nRemoved $($missingProjects.Count) projects. $($cleaned.Count) projects remain." -ForegroundColor Green
+        if ($PassThru) {
+            return @($missingProjects | ForEach-Object {
+                New-CdpActionResult -Action 'status-fix' -Target ([string]$_.Name) -Status 'succeeded' -Changed $true -Details $_
+            })
+        }
         return
     }
 
@@ -3264,27 +3577,48 @@ function Show-CdpProjectStatus {
         $aheadProjects = @($statusList | Where-Object { $_.AheadCount -gt 0 -and $_.IsGitRepo })
         if ($aheadProjects.Count -eq 0) {
             Write-Host "`nNo repos ahead of remote." -ForegroundColor Green
-            return
-        }
-        if (-not $PSCmdlet.ShouldProcess("$($aheadProjects.Count) repositories", 'Push commits to configured upstreams')) {
+            if ($PassThru) { return @() }
             return
         }
         Write-Host "`nPushing $($aheadProjects.Count) repos ahead of remote:" -ForegroundColor Yellow
+        $pushResults = @()
+        $pushFailed = $false
         foreach ($proj in $aheadProjects) {
-            Write-Host "  $($proj.Name) (^$($proj.AheadCount))... " -ForegroundColor Cyan -NoNewline
+            $upstreamLabel = if ($proj.Upstream) { "remote=$($proj.Remote), upstream=$($proj.Upstream)" } else { 'configured upstream' }
+            Write-Host "  $($proj.Name) (^$($proj.AheadCount), $upstreamLabel)" -ForegroundColor Cyan
+            if (-not $PSCmdlet.ShouldProcess("$($proj.Name) [$upstreamLabel]", 'Push commits to configured upstream')) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status $status -Changed $false -Details $proj
+                continue
+            }
+            Write-Host "    running... " -ForegroundColor DarkGray -NoNewline
             try {
                 $pushOutput = @(& git -C $proj.RootPath push --porcelain 2>&1)
                 if ($LASTEXITCODE -eq 0) {
                     Write-Host "done" -ForegroundColor Green
+                    $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status 'succeeded' -Changed $true -Details $proj
                 } else {
                     $failure = @($pushOutput | Select-Object -Last 1) -join ''
                     Write-Host "failed: $failure" -ForegroundColor Red
+                    $pushFailed = $true
+                    $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status 'failed' -Changed $false -Error $failure -Details $proj
                 }
             } catch {
                 Write-Host "failed: $($_.Exception.Message)" -ForegroundColor Red
+                $pushFailed = $true
+                $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status 'failed' -Changed $false -Error $_.Exception.Message -Details $proj
             }
         }
+        if ($pushFailed -and -not $PassThru) { $global:LASTEXITCODE = 1 }
+        if ($PassThru) { return $pushResults }
         return
+    }
+
+    if ($PassThru) {
+        if ($DirtyOnly) {
+            return @($statusList | Where-Object { $_.NeedsAttention })
+        }
+        return $statusList
     }
 
     if ($DirtyOnly) {
@@ -3390,7 +3724,7 @@ function Initialize-Cdp {
         repositories.
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$RootPath,
@@ -3406,7 +3740,20 @@ function Initialize-Cdp {
     )
 
     if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
-        $ConfigPath = Join-Path $env:USERPROFILE ".cdp\projects.json"
+        $ConfigPath = Join-Path (Get-CdpUserHome) ".cdp\projects.json"
+    }
+
+    $initDetails = [PSCustomObject]@{
+        ConfigPath = $ConfigPath
+        FzfFound = $null -ne (Resolve-CdpFzfCommand)
+        ScanResult = $null
+    }
+    if (-not $PSCmdlet.ShouldProcess($ConfigPath, 'Initialize cdp configuration and active selection')) {
+        if ($PassThru) {
+            $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+            return New-CdpActionResult -Action 'initialize-cdp' -Target $ConfigPath -Status $status -Changed $false -Details $initDetails
+        }
+        return
     }
 
     Initialize-ConfigFile -ConfigPath $ConfigPath
@@ -3424,15 +3771,13 @@ function Initialize-Cdp {
 
     $scanResult = $null
     if (-not [string]::IsNullOrWhiteSpace($RootPath)) {
-        $scanResult = Import-GitProjects -RootPath $RootPath -ConfigPath $ConfigPath -MaxDepth $MaxDepth -PassThru
+        $scanResult = Import-GitProjects -RootPath $RootPath -ConfigPath $ConfigPath -MaxDepth $MaxDepth -PassThru -Confirm:$false
     }
 
     if ($PassThru) {
-        [PSCustomObject]@{
-            ConfigPath = $ConfigPath
-            FzfFound = $fzfFound
-            ScanResult = $scanResult
-        }
+        $initDetails.FzfFound = $fzfFound
+        $initDetails.ScanResult = $scanResult
+        return New-CdpActionResult -Action 'initialize-cdp' -Target $ConfigPath -Status 'succeeded' -Changed $true -Details $initDetails
     }
 }
 
@@ -3546,7 +3891,7 @@ function Import-GitProjects {
         # Imports Git repositories below E:\Projects
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $false)]
         [string]$RootPath,
@@ -3575,10 +3920,8 @@ function Import-GitProjects {
         $ConfigPath = Get-DefaultConfigPath
     }
 
-    Initialize-ConfigFile -ConfigPath $ConfigPath
-
     try {
-        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $document = Read-CdpJsonArrayMutationDocument -LiteralPath $ConfigPath
         $parsedProjects = $document.Value
         $projects = @()
         if ($null -ne $parsedProjects) {
@@ -3619,24 +3962,47 @@ function Import-GitProjects {
         [void]$existingNames.Add($name)
     }
 
-    if ($addedProjects.Count -gt 0) {
-        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($projects) -ExpectedFingerprint $document.Fingerprint)
-    }
-
     Write-Host "Git repositories found: $($repos.Count)" -ForegroundColor Cyan
     Write-Host "Projects added: $($addedProjects.Count)" -ForegroundColor Green
     Write-Host "Projects skipped: $skippedCount" -ForegroundColor Yellow
     Write-Host "Config: $ConfigPath" -ForegroundColor Gray
 
-    if ($PassThru) {
-        [PSCustomObject]@{
-            RootPath = $resolvedRoot.Path
-            ConfigPath = $ConfigPath
-            FoundCount = $repos.Count
-            AddedCount = $addedProjects.Count
-            SkippedCount = $skippedCount
-            AddedProjects = $addedProjects
+    $details = [PSCustomObject]@{
+        RootPath = $resolvedRoot.Path
+        ConfigPath = $ConfigPath
+        FoundCount = $repos.Count
+        AddedCount = $addedProjects.Count
+        SkippedCount = $skippedCount
+        AddedProjects = $addedProjects
+    }
+    if ($addedProjects.Count -eq 0) {
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'scan-import' -Target $resolvedRoot.Path -Status 'skipped' -Changed $false -Details $details
         }
+        return
+    }
+
+    if (-not $PSCmdlet.ShouldProcess($ConfigPath, "Import $($addedProjects.Count) repositories found under $($resolvedRoot.Path)")) {
+        if ($PassThru) {
+            $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+            return New-CdpActionResult -Action 'scan-import' -Target $resolvedRoot.Path -Status $status -Changed $false -Details $details
+        }
+        return
+    }
+
+    try {
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($projects) -ExpectedFingerprint $document.Fingerprint)
+    } catch {
+        Write-Host "Error: Failed to import scanned projects." -ForegroundColor Red
+        Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'scan-import' -Target $resolvedRoot.Path -Status 'failed' -Changed $false -Error $_.Exception.Message -Details $details
+        }
+        return
+    }
+
+    if ($PassThru) {
+        return New-CdpActionResult -Action 'scan-import' -Target $resolvedRoot.Path -Status 'succeeded' -Changed $true -Details $details
     }
 }
 
@@ -3663,13 +4029,16 @@ function Remove-Project {
         # Opens interactive fzf menu to select project to remove
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $false)]
         [string]$Name,
 
         [Parameter(Mandatory = $false)]
-        [string]$ConfigPath
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
     )
 
     # Get config path
@@ -3727,14 +4096,15 @@ function Remove-Project {
             return
         }
 
-        # Confirm removal
-        Write-Host "`nAre you sure you want to remove this project?" -ForegroundColor Yellow
+        # Show the plan; ShouldProcess owns confirmation and WhatIf behavior.
+        Write-Host "`nProject scheduled for removal:" -ForegroundColor Yellow
         Write-Host "  Name: $($projectToRemove.name)" -ForegroundColor Cyan
         Write-Host "  Path: $($projectToRemove.rootPath)" -ForegroundColor Gray
-        $confirm = Read-Host "`nContinue? (y/N)"
-
-        if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-            Write-Host "Operation cancelled." -ForegroundColor Gray
+        if (-not $PSCmdlet.ShouldProcess([string]$projectToRemove.name, "Remove project from $ConfigPath")) {
+            if ($PassThru) {
+                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+                return New-CdpActionResult -Action 'remove-project' -Target ([string]$projectToRemove.name) -Status $status -Changed $false -Details $projectToRemove
+            }
             return
         }
 
@@ -3744,9 +4114,16 @@ function Remove-Project {
 
         Write-Host "`nProject removed successfully: $Name" -ForegroundColor Green
 
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'remove-project' -Target ([string]$Name) -Status 'succeeded' -Changed $true -Details $projectToRemove
+        }
+
     } catch {
         Write-Host "Error: Failed to remove project." -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
+        if ($PassThru) {
+            return New-CdpActionResult -Action 'remove-project' -Target ([string]$Name) -Status 'failed' -Changed $false -Error $_.Exception.Message
+        }
     }
 }
 
@@ -3811,8 +4188,14 @@ function Set-ProjectConfig {
         # Using the alias
     #>
 
-    [CmdletBinding()]
-    param()
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Mandatory = $false, Position = 0)]
+        [int]$Selection = 0,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$PassThru
+    )
 
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "  Change Configuration File" -ForegroundColor Cyan
@@ -3866,39 +4249,44 @@ function Set-ProjectConfig {
 
     Write-Host ""
 
-    # Get user selection
-    do {
-        $selection = Read-Host "Select config file (1-$($availableConfigs.Count), or 0 to cancel)"
-
-        if ($selection -eq "0") {
+    # Resolve the explicit selection, retaining the interactive legacy path.
+    if ($Selection -le 0) {
+        $selectionText = Read-Host "Select config file (1-$($availableConfigs.Count), or 0 to cancel)"
+        $parsedSelection = 0
+        if (-not [int]::TryParse($selectionText, [ref]$parsedSelection) -or $parsedSelection -eq 0) {
             Write-Host "`nOperation cancelled." -ForegroundColor Gray
             return
         }
+        $Selection = $parsedSelection
+    }
+    if ($Selection -lt 1 -or $Selection -gt $availableConfigs.Count) {
+        throw "Invalid selection. Please choose a number between 1 and $($availableConfigs.Count)."
+    }
+    $selectedPath = $availableConfigs[$Selection - 1].Path
+    $selectedSource = $availableConfigs[$Selection - 1].Source
 
-        $selectedIndex = $null
-        if ([int]::TryParse($selection, [ref]$selectedIndex)) {
-            if ($selectedIndex -ge 1 -and $selectedIndex -le $availableConfigs.Count) {
-                $selectedPath = $availableConfigs[$selectedIndex - 1].Path
-                $selectedSource = $availableConfigs[$selectedIndex - 1].Source
-
-                # Save the choice
-                Save-ConfigChoice -ConfigPath $selectedPath
-
-                Write-Host "`n========================================" -ForegroundColor Green
-                Write-Host "  Configuration Updated!" -ForegroundColor Green
-                Write-Host "========================================`n" -ForegroundColor Green
-                Write-Host "Now using: " -NoNewline -ForegroundColor Gray
-                Write-Host "$selectedSource" -ForegroundColor Green
-                Write-Host "Path: " -NoNewline -ForegroundColor Gray
-                Write-Host "$selectedPath" -ForegroundColor Cyan
-                Write-Host "Saved to: " -NoNewline -ForegroundColor Gray
-                Write-Host "~/.cdp/config" -ForegroundColor Cyan
-                Write-Host ""
-                return
-            }
+    if (-not $PSCmdlet.ShouldProcess($selectedPath, 'Persist active cdp configuration choice')) {
+        if ($PassThru) {
+            $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+            return New-CdpActionResult -Action 'select-config' -Target $selectedPath -Status $status -Changed $false
         }
-        Write-Host "Invalid selection. Please enter a number between 0 and $($availableConfigs.Count)." -ForegroundColor Red
-    } while ($true)
+        return
+    }
+    Save-ConfigChoice -ConfigPath $selectedPath
+
+    Write-Host "`n========================================" -ForegroundColor Green
+    Write-Host "  Configuration Updated!" -ForegroundColor Green
+    Write-Host "========================================`n" -ForegroundColor Green
+    Write-Host "Now using: " -NoNewline -ForegroundColor Gray
+    Write-Host "$selectedSource" -ForegroundColor Green
+    Write-Host "Path: " -NoNewline -ForegroundColor Gray
+    Write-Host "$selectedPath" -ForegroundColor Cyan
+    Write-Host "Saved to: " -NoNewline -ForegroundColor Gray
+    Write-Host "~/.cdp/config" -ForegroundColor Cyan
+    Write-Host ""
+    if ($PassThru) {
+        return New-CdpActionResult -Action 'select-config' -Target $selectedPath -Status 'succeeded' -Changed $true
+    }
 }
 
 function Test-ProjectHealth {
@@ -3931,7 +4319,7 @@ function Test-ProjectHealth {
         # Runs diagnostics through the short cdp command
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$ConfigPath,
@@ -3947,7 +4335,10 @@ function Test-ProjectHealth {
     )
 
     if ($Fix) {
-        Repair-ProjectConfig -ConfigPath $ConfigPath -PassThru:$PassThru
+        $parameters = @{ ConfigPath = $ConfigPath; PassThru = $PassThru }
+        if ($WhatIfPreference) { $parameters.WhatIf = $true }
+        if ($PSBoundParameters.ContainsKey('Confirm')) { $parameters.Confirm = $PSBoundParameters['Confirm'] }
+        Repair-ProjectConfig @parameters
         return
     }
 
@@ -4005,10 +4396,14 @@ function Invoke-CdpStatusInvocation {
 function Invoke-CdpWorkspaceInvocation {
     param([object]$Invocation)
 
+    $safety = @{}
+    if ($Invocation.DryRun) { $safety.WhatIf = $true }
+    if ($Invocation.Yes) { $safety.Confirm = $false }
+
     switch ($Invocation.WorkspaceAction) {
         'list' { Invoke-CdpWorkspace -List -ConfigPath $Invocation.ConfigPath; return }
         'add' {
-            Invoke-CdpWorkspace `
+            Invoke-CdpWorkspace @safety `
                 -Add $Invocation.WorkspaceName `
                 -Projects $Invocation.Projects `
                 -Open $Invocation.Open `
@@ -4016,7 +4411,7 @@ function Invoke-CdpWorkspaceInvocation {
             return
         }
         'open' {
-            Invoke-CdpWorkspace `
+            Invoke-CdpWorkspace @safety `
                 -Name $Invocation.WorkspaceName `
                 -Open $Invocation.Open `
                 -ConfigPath $Invocation.ConfigPath
@@ -4029,28 +4424,45 @@ function Invoke-CdpWorkspaceInvocation {
 function Invoke-CdpManagementInvocation {
     param([object]$Invocation)
 
+    $safety = @{}
+    if ($Invocation.DryRun) { $safety.WhatIf = $true }
+    if ($Invocation.Yes) { $safety.Confirm = $false }
+
     switch ($Invocation.Kind) {
-        'hook' { Invoke-CdpHookCommand -Action $Invocation.HookAction -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
+        'hook' { Invoke-CdpHookCommand @safety -Action $Invocation.HookAction -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
         'doctor' {
-            if ($Invocation.Fix) { Repair-ProjectConfig -ConfigPath $Invocation.ConfigPath }
+            if ($Invocation.Fix) { Repair-ProjectConfig @safety -ConfigPath $Invocation.ConfigPath }
             else { Test-ProjectHealth -ConfigPath $Invocation.ConfigPath }
         }
         'about' { Show-CdpAbout -ConfigPath $Invocation.ConfigPath }
         'recent' { Get-CdpRecentProjects -Count $Invocation.Count }
-        'pin' { Set-ProjectPin -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
-        'unpin' { Clear-ProjectPin -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
-        'alias' { Add-ProjectAlias -Name $Invocation.Name -Alias $Invocation.Value -ConfigPath $Invocation.ConfigPath }
-        'unalias' { Remove-ProjectAlias -Name $Invocation.Name -Alias $Invocation.Value -ConfigPath $Invocation.ConfigPath }
-        'tag' { Add-ProjectTag -Name $Invocation.Name -Tag $Invocation.Value -ConfigPath $Invocation.ConfigPath }
-        'untag' { Remove-ProjectTag -Name $Invocation.Name -Tag $Invocation.Value -ConfigPath $Invocation.ConfigPath }
-        'clean' { Repair-ProjectConfig -ConfigPath $Invocation.ConfigPath }
+        'config' { Set-ProjectConfig @safety -Selection $Invocation.Count }
+        'add' { Add-Project @safety -Name $Invocation.Name -Path $Invocation.RootPath -ConfigPath $Invocation.ConfigPath }
+        'remove' { Remove-Project @safety -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
+        'pin' { Set-ProjectPin @safety -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
+        'unpin' { Clear-ProjectPin @safety -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
+        'alias' { Add-ProjectAlias @safety -Name $Invocation.Name -Alias $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'unalias' { Remove-ProjectAlias @safety -Name $Invocation.Name -Alias $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'tag' { Add-ProjectTag @safety -Name $Invocation.Name -Tag $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'untag' { Remove-ProjectTag @safety -Name $Invocation.Name -Tag $Invocation.Value -ConfigPath $Invocation.ConfigPath }
+        'clean' { Repair-ProjectConfig @safety -ConfigPath $Invocation.ConfigPath }
         'init' {
-            Initialize-Cdp -RootPath $Invocation.RootPath -ConfigPath $Invocation.ConfigPath -MaxDepth $Invocation.MaxDepth
+            Initialize-Cdp @safety -RootPath $Invocation.RootPath -ConfigPath $Invocation.ConfigPath -MaxDepth $Invocation.MaxDepth
         }
         'scan' {
-            Import-GitProjects -RootPath $Invocation.RootPath -ConfigPath $Invocation.ConfigPath -MaxDepth $Invocation.MaxDepth
+            Import-GitProjects @safety -RootPath $Invocation.RootPath -ConfigPath $Invocation.ConfigPath -MaxDepth $Invocation.MaxDepth
         }
     }
+}
+
+function Test-CdpInvocationMutation {
+    param([Parameter(Mandatory = $true)][object]$Invocation)
+
+    if ($Invocation.Kind -eq 'status') { return $Invocation.Fix -or $Invocation.Push }
+    if ($Invocation.Kind -eq 'workspace') { return $Invocation.WorkspaceAction -in @('add', 'open') }
+    if ($Invocation.Kind -eq 'hook') { return $Invocation.HookAction -in @('trust', 'revoke') }
+    if ($Invocation.Kind -eq 'doctor') { return $Invocation.Fix }
+    $Invocation.Kind -in @('add', 'remove', 'pin', 'unpin', 'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'config')
 }
 
 function Invoke-Cdp {
@@ -4103,7 +4515,7 @@ function Invoke-Cdp {
         # Switches to the matching project and starts Codex there
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Command,
@@ -4141,6 +4553,16 @@ function Invoke-Cdp {
             -Query $Query `
             -Open $Open `
             -RemainingArgs $parserArgs
+        if ($WhatIfPreference) { $invocation.DryRun = $true }
+        if ($PSBoundParameters.ContainsKey('Confirm') -and $PSBoundParameters['Confirm'] -eq $false) {
+            $invocation.Yes = $true
+        }
+        if ($invocation.DryRun -and $invocation.Yes) {
+            throw 'The -WhatIf and explicit confirmation options cannot be combined.'
+        }
+        if (($invocation.DryRun -or $invocation.Yes) -and -not (Test-CdpInvocationMutation -Invocation $invocation)) {
+            throw 'Safety options are only valid for mutating commands.'
+        }
     } catch {
         Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
         return
@@ -4187,8 +4609,8 @@ Register-ArgumentCompleter -CommandName Invoke-Cdp -ParameterName Command -Scrip
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $subcommands = @(
-        'status', 'doctor', 'about', 'recent', 'pin', 'unpin',
-        'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'workspace', 'hook'
+        'status', 'doctor', 'about', 'recent', 'add', 'remove', 'pin', 'unpin',
+        'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'config', 'workspace', 'hook'
     )
 
     $completions = @($subcommands | Where-Object { $_ -like "$wordToComplete*" } |

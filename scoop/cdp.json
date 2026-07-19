@@ -4,7 +4,7 @@
     "homepage": "https://github.com/GoldenZqqq/cdp",
     "license": "MIT",
     "url": "https://github.com/GoldenZqqq/cdp/releases/download/v2.1.0/cdp-2.1.0.tar.gz",
-    "hash": "732276c93fdf9954fb77867932e86e510d3a1ce8dcb4bbe03d431fa9c87c3a48",
+    "hash": "b3e59cb048f514f3dabebd02776f66af72a888a3871f0d5f14dcb2f2676899a7",
     "extract_dir": "cdp-2.1.0",
     "depends": "fzf",
     "installer": {
