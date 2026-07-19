@@ -22,7 +22,20 @@ Latest verified GitHub release: v2.1.0 (verified 2026-07-19). Latest verified Po
 
 Current release target: v2.2.0.
 
-Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. Development now advances to v2.2.0 automation and multi-repository capabilities.
+Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development is in progress, starting with the machine-readable status contract.
+
+## 2.2.0 Automation and Multi-Repository Checklist
+
+- [x] Define status JSON schema version 1, stable attention/error codes, and automation exit codes.
+- [x] Add PowerShell and bash/zsh `--json` / `-Json` plus ANSI-free `--no-color` / `-NoColor` output.
+- [x] Add cross-runtime JSON, parser, stdout/stderr, exit-code, and no-color regressions.
+- [ ] Add cross-platform path profiles.
+- [ ] Add workspace lifecycle operations.
+- [ ] Add safe multi-repository exec.
+- [ ] Add frecency ranking.
+- [ ] Complete and publish v2.2.0.
+
+Status JSON verification: the PowerShell 7.5.2 quality gate passed Pester `104/104`, command coverage `2311/3344` (`69.11%`), PSScriptAnalyzer, and release metadata. bash, zsh, and the fixed Bash 3.2 container passed the shared schema fixture plus existing status/safety/persistence regressions. The current deterministic Scoop draft SHA-256 is `d29537ccb61d7e6937dbeb63503674e5d35aec48f94466ed15290e70c853d839`, and the generated shell SHA-256 is `36220aaf421571fb17fb208901237e1ae532584ea50c3c83a6fa5dfe97da4935`.
 
 ## 2.1.0 Engineering Foundation Checklist
 

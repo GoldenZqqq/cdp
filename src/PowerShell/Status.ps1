@@ -139,6 +139,12 @@ function Show-CdpProjectStatus {
     .PARAMETER PassThru
         Returns project status objects for scripting.
 
+    .PARAMETER Json
+        Writes one schema-versioned JSON document for automation.
+
+    .PARAMETER NoColor
+        Writes the human-readable table without color styling.
+
     .EXAMPLE
         cdp status
         # Shows Git status of all projects
@@ -150,6 +156,10 @@ function Show-CdpProjectStatus {
     .EXAMPLE
         cdp status @work
         # Shows status of projects tagged 'work'
+
+    .EXAMPLE
+        cdp status --json
+        # Emits status schema version 1 and automation exit codes
     #>
 
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
@@ -177,15 +187,27 @@ function Show-CdpProjectStatus {
         [switch]$Refresh,
 
         [Parameter(Mandatory = $false)]
-        [int]$ThrottleLimit = 0
+        [int]$ThrottleLimit = 0,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Json,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoColor
     )
+
+    if ($Json -and $NoColor) { Write-CdpStatusFatal -Message 'The -Json and -NoColor options cannot be used together.' -Json; return }
+    if ($Json -and ($Fix -or $Push)) { Write-CdpStatusFatal -Message 'The -Json option is only valid for read-only status.' -Json; return }
+    if ($NoColor -and ($Fix -or $Push)) { Write-CdpStatusFatal -Message 'The -NoColor option is only valid for read-only status.'; return }
+    if ($Json -and $PassThru) { Write-CdpStatusFatal -Message 'The -Json and -PassThru options cannot be used together.' -Json; return }
+    if ($NoColor -and $PassThru) { Write-CdpStatusFatal -Message 'The -NoColor and -PassThru options cannot be used together.'; return }
 
     if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
         $ConfigPath = Get-DefaultConfigPath
     }
 
     if (-not (Test-Path $ConfigPath)) {
-        Write-Host "Error: Configuration file not found at: $ConfigPath" -ForegroundColor Red
+        Write-CdpStatusFatal -Message "Configuration file not found at: $ConfigPath" -Json:$Json
         return
     }
 
@@ -199,7 +221,7 @@ function Show-CdpProjectStatus {
             $enabledProjects = @($configData.EnabledProjects)
         }
     } catch {
-        Write-Host "Error: Failed to read configuration." -ForegroundColor Red
+        Write-CdpStatusFatal -Message 'Failed to read configuration.' -Json:$Json
         return
     }
 
@@ -216,20 +238,29 @@ function Show-CdpProjectStatus {
     }
 
     if ($enabledProjects.Count -eq 0) {
-        Write-Host "No projects to check." -ForegroundColor Yellow
+        if ($Json) {
+            $empty = New-CdpStatusDocument -AllStatus @() -VisibleStatus @() -DurationMs 0 -DirtyOnly:$DirtyOnly -TagFilter $TagFilter -Refresh:$Refresh
+            Write-CdpStatusJson -Document $empty
+        } elseif ($NoColor) { Write-Host 'No projects to check.' }
+        else { Write-Host "No projects to check." -ForegroundColor Yellow }
         return
     }
 
     $total = $enabledProjects.Count
     $forceRefresh = $Refresh -or $Fix -or $Push
     $workerCount = Resolve-CdpStatusThrottleLimit -Value $ThrottleLimit
-    Write-Host "`r  Scanning $total projects ($workerCount workers)... " -ForegroundColor DarkGray -NoNewline
+    $scanWatch = [Diagnostics.Stopwatch]::StartNew()
+    if (-not $Json) {
+        if ($NoColor) { Write-Host "`r  Scanning $total projects ($workerCount workers)... " -NoNewline }
+        else { Write-Host "`r  Scanning $total projects ($workerCount workers)... " -ForegroundColor DarkGray -NoNewline }
+    }
     $statusList = @(Get-CdpGitProjectInfoBatch `
         -Projects $enabledProjects `
         -ThrottleLimit $workerCount `
         -Refresh:$forceRefresh `
         -CollectorScript { param($Project) Get-CdpGitProjectInfo -Project $Project })
-    Write-Host "`r                              `r" -NoNewline
+    $scanWatch.Stop()
+    if (-not $Json) { Write-Host "`r                              `r" -NoNewline }
 
     if ($Fix) {
         $missingProjects = @($statusList | Where-Object { -not $_.PathExists })
@@ -324,6 +355,22 @@ function Show-CdpProjectStatus {
         return
     }
 
+    $visibleStatus = if ($DirtyOnly) { @($statusList | Where-Object { $_.NeedsAttention }) } else { @($statusList) }
+    if ($Json) {
+        try {
+            $document = New-CdpStatusDocument -AllStatus $statusList -VisibleStatus $visibleStatus `
+                -DurationMs ([int][Math]::Round($scanWatch.Elapsed.TotalMilliseconds)) `
+                -DirtyOnly:$DirtyOnly -TagFilter $TagFilter -Refresh:$Refresh
+            Write-CdpStatusJson -Document $document
+        } catch {
+            Write-CdpStatusFatal -Message 'Failed to build status JSON.' -Json
+        }
+        return
+    }
+    if ($NoColor) {
+        Write-CdpPlainStatusTable -StatusList $visibleStatus -DirtyOnly:$DirtyOnly -TagFilter $TagFilter
+        return
+    }
     if ($PassThru) {
         if ($DirtyOnly) {
             return @($statusList | Where-Object { $_.NeedsAttention })
@@ -434,6 +481,8 @@ function Invoke-CdpStatusInvocation {
         Push = $Invocation.Push
         Refresh = $Invocation.Refresh
         ThrottleLimit = $Invocation.ThrottleLimit
+        Json = $Invocation.Json
+        NoColor = $Invocation.NoColor
     }
     if ($Invocation.DryRun) { $parameters.WhatIf = $true }
     if ($Invocation.Yes) { $parameters.Confirm = $false }

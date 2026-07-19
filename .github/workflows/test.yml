@@ -141,12 +141,13 @@ jobs:
           bash -n ./scripts/Build-ShellScript.sh
           bash -n ./scripts/Test-ScoopPackage.sh
           bash -n ./tests/cdp.QualityGates.Tests.sh
+          bash -n ./tests/cdp.Status.Json.Tests.sh
 
       - name: Check generated shell artifact
         run: bash ./scripts/Build-ShellScript.sh --check
 
       - name: Run ShellCheck errors
-        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh ./tests/cdp.Status.Json.Tests.sh
 
       - name: Run shell modularization tests
         run: bash ./tests/cdp.Shell.Modularization.Tests.sh
@@ -156,6 +157,9 @@ jobs:
 
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
+
+      - name: Run shell status JSON tests
+        run: bash ./tests/cdp.Status.Json.Tests.sh
 
       - name: Run status performance regressions
         run: bash ./tests/cdp.Status.Performance.Tests.sh
@@ -175,10 +179,11 @@ jobs:
       - name: Run Bash 3.2 compatibility matrix
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work bash@sha256:3a13e5da38baa575985778cd09ce8ac736d4b4dafc91a430e71271f6e5311b89 sh -c '
-            apk add --no-cache git jq fzf >/dev/null
+            apk add --no-cache git jq fzf zsh >/dev/null
             bash ./tests/cdp.Shell.Modularization.Tests.sh
             bash ./tests/cdp.Cli.Tests.sh
             bash ./tests/cdp.Status.Tests.sh
+            bash ./tests/cdp.Status.Json.Tests.sh
             bash ./tests/cdp.SafeMutations.Tests.sh
             bash ./tests/cdp.Shell.V2.Tests.sh
             bash ./tests/cdp.Persistence.Tests.sh
@@ -212,12 +217,13 @@ jobs:
           bash -n ./scripts/Build-ShellScript.sh
           bash -n ./scripts/Test-ScoopPackage.sh
           bash -n ./tests/cdp.QualityGates.Tests.sh
+          bash -n ./tests/cdp.Status.Json.Tests.sh
 
       - name: Check generated shell artifact
         run: bash ./scripts/Build-ShellScript.sh --check
 
       - name: Run ShellCheck errors
-        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh ./tests/cdp.Status.Json.Tests.sh
 
       - name: Run shell modularization tests
         run: bash ./tests/cdp.Shell.Modularization.Tests.sh
@@ -227,6 +233,9 @@ jobs:
 
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
+
+      - name: Run shell status JSON tests
+        run: zsh ./tests/cdp.Status.Json.Tests.sh
 
       - name: Run status performance regressions
         run: bash ./tests/cdp.Status.Performance.Tests.sh

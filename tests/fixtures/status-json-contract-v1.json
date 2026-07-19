@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "projects": [
+    {
+      "name": "Clean",
+      "status": "clean",
+      "needsAttention": false,
+      "attentionReasons": [],
+      "errorCode": null,
+      "isRepository": true,
+      "dirtyCount": 0,
+      "untrackedCount": 0,
+      "aheadCount": 0,
+      "behindCount": 0
+    },
+    {
+      "name": "Dirty",
+      "status": "changed",
+      "needsAttention": true,
+      "attentionReasons": ["dirty", "untracked"],
+      "errorCode": null,
+      "isRepository": true,
+      "dirtyCount": 1,
+      "untrackedCount": 1,
+      "aheadCount": 0,
+      "behindCount": 0
+    },
+    {
+      "name": "Plain",
+      "status": "not_git",
+      "needsAttention": false,
+      "attentionReasons": [],
+      "errorCode": null,
+      "isRepository": false,
+      "dirtyCount": 0,
+      "untrackedCount": 0,
+      "aheadCount": 0,
+      "behindCount": 0
+    },
+    {
+      "name": "Missing",
+      "status": "path_missing",
+      "needsAttention": true,
+      "attentionReasons": ["path_missing"],
+      "errorCode": null,
+      "isRepository": false,
+      "dirtyCount": 0,
+      "untrackedCount": 0,
+      "aheadCount": 0,
+      "behindCount": 0
+    }
+  ]
+}

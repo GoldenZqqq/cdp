@@ -1,11 +1,11 @@
 {
-    "version": "2.1.0",
+    "version": "2.2.0",
     "description": "A fast project directory switcher for PowerShell, WSL, and Vibe Coding CLI workflows.",
     "homepage": "https://github.com/GoldenZqqq/cdp",
     "license": "MIT",
-    "url": "https://github.com/GoldenZqqq/cdp/releases/download/v2.1.0/cdp-2.1.0.tar.gz",
-    "hash": "07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c",
-    "extract_dir": "cdp-2.1.0",
+    "url": "https://github.com/GoldenZqqq/cdp/releases/download/v2.2.0/cdp-2.2.0.tar.gz",
+    "hash": "d29537ccb61d7e6937dbeb63503674e5d35aec48f94466ed15290e70c853d839",
+    "extract_dir": "cdp-2.2.0",
     "depends": "fzf",
     "installer": {
         "script": [

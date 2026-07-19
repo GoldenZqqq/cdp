@@ -13,6 +13,6 @@
 
 ## Acceptance Criteria
 
-- [ ] contract fixture 在 PowerShell/bash/zsh 产生等价 JSON。
-- [ ] 输出可被 `ConvertFrom-Json` 与 jq 解析，关闭颜色后无 ANSI。
-- [ ] schema/退出码写入双语文档并有兼容测试。
+- [x] contract fixture 在 PowerShell/bash/zsh 产生等价 JSON。
+- [x] 输出可被 `ConvertFrom-Json` 与 jq 解析，关闭颜色后无 ANSI。
+- [x] schema/退出码写入双语文档并有兼容测试。

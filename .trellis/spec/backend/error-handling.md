@@ -31,6 +31,11 @@ failure there may be verbose/warning output but must not undo a successful
 directory switch. Persistence or trust failures that protect security remain
 hard failures.
 
+Read-only status JSON aggregates failures after scanning safe later projects:
+0 means clean success, 1 attention, 2 timeout/scan partial failure, and 3 fatal
+parse/dependency/config/serialization failure. A code-3 path writes stderr only;
+codes 0-2 always accompany one complete schema document on stdout.
+
 ## Redaction
 
 Never include command-hook text, environment values, API keys, or full trust

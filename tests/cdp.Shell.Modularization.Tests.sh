@@ -27,7 +27,7 @@ for fragment in "$fragment_root"/*.sh; do
         zsh -n "$fragment"
     fi
 done
-[[ "$fragment_count" -eq 14 ]]
+[[ "$fragment_count" -eq 15 ]]
 
 [[ "$(head -n 1 "$artifact")" == '#!/usr/bin/env bash' ]]
 bash -n "$artifact"

@@ -27,7 +27,8 @@ Use the existing concern boundaries:
 - `Config.ps1` / `State.ps1`: config discovery/cache and recent state.
 - `Parser.ps1` / `Commands.ps1`: raw CLI normalization then dispatch.
 - `Projects.ps1` / `ProjectMetadata.ps1` / `Scan.ps1`: project mutations.
-- `Status.ps1` / `StatusBatch.ps1`: Git collection, cache, workers, actions.
+- `Status.ps1` / `StatusOutput.ps1` / `StatusBatch.ps1`: Git collection,
+  schema/table projection, cache, workers, and actions.
 - `Workspace.ps1` / `Hooks.ps1`: multi-project launch and trusted onEnter.
 - `Picker.ps1` / `Completion.ps1` / `Health.ps1`: interaction and diagnostics.
 

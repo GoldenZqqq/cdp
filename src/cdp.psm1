@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 2.1.0
+    Version: 2.2.0
     License: MIT
 #>
 
@@ -31,6 +31,7 @@ $domainFiles = @(
     'Projects.ps1',
     'Scan.ps1',
     'Status.ps1',
+    'StatusOutput.ps1',
     'StatusBatch.ps1',
     'Workspace.ps1',
     'Health.ps1',

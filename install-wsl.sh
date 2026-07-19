@@ -10,7 +10,7 @@
 #   ./install-wsl.sh --auto       # Auto-install dependencies without prompts
 #
 # One-liner install (from GitHub):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.1.0/install-wsl.sh) --auto
+#   bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.2.0/install-wsl.sh) --auto
 #
 
 set -e
@@ -25,13 +25,13 @@ NC='\033[0m' # No Color
 
 # Configuration
 AUTO_INSTALL=false
-CDP_INSTALL_VERSION="2.1.0"
-CDP_INSTALL_REF="${CDP_INSTALL_REF:-v2.1.0}"
+CDP_INSTALL_VERSION="2.2.0"
+CDP_INSTALL_REF="${CDP_INSTALL_REF:-v2.2.0}"
 INSTALL_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.cdp"
 SCRIPT_NAME="cdp.sh"
 GITHUB_RAW_URL="https://raw.githubusercontent.com/GoldenZqqq/cdp/$CDP_INSTALL_REF/src/cdp.sh"
-CDP_SCRIPT_SHA256="25ab6256178bb1322a32e59b062820cfc87a349ea2c7fc4e679d4630c2775e47"
+CDP_SCRIPT_SHA256="36220aaf421571fb17fb208901237e1ae532584ea50c3c83a6fa5dfe97da4935"
 USE_REMOTE=false
 
 # Parse arguments

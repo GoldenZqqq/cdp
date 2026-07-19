@@ -182,6 +182,14 @@ cdp status --dirty '@work' E:\Projects\projects.json
 cdp status --jobs 8 --refresh
 Show-CdpProjectStatus -ThrottleLimit 8 -Refresh
 
+# Emit stable schema version 1 for scripts, CI, and AI agents
+cdp status --json
+Show-CdpProjectStatus -Json
+
+# Keep the human table but remove ANSI/color styling
+cdp status --no-color
+Show-CdpProjectStatus -NoColor
+
 # Preview or explicitly approve status actions
 cdp status --fix --dry-run
 cdp status --fix --yes
@@ -273,6 +281,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 ## Features
 
 - **Multi-project Git dashboard**: `cdp status` shows branch, dirty and untracked counts, ahead/behind sync, linked worktrees, and last commit time for every project
+- **Machine-readable status**: `cdp status --json` emits stable schema version 1 with raw/resolved paths, Git counts, attention reasons, redacted errors, timing, summaries, and automation exit codes
 - **Full cross-platform support**: Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL, all covered by CI
 - **Intelligent tab completion**: Press Tab after `cdp` to auto-complete subcommands and project names on PowerShell, bash, and zsh
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
@@ -298,7 +307,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | Command | Alias | Description |
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
-| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, and `--refresh` controls |
+| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, `--refresh`, `--json`, and `--no-color` controls |
 | `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
 | `Invoke-Cdp` | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
@@ -330,7 +339,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | Command | Description |
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
-| `cdp status` / `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, and `--refresh` controls |
+| `cdp status` / `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, `--refresh`, `--json`, and `--no-color` controls |
 | `cdp workspace` / `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
 | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
@@ -438,6 +447,14 @@ cdp persists project, recent-state, and workspace JSON through same-directory at
 PowerShell mutation functions support native `-WhatIf` and `-Confirm`; use `-PassThru` to receive `Action`, `Target`, `Status`, `Changed`, and `Error` fields. Bash/zsh mutations accept `--dry-run` and `--yes` and print one result line per target. Low-risk add, pin, alias/tag, workspace-definition, and hook-trust changes keep their default execution behavior. Repair, remove, scan/import, init, status fix/push, active-config selection, and external workspace launch require explicit approval. Shell high-impact commands never read confirmation from stdin: pass `--yes`, or use `--dry-run` to preview without writing JSON, pushing Git, or starting workspace processes.
 
 `cdp config` / `cdp-config` accepts a numbered selection from the displayed list. In shell automation, provide the number as an argument, for example `cdp config 1 --yes`. PowerShell can use `Set-ProjectConfig -Selection 1 -Confirm:$false`.
+
+### Status automation contract
+
+`cdp status --json` and `Show-CdpProjectStatus -Json` write exactly one JSON document to stdout and send fatal diagnostics to stderr. The document uses `schemaVersion: 1` and contains scan time, active filters, a summary, and a `projects` array. Each project keeps its configured `rawPath` identity separate from the local `resolvedPath`, and includes `pathExists`, stable `status`, `needsAttention`, `attentionReasons`, a redacted `error`, and nested Git fields.
+
+Stable status codes are `clean`, `changed`, `path_missing`, `not_git`, `scan_timeout`, and `scan_failed`. Stable attention reasons are `dirty`, `untracked`, `behind`, `path_missing`, `scan_timeout`, and `scan_failed`. Consumers should reject unsupported schema major versions but may ignore unknown additive fields.
+
+JSON mode is read-only and cannot be combined with `--fix` or `--push`. Its exit codes are `0` for clean success, `1` when a rendered project needs attention, `2` for a partial timeout/scan failure, and `3` for a fatal parse, dependency, configuration, or serialization failure. `--dirty` filters the project array while `summary.total` still reports every scanned enabled project. Use `--no-color` / `-NoColor` when a plain human-readable table is preferred.
 
 ---
 

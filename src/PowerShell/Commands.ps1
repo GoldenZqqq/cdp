@@ -461,6 +461,7 @@ function Invoke-Cdp {
         [string[]]$RemainingArgs
     )
 
+    $jsonRequested = @($Command, $ConfigPath) + @($RemainingArgs) | Where-Object { $_ -in @('--json', '-json') }
     try {
         $parserArgs = @($RemainingArgs)
         if ($AllowHook) { $parserArgs = @('--allow-hook') + $parserArgs }
@@ -482,7 +483,12 @@ function Invoke-Cdp {
             throw 'Safety options are only valid for mutating commands.'
         }
     } catch {
-        Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+        if ($jsonRequested) {
+            [Console]::Error.WriteLine("Error: $($_.Exception.Message)")
+            $global:LASTEXITCODE = 3
+        } else {
+            Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
         return
     }
 

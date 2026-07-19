@@ -183,6 +183,7 @@ Common invocation fields:
 Status fields:
 
 - `DirtyOnly`, `Fix`, `Push`: booleans.
+- `Json`, `NoColor`: mutually exclusive read-only output modes.
 - `TagFilter`: zero or one `@tag` value.
 - `Refresh`: bypasses the optional status cache.
 - `ThrottleLimit`: bounded worker count from 1 through 16; zero means the configured default.
@@ -207,6 +208,7 @@ Management fields:
 - `status --dirty` with `--fix` or `--push` -> filter/action conflict error.
 - `status --jobs` without a value or outside 1-16 -> parser error; no scan.
 - `status --refresh` is valid with read-only status and with actions; `--fix` and `--push` always refresh.
+- `status --json --no-color`, or either output mode with `--fix` / `--push` -> parser error; no scan or mutation.
 - `workspace --list --open ...` -> invalid combination error.
 - `workspace --add` without a name and at least one project -> required argument error.
 
@@ -365,6 +367,55 @@ Correct: ask Git, keep raw and resolved paths separate, and mutate only the scan
 raw rootPath -> resolve for filesystem/Git -> normalized status
 normalized missing enabled set -> remove matching enabled config entries only
 ```
+
+## Scenario: Emit Machine-Readable Status Schema Version 1
+
+### 1. Scope / Trigger
+
+Apply whenever status JSON fields, no-color output, attention/error codes, scan
+summaries, or automation exit codes change.
+
+### 2. Signatures
+
+```text
+cdp status [--dirty] [@tag] [--json|--no-color]
+Show-CdpProjectStatus [-DirtyOnly] [-TagFilter <tag>] [-Json|-NoColor]
+```
+
+### 3. Contracts
+
+- JSON stdout is exactly one document with `schemaVersion: 1`, `generatedAt`,
+  `durationMs`, `filters`, `summary`, and an always-array `projects` field.
+- Projects expose name, raw configured path, resolved local path, path existence,
+  stable status, attention reasons, redacted error, and nested typed Git fields.
+- Stable status values are `clean`, `changed`, `path_missing`, `not_git`,
+  `scan_timeout`, and `scan_failed`.
+- Stable reasons use deterministic order: `path_missing`, `scan_timeout`,
+  `scan_failed`, `dirty`, `untracked`, then `behind` when applicable.
+- JSON exit codes are 0 clean, 1 attention, 2 partial scan failure, and 3 fatal.
+  Partial failure takes precedence; filtered-out projects do not affect the code.
+- Fatal diagnostics use stderr and never leave partial JSON on stdout. JSON
+  suppresses progress; no-color produces a human table with no ANSI escapes.
+- JSON/no-color are read-only and cannot mix with fix/push. `-PassThru` remains
+  the backward-compatible PowerShell object contract.
+
+### 4. Validation & Error Matrix
+
+- Empty project set -> valid document with zero counts and `projects: []`.
+- Missing path -> attention reason `path_missing`, no scan error, exit 1.
+- Timeout/collector failure -> redacted error object and exit 2.
+- Invalid option, missing dependency/config, or serialization failure -> stderr,
+  empty stdout, exit 3 in JSON mode.
+- Dirty filtering -> `summary.total` remains scanned count; `shown`, projects,
+  attention, failures, and exit code describe only rendered items.
+
+### 5. Tests Required
+
+- PowerShell 5.1/7 and bash/zsh/Bash 3.2 parse JSON and compare normalized
+  schema/type/reason/error semantics for the same fixture.
+- Assert stdout/stderr separation, exit codes 0-3, parser conflicts, empty arrays,
+  and no ESC byte under no-color.
+- Run existing table, PassThru, fix/push, cache, timeout, and performance suites.
 
 ## Scenario: Preview and Approve Mutating Commands
 

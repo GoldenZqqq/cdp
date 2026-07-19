@@ -170,37 +170,47 @@ cdp-status() {
     local assume_yes=false
     local refresh=false
     local jobs=0
+    local json_mode=false
+    local no_color=false
+    local requested_json=false
+    local requested_arg
+    for requested_arg in "$@"; do
+        [[ "$requested_arg" == --json ]] && requested_json=true
+    done
+    json_mode=$requested_json
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dirty|-d) dirty_only=true ;;
             --fix)      do_fix=true ;;
             --push)     do_push=true ;;
+            --json)     json_mode=true ;;
+            --no-color) no_color=true ;;
             --dry-run)  dry_run=true ;;
             --yes)      assume_yes=true ;;
             --refresh)  refresh=true ;;
             --jobs|--concurrency)
-                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --jobs.${NC}"; return 1; }
+                [[ -z "${2:-}" ]] && { cdp_status_fail "$json_mode" 'missing value after --jobs.'; return $?; }
                 [[ "$2" =~ ^[0-9]+$ ]] && jobs="$2" || jobs=0
-                (( jobs >= 1 && jobs <= 16 )) || { echo -e "${RED}Error: status jobs must be between 1 and 16.${NC}"; return 1; }
+                (( jobs >= 1 && jobs <= 16 )) || { cdp_status_fail "$json_mode" 'status jobs must be between 1 and 16.'; return $?; }
                 shift
                 ;;
             --config)
-                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --config.${NC}"; return 1; }
-                [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
+                [[ -z "${2:-}" ]] && { cdp_status_fail "$json_mode" 'missing value after --config.'; return $?; }
+                [[ -n "$config_path" ]] && { cdp_status_fail "$json_mode" 'config path specified more than once.'; return $?; }
                 config_path="$2"
                 shift
                 ;;
             @*)
-                [[ -n "$tag_filter" ]] && { echo -e "${RED}Error: only one status tag filter is allowed.${NC}"; return 1; }
+                [[ -n "$tag_filter" ]] && { cdp_status_fail "$json_mode" 'only one status tag filter is allowed.'; return $?; }
                 tag_filter="$1"
                 ;;
             -*)
-                echo -e "${RED}Error: unknown status option: $1${NC}"
-                return 1
+                cdp_status_fail "$json_mode" "unknown status option: $1"
+                return $?
                 ;;
             *)
-                [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
+                [[ -n "$config_path" ]] && { cdp_status_fail "$json_mode" 'config path specified more than once.'; return $?; }
                 config_path="$1"
                 ;;
         esac
@@ -208,30 +218,33 @@ cdp-status() {
     done
 
     if $do_fix && $do_push; then
-        echo -e "${RED}Error: --fix and --push cannot be used together.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--fix and --push cannot be used together.'; return $?
     fi
     if $dirty_only && { $do_fix || $do_push; }; then
-        echo -e "${RED}Error: --dirty cannot be combined with status actions.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--dirty cannot be combined with status actions.'; return $?
+    fi
+    if $json_mode && $no_color; then
+        cdp_status_fail "$json_mode" '--json and --no-color cannot be used together.'; return $?
+    fi
+    if $json_mode && { $do_fix || $do_push; }; then
+        cdp_status_fail "$json_mode" '--json is only valid for read-only status.'; return $?
+    fi
+    if $no_color && { $do_fix || $do_push; }; then
+        cdp_status_fail false '--no-color is only valid for read-only status.'; return $?
     fi
     if $dry_run && $assume_yes; then
-        echo -e "${RED}Error: --dry-run and --yes cannot be used together.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--dry-run and --yes cannot be used together.'; return $?
     fi
     if { $dry_run || $assume_yes; } && ! { $do_fix || $do_push; }; then
-        echo -e "${RED}Error: --dry-run and --yes require --fix or --push.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--dry-run and --yes require --fix or --push.'; return $?
     fi
 
     if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" "'jq' command not found."; return $?
     fi
 
     if ! command -v git &> /dev/null; then
-        echo -e "${RED}Error: 'git' command not found.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" "'git' command not found."; return $?
     fi
 
     if [[ -z "$config_path" ]]; then
@@ -239,8 +252,7 @@ cdp-status() {
     fi
 
     if [[ ! -f "$config_path" ]]; then
-        echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"
-        return 1
+        cdp_status_fail "$json_mode" "Configuration file not found at: $config_path"; return $?
     fi
 
     local expected_fingerprint=""
@@ -255,11 +267,15 @@ cdp-status() {
     fi
 
     local projects
-    projects=$(jq -r "$jq_filter | [.name, .rootPath] | @tsv" "$config_path" 2>/dev/null)
+    if ! projects=$(jq -r "$jq_filter | [.name, .rootPath] | @tsv" "$config_path" 2>/dev/null); then
+        cdp_status_fail "$json_mode" 'Failed to read configuration.'; return $?
+    fi
 
     if [[ -z "$projects" ]]; then
-        echo -e "${YELLOW}No projects to check.${NC}"
-        return
+        if $json_mode; then cdp_status_render_empty_json "$dirty_only" "$tag_filter" "$refresh"
+        elif $no_color; then printf 'No projects to check.\n'
+        else echo -e "${YELLOW}No projects to check.${NC}"; fi
+        return 0
     fi
 
     local total=0
@@ -267,8 +283,9 @@ cdp-status() {
     local missing_count=0
     local max_name_len=14
     local max_branch_len=12
-    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=()
+    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=() record_kinds=()
     local -a statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
+    local -a dirty_counts=() untracked_counts=() ahead_counts=() behind_counts=()
 
     while IFS=$'\t' read -r pname ppath; do
         pname="${pname%$'\r'}"
@@ -289,6 +306,8 @@ cdp-status() {
     local cache_ttl
     cache_ttl=$(cdp_status_setting CDP_STATUS_CACHE_TTL 0 0 60)
     if $do_fix || $do_push; then refresh=true; fi
+    local scan_start_epoch
+    scan_start_epoch=$(date +%s)
 
     local result_dir
     result_dir=$(mktemp -d "${TMPDIR:-/tmp}/cdp-status.XXXXXX")
@@ -320,10 +339,15 @@ cdp-status() {
         [[ -n "$record" ]] || record=$'failed\034-\034\034\0340\0340\0340\0340\034'
         cdp_status_cache_set "${paths[$i]}" "$record" "$cache_ttl"
         IFS=$'\034' read -r record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit <<< "$record"
+        record_kinds+=("$record_kind")
         branches+=("$branch")
         remotes+=("$remote")
         upstreams+=("$upstream")
         last_commits+=("$last_commit")
+        dirty_counts+=("$dirty_count")
+        untracked_counts+=("$untracked_count")
+        ahead_counts+=("$ahead")
+        behind_counts+=("$behind")
 
         local sync_text=""
         local s_color="$GRAY"
@@ -369,11 +393,11 @@ cdp-status() {
         syncs+=("$sync_text")
         sync_colors+=("$s_color")
         proj_scanned=$((proj_scanned + 1))
-        printf "\r  Scanning %d/%d (%d workers)... " "$proj_scanned" "$total" "$jobs" >&2
+        $json_mode || printf "\r  Scanning %d/%d (%d workers)... " "$proj_scanned" "$total" "$jobs" >&2
     done
     rm -f "$result_dir"/*.record 2>/dev/null || true
     rmdir "$result_dir" 2>/dev/null || true
-    printf "\r                                      \r" >&2
+    $json_mode || printf "\r                                      \r" >&2
 
     # --fix: remove path-missing projects (skip table render)
     if $do_fix; then
@@ -481,6 +505,18 @@ cdp-status() {
 
     [[ $max_name_len -gt 24 ]] && max_name_len=24
     [[ $max_branch_len -gt 20 ]] && max_branch_len=20
+
+    if $json_mode; then
+        local scan_end_epoch duration_ms
+        scan_end_epoch=$(date +%s)
+        duration_ms=$(((scan_end_epoch - scan_start_epoch) * 1000))
+        cdp_status_render_json "$duration_ms"
+        return $?
+    fi
+    if $no_color; then
+        cdp_status_render_plain "$dirty_only" "$tag_filter"
+        return 0
+    fi
 
     local filter_label=""
     $dirty_only && filter_label=" (dirty only)"

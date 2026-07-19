@@ -30,6 +30,9 @@ assert_failure_contains "--dirty cannot be combined" cdp-status --dirty --fix
 assert_failure_contains "unknown status option" cdp-status --unknown
 assert_failure_contains "require --fix or --push" cdp-status --yes
 assert_failure_contains "cannot be used together" cdp-status --fix --dry-run --yes
+assert_failure_contains "cannot be used together" cdp-status --json --no-color
+assert_failure_contains "read-only status" cdp-status --json --fix
+assert_failure_contains "read-only status" cdp-status --no-color --push
 assert_failure_contains "missing value after --open" cdp-workspace --add team api --open
 assert_failure_contains "single executable name" cdp-workspace --add team api --open 'codex;echo'
 

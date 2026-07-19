@@ -9,10 +9,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 2.1.0
+# Version: 2.2.0
 # License: MIT
 
-CDP_VERSION="2.1.0"
+CDP_VERSION="2.2.0"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
@@ -1850,37 +1850,47 @@ cdp-status() {
     local assume_yes=false
     local refresh=false
     local jobs=0
+    local json_mode=false
+    local no_color=false
+    local requested_json=false
+    local requested_arg
+    for requested_arg in "$@"; do
+        [[ "$requested_arg" == --json ]] && requested_json=true
+    done
+    json_mode=$requested_json
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dirty|-d) dirty_only=true ;;
             --fix)      do_fix=true ;;
             --push)     do_push=true ;;
+            --json)     json_mode=true ;;
+            --no-color) no_color=true ;;
             --dry-run)  dry_run=true ;;
             --yes)      assume_yes=true ;;
             --refresh)  refresh=true ;;
             --jobs|--concurrency)
-                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --jobs.${NC}"; return 1; }
+                [[ -z "${2:-}" ]] && { cdp_status_fail "$json_mode" 'missing value after --jobs.'; return $?; }
                 [[ "$2" =~ ^[0-9]+$ ]] && jobs="$2" || jobs=0
-                (( jobs >= 1 && jobs <= 16 )) || { echo -e "${RED}Error: status jobs must be between 1 and 16.${NC}"; return 1; }
+                (( jobs >= 1 && jobs <= 16 )) || { cdp_status_fail "$json_mode" 'status jobs must be between 1 and 16.'; return $?; }
                 shift
                 ;;
             --config)
-                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --config.${NC}"; return 1; }
-                [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
+                [[ -z "${2:-}" ]] && { cdp_status_fail "$json_mode" 'missing value after --config.'; return $?; }
+                [[ -n "$config_path" ]] && { cdp_status_fail "$json_mode" 'config path specified more than once.'; return $?; }
                 config_path="$2"
                 shift
                 ;;
             @*)
-                [[ -n "$tag_filter" ]] && { echo -e "${RED}Error: only one status tag filter is allowed.${NC}"; return 1; }
+                [[ -n "$tag_filter" ]] && { cdp_status_fail "$json_mode" 'only one status tag filter is allowed.'; return $?; }
                 tag_filter="$1"
                 ;;
             -*)
-                echo -e "${RED}Error: unknown status option: $1${NC}"
-                return 1
+                cdp_status_fail "$json_mode" "unknown status option: $1"
+                return $?
                 ;;
             *)
-                [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
+                [[ -n "$config_path" ]] && { cdp_status_fail "$json_mode" 'config path specified more than once.'; return $?; }
                 config_path="$1"
                 ;;
         esac
@@ -1888,30 +1898,33 @@ cdp-status() {
     done
 
     if $do_fix && $do_push; then
-        echo -e "${RED}Error: --fix and --push cannot be used together.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--fix and --push cannot be used together.'; return $?
     fi
     if $dirty_only && { $do_fix || $do_push; }; then
-        echo -e "${RED}Error: --dirty cannot be combined with status actions.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--dirty cannot be combined with status actions.'; return $?
+    fi
+    if $json_mode && $no_color; then
+        cdp_status_fail "$json_mode" '--json and --no-color cannot be used together.'; return $?
+    fi
+    if $json_mode && { $do_fix || $do_push; }; then
+        cdp_status_fail "$json_mode" '--json is only valid for read-only status.'; return $?
+    fi
+    if $no_color && { $do_fix || $do_push; }; then
+        cdp_status_fail false '--no-color is only valid for read-only status.'; return $?
     fi
     if $dry_run && $assume_yes; then
-        echo -e "${RED}Error: --dry-run and --yes cannot be used together.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--dry-run and --yes cannot be used together.'; return $?
     fi
     if { $dry_run || $assume_yes; } && ! { $do_fix || $do_push; }; then
-        echo -e "${RED}Error: --dry-run and --yes require --fix or --push.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" '--dry-run and --yes require --fix or --push.'; return $?
     fi
 
     if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" "'jq' command not found."; return $?
     fi
 
     if ! command -v git &> /dev/null; then
-        echo -e "${RED}Error: 'git' command not found.${NC}"
-        return 1
+        cdp_status_fail "$json_mode" "'git' command not found."; return $?
     fi
 
     if [[ -z "$config_path" ]]; then
@@ -1919,8 +1932,7 @@ cdp-status() {
     fi
 
     if [[ ! -f "$config_path" ]]; then
-        echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"
-        return 1
+        cdp_status_fail "$json_mode" "Configuration file not found at: $config_path"; return $?
     fi
 
     local expected_fingerprint=""
@@ -1935,11 +1947,15 @@ cdp-status() {
     fi
 
     local projects
-    projects=$(jq -r "$jq_filter | [.name, .rootPath] | @tsv" "$config_path" 2>/dev/null)
+    if ! projects=$(jq -r "$jq_filter | [.name, .rootPath] | @tsv" "$config_path" 2>/dev/null); then
+        cdp_status_fail "$json_mode" 'Failed to read configuration.'; return $?
+    fi
 
     if [[ -z "$projects" ]]; then
-        echo -e "${YELLOW}No projects to check.${NC}"
-        return
+        if $json_mode; then cdp_status_render_empty_json "$dirty_only" "$tag_filter" "$refresh"
+        elif $no_color; then printf 'No projects to check.\n'
+        else echo -e "${YELLOW}No projects to check.${NC}"; fi
+        return 0
     fi
 
     local total=0
@@ -1947,8 +1963,9 @@ cdp-status() {
     local missing_count=0
     local max_name_len=14
     local max_branch_len=12
-    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=()
+    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=() record_kinds=()
     local -a statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
+    local -a dirty_counts=() untracked_counts=() ahead_counts=() behind_counts=()
 
     while IFS=$'\t' read -r pname ppath; do
         pname="${pname%$'\r'}"
@@ -1969,6 +1986,8 @@ cdp-status() {
     local cache_ttl
     cache_ttl=$(cdp_status_setting CDP_STATUS_CACHE_TTL 0 0 60)
     if $do_fix || $do_push; then refresh=true; fi
+    local scan_start_epoch
+    scan_start_epoch=$(date +%s)
 
     local result_dir
     result_dir=$(mktemp -d "${TMPDIR:-/tmp}/cdp-status.XXXXXX")
@@ -2000,10 +2019,15 @@ cdp-status() {
         [[ -n "$record" ]] || record=$'failed\034-\034\034\0340\0340\0340\0340\034'
         cdp_status_cache_set "${paths[$i]}" "$record" "$cache_ttl"
         IFS=$'\034' read -r record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit <<< "$record"
+        record_kinds+=("$record_kind")
         branches+=("$branch")
         remotes+=("$remote")
         upstreams+=("$upstream")
         last_commits+=("$last_commit")
+        dirty_counts+=("$dirty_count")
+        untracked_counts+=("$untracked_count")
+        ahead_counts+=("$ahead")
+        behind_counts+=("$behind")
 
         local sync_text=""
         local s_color="$GRAY"
@@ -2049,11 +2073,11 @@ cdp-status() {
         syncs+=("$sync_text")
         sync_colors+=("$s_color")
         proj_scanned=$((proj_scanned + 1))
-        printf "\r  Scanning %d/%d (%d workers)... " "$proj_scanned" "$total" "$jobs" >&2
+        $json_mode || printf "\r  Scanning %d/%d (%d workers)... " "$proj_scanned" "$total" "$jobs" >&2
     done
     rm -f "$result_dir"/*.record 2>/dev/null || true
     rmdir "$result_dir" 2>/dev/null || true
-    printf "\r                                      \r" >&2
+    $json_mode || printf "\r                                      \r" >&2
 
     # --fix: remove path-missing projects (skip table render)
     if $do_fix; then
@@ -2162,6 +2186,18 @@ cdp-status() {
     [[ $max_name_len -gt 24 ]] && max_name_len=24
     [[ $max_branch_len -gt 20 ]] && max_branch_len=20
 
+    if $json_mode; then
+        local scan_end_epoch duration_ms
+        scan_end_epoch=$(date +%s)
+        duration_ms=$(((scan_end_epoch - scan_start_epoch) * 1000))
+        cdp_status_render_json "$duration_ms"
+        return $?
+    fi
+    if $no_color; then
+        cdp_status_render_plain "$dirty_only" "$tag_filter"
+        return 0
+    fi
+
     local filter_label=""
     $dirty_only && filter_label=" (dirty only)"
     [[ -n "$tag_filter" ]] && filter_label=" ($tag_filter)"
@@ -2225,6 +2261,137 @@ cdp-status() {
         [[ $ahead_count -gt 0 ]] && echo -e "${GRAY}  Tip: cdp status --push  Push $ahead_count repos ahead of remote${NC}"
     fi
     return 0
+}
+
+# shellcheck shell=bash
+
+cdp_status_fail() {
+    local json_mode="$1"
+    shift
+    if $json_mode; then
+        printf 'Error: %s\n' "$*" >&2
+        return 3
+    fi
+    printf '%bError: %s%b\n' "$RED" "$*" "$NC" >&2
+    return 1
+}
+
+cdp_status_reasons_json() {
+    local kind="$1" i="$2" reasons=""
+    [[ "$kind" == missing ]] && reasons="${reasons}path_missing\n"
+    [[ "$kind" == timed-out ]] && reasons="${reasons}scan_timeout\n"
+    [[ "$kind" == failed ]] && reasons="${reasons}scan_failed\n"
+    [[ "${dirty_counts[$i]}" -gt 0 ]] && reasons="${reasons}dirty\n"
+    [[ "${untracked_counts[$i]}" -gt 0 ]] && reasons="${reasons}untracked\n"
+    [[ "${behind_counts[$i]}" -gt 0 ]] && reasons="${reasons}behind\n"
+    printf '%b' "$reasons" | jq -R -s 'split("\n") | map(select(length > 0))'
+}
+
+cdp_status_project_json() {
+    local i="$1" kind="${record_kinds[$1]}" status_code=clean error_code="" error_message=""
+    local path_exists=true git_repo=false branch="${branches[$i]}" reasons
+    [[ "$kind" == missing ]] && { path_exists=false; status_code=path_missing; }
+    [[ "$kind" == not-git ]] && status_code=not_git
+    [[ "$kind" == timed-out ]] && { status_code=scan_timeout; error_code=scan_timeout; error_message='Git status scan timed out.'; }
+    [[ "$kind" == failed ]] && { status_code=scan_failed; error_code=scan_failed; error_message='Git status scan failed.'; }
+    if [[ "$kind" == git ]]; then
+        git_repo=true
+        [[ "${dirty_counts[$i]}" -gt 0 || "${untracked_counts[$i]}" -gt 0 ]] && status_code=changed
+    fi
+    reasons=$(cdp_status_reasons_json "$kind" "$i")
+    jq -n --arg name "${names[$i]}" --arg raw "${raw_paths[$i]}" --arg resolved "${paths[$i]}" \
+        --arg status "$status_code" --arg branch "$branch" --arg last "${last_commits[$i]}" \
+        --arg errorCode "$error_code" --arg errorMessage "$error_message" \
+        --argjson pathExists "$path_exists" --argjson gitRepo "$git_repo" \
+        --argjson needsAttention "${needs_attention[$i]}" --argjson reasons "$reasons" \
+        --argjson dirty "${dirty_counts[$i]}" --argjson untracked "${untracked_counts[$i]}" \
+        --argjson ahead "${ahead_counts[$i]}" --argjson behind "${behind_counts[$i]}" \
+        '{name:$name,rawPath:$raw,resolvedPath:$resolved,pathExists:$pathExists,status:$status,
+          needsAttention:$needsAttention,attentionReasons:$reasons,
+          error:(if $errorCode == "" then null else {code:$errorCode,message:$errorMessage} end),
+          git:{isRepository:$gitRepo,branch:(if $branch == "" or $branch == "-" then null else $branch end),
+               dirtyCount:$dirty,untrackedCount:$untracked,aheadCount:$ahead,behindCount:$behind,
+               lastCommitRelative:(if $last == "" then null else $last end)}}'
+}
+
+cdp_status_render_json() {
+    local duration_ms="$1"
+    local jsonl shown=0 attention=0 failures=0 exit_code=0 i projects generated_at document
+    if ! jsonl=$(mktemp "${TMPDIR:-/tmp}/cdp-status-json.XXXXXX"); then
+        cdp_status_fail true 'Failed to create status JSON workspace.'; return 3
+    fi
+    for ((i=0; i<total; i++)); do
+        $dirty_only && [[ "${needs_attention[$i]}" != true ]] && continue
+        if ! cdp_status_project_json "$i" >> "$jsonl"; then
+            rm -f "$jsonl"
+            cdp_status_fail true 'Failed to serialize status JSON.'; return 3
+        fi
+        shown=$((shown + 1))
+        [[ "${needs_attention[$i]}" == true ]] && attention=$((attention + 1))
+        [[ "${record_kinds[$i]}" == timed-out || "${record_kinds[$i]}" == failed ]] && failures=$((failures + 1))
+    done
+    [[ $attention -gt 0 ]] && exit_code=1
+    [[ $failures -gt 0 ]] && exit_code=2
+    if ! projects=$(jq -s '.' "$jsonl"); then
+        rm -f "$jsonl"
+        cdp_status_fail true 'Failed to serialize status JSON.'; return 3
+    fi
+    rm -f "$jsonl"
+    generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    if ! document=$(jq -n --arg generatedAt "$generated_at" --arg tag "$tag_filter" \
+        --argjson durationMs "$duration_ms" --argjson dirtyOnly "$dirty_only" \
+        --argjson refresh "$refresh" --argjson total "$total" --argjson shown "$shown" \
+        --argjson attention "$attention" --argjson failures "$failures" \
+        --argjson exitCode "$exit_code" --argjson projects "$projects" \
+        '{schemaVersion:1,generatedAt:$generatedAt,durationMs:$durationMs,
+          filters:{dirtyOnly:$dirtyOnly,tag:(if $tag == "" then null else $tag end),refresh:$refresh},
+          summary:{total:$total,shown:$shown,attention:$attention,partialFailures:$failures,exitCode:$exitCode},
+          projects:$projects}'); then
+        cdp_status_fail true 'Failed to serialize status JSON.'; return 3
+    fi
+    printf '%s\n' "$document"
+    return "$exit_code"
+}
+
+cdp_status_render_empty_json() {
+    local dirty_only="$1" tag_filter="$2" refresh="$3" generated_at
+    generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    jq -n --arg generatedAt "$generated_at" --arg tag "$tag_filter" \
+        --argjson dirtyOnly "$dirty_only" --argjson refresh "$refresh" \
+        '{schemaVersion:1,generatedAt:$generatedAt,durationMs:0,
+          filters:{dirtyOnly:$dirtyOnly,tag:(if $tag == "" then null else $tag end),refresh:$refresh},
+          summary:{total:0,shown:0,attention:0,partialFailures:0,exitCode:0},projects:[]}'
+}
+
+cdp_status_render_plain() {
+    local dirty_only="$1" tag_filter="$2" shown=0 i idx=1 filter_label=""
+    $dirty_only && filter_label=' (dirty only)'
+    [[ -n "$tag_filter" ]] && filter_label=" ($tag_filter)"
+    for ((i=0; i<total; i++)); do
+        $dirty_only && [[ "${needs_attention[$i]}" != true ]] && continue
+        shown=$((shown + 1))
+    done
+    printf '\ncdp project status (%d projects%s)\n' "$shown" "$filter_label"
+    printf '%.0s-' {1..110}; printf '\n'
+    printf "  %-4s %-${max_name_len}s %-${max_branch_len}s %-24s %-10s %s\n" '#' Project Branch Status Sync 'Last Commit'
+    printf '%.0s-' {1..110}; printf '\n'
+    for ((i=0; i<total; i++)); do
+        $dirty_only && [[ "${needs_attention[$i]}" != true ]] && continue
+        local display_name display_branch
+        display_name=$(cdp_limit_text "${names[$i]}" "$max_name_len")
+        display_branch=$(cdp_limit_text "${branches[$i]}" "$max_branch_len")
+        printf "  %02d   %s %s %-24s %-10s %s\n" "$idx" \
+            "$(cdp_pad_text "$display_name" "$max_name_len")" \
+            "$(cdp_pad_text "$display_branch" "$max_branch_len")" \
+            "${statuses[$i]}" "${syncs[$i]}" "${last_commits[$i]}"
+        idx=$((idx + 1))
+    done
+    printf '%.0s-' {1..110}; printf '\n'
+    local summary=()
+    [[ $attention_count -gt 0 ]] && summary+=("$attention_count repos need attention")
+    [[ $missing_count -gt 0 ]] && summary+=("$missing_count path missing")
+    if [[ ${#summary[@]} -eq 0 ]]; then printf 'All projects clean.\n'
+    else local joined; joined=$(printf ' | %s' "${summary[@]}"); printf '%s\n' "${joined:3}"; fi
 }
 
 # cdp shell domain: Workspace.sh

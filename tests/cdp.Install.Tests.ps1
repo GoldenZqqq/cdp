@@ -92,28 +92,28 @@ Describe 'cdp installer target verification' {
         $targetPath = Join-Path $TestDrive 'PowerShell\Modules\cdp'
         $available = @(
             [PSCustomObject]@{ ModuleBase = (Join-Path $TestDrive 'old\cdp'); Version = [version]'9.0.0' }
-            [PSCustomObject]@{ ModuleBase = $targetPath; Version = [version]'2.1.0' }
+            [PSCustomObject]@{ ModuleBase = $targetPath; Version = [version]'2.2.0' }
         )
 
         $parameters = @{
             AvailableModules = $available
             ModulePath = $targetPath
-            ExpectedVersion = [version]'2.1.0'
+            ExpectedVersion = [version]'2.2.0'
         }
         $actual = Select-CdpInstalledModule @parameters
 
         $actual.ModuleBase | Should -Be $targetPath
-        $actual.Version | Should -Be ([version]'2.1.0')
+        $actual.Version | Should -Be ([version]'2.2.0')
     }
 
     It 'rejects an old module found outside the target path' {
         $targetPath = Join-Path $TestDrive 'PowerShell\Modules\cdp'
         $parameters = @{
             AvailableModules = @(
-                [PSCustomObject]@{ ModuleBase = (Join-Path $TestDrive 'old\cdp'); Version = [version]'2.1.0' }
+                [PSCustomObject]@{ ModuleBase = (Join-Path $TestDrive 'old\cdp'); Version = [version]'2.2.0' }
             )
             ModulePath = $targetPath
-                ExpectedVersion = [version]'2.1.0'
+                ExpectedVersion = [version]'2.2.0'
         }
 
         { Select-CdpInstalledModule @parameters } | Should -Throw '*not discovered at target path*'
@@ -126,10 +126,10 @@ Describe 'cdp installer target verification' {
                 [PSCustomObject]@{ ModuleBase = $targetPath; Version = [version]'2.0.3' }
             )
             ModulePath = $targetPath
-                ExpectedVersion = [version]'2.1.0'
+                ExpectedVersion = [version]'2.2.0'
         }
 
-        { Select-CdpInstalledModule @parameters } | Should -Throw '*expected ''2.1.0''*'
+        { Select-CdpInstalledModule @parameters } | Should -Throw '*expected ''2.2.0''*'
     }
 }
 

@@ -15,6 +15,8 @@ function New-CdpInvocation {
         DirtyOnly = $false
         Fix = $false
         Push = $false
+        Json = $false
+        NoColor = $false
         Refresh = $false
         ThrottleLimit = 0
         DryRun = $false
@@ -138,6 +140,8 @@ function ConvertFrom-CdpStatusTokens {
         if ($token -in @('--dirty', '-dirty', '-d')) { $result.DirtyOnly = $true; continue }
         if ($token -in @('--fix', '-fix')) { $result.Fix = $true; continue }
         if ($token -in @('--push', '-push')) { $result.Push = $true; continue }
+        if ($token -in @('--json', '-json')) { $result.Json = $true; continue }
+        if ($token -in @('--no-color', '-no-color')) { $result.NoColor = $true; continue }
         if ($token -in @('--refresh', '-refresh')) { $result.Refresh = $true; continue }
         if ($token -in @('--jobs', '-jobs', '--concurrency')) {
             if ($i + 1 -ge $Tokens.Count) { throw "Missing value after --jobs." }
@@ -161,6 +165,9 @@ function ConvertFrom-CdpStatusTokens {
     }
     if ($result.Fix -and $result.Push) { throw "The --fix and --push actions cannot be used together." }
     if ($result.DirtyOnly -and ($result.Fix -or $result.Push)) { throw "The --dirty filter and status actions cannot be used together." }
+    if ($result.Json -and $result.NoColor) { throw "The --json and --no-color options cannot be used together." }
+    if ($result.Json -and ($result.Fix -or $result.Push)) { throw "The --json option is only valid for read-only status." }
+    if ($result.NoColor -and ($result.Fix -or $result.Push)) { throw "The --no-color option is only valid for read-only status." }
     if ($result.DryRun -and $result.Yes) { throw "The --dry-run and --yes options cannot be used together." }
     if (($result.DryRun -or $result.Yes) -and -not ($result.Fix -or $result.Push)) {
         throw "The --dry-run and --yes options require --fix or --push."

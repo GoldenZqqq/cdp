@@ -24,6 +24,7 @@ fragments=(
     Health.sh
     Scan.sh
     Status.sh
+    StatusOutput.sh
     Workspace.sh
     Projects.sh
     ProjectMetadata.sh

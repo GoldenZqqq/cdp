@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.1.0'
+ModuleVersion = '2.2.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,12 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.2.0 - Automation and Multi-Repository Workflows
+- Added: cdp status --json and Show-CdpProjectStatus -Json emit stable schema version 1 for scripts, CI, and AI agents
+- Added: status --no-color and -NoColor provide ANSI-free human-readable output
+- Added: JSON status exit codes distinguish clean success, attention, partial scan failure, and fatal failure
+- Improved: structured status keeps raw and resolved paths separate and exposes stable status, attention-reason, and redacted error codes
+
 v2.1.0 - Engineering Foundation
 - Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks
 - Added: bounded JSON backups and explicit recovery helpers

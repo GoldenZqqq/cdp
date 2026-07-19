@@ -3,7 +3,7 @@
   "name": "v2-2-0-status-json",
   "title": "增加机器可读 status 输出",
   "description": "增加 status --json、--no-color、稳定 schema 与可自动化退出码，兼容 PowerShell 和 shell。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

@@ -34,6 +34,17 @@ changed=<true|false> [error=<redacted message>]
 PowerShell objects use the same semantics with property casing. A preview is not
 success, and `Changed` is false for preview/cancel/failure.
 
+## Machine-Readable Status
+
+- `status --json` / `-Json` owns stdout and emits one schema-versioned document.
+- Live progress, headers, tips, colors, and action lines are forbidden in JSON
+  stdout. Fatal diagnostics go to stderr and return code 3.
+- Recoverable timeout/scan failures belong in redacted per-project `error`
+  objects and produce aggregate code 2 after all safe projects complete.
+- `--no-color` / `-NoColor` keeps a human table but must contain no ESC byte.
+- Field names, status/reason/error codes, booleans, numbers, nulls, and arrays are
+  contracts; localized or styled labels are not machine fields.
+
 ## Secret and Hook Redaction
 
 - Never print hook command text or environment values.

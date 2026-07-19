@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.0
+
+### Added
+
+- Added `cdp status --json` and `Show-CdpProjectStatus -Json` with stable schema version 1 for scripts, CI, and AI agents.
+- Added `cdp status --no-color` and `Show-CdpProjectStatus -NoColor` for ANSI-free human-readable output.
+- Added status JSON exit codes for clean success (`0`), attention (`1`), partial scan failure (`2`), and fatal failure (`3`).
+
+### Changed
+
+- Status JSON separates configured `rawPath` identity from the runtime `resolvedPath` and includes stable status, attention-reason, redacted error, Git count, filter, timing, and summary fields.
+- JSON mode writes exactly one document to stdout, suppresses progress, routes fatal diagnostics to stderr, and remains read-only instead of mixing with status fix/push actions.
+
 ## 2.1.0
 
 ### Added
