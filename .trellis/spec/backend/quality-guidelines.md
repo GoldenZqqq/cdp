@@ -765,3 +765,79 @@ $candidates = @(Get-Module -ListAvailable -Name cdp -Refresh)
 Select-CdpInstalledModule -AvailableModules $candidates `
     -ModulePath $modulePath -ExpectedVersion $manifest.Version
 ```
+
+## Scenario: Load PowerShell Domains Through a Stable Bootstrap
+
+### 1. Scope / Trigger
+
+Apply whenever `src/cdp.psm1` or a PowerShell domain file is added, moved, or
+split. The module manifest and public command surface must remain stable while
+internal files stay independently reviewable.
+
+### 2. Signatures
+
+```text
+cdp.psd1 RootModule = src/cdp.psm1
+src/cdp.psm1 -> ordered dot-source of src/PowerShell/*.ps1
+src/PowerShell/Completion.ps1 -> Register-ArgumentCompleter only
+```
+
+### 3. Contracts
+
+- `src/cdp.psm1` owns module-scoped cache initialization, the explicit load list,
+  aliases, and `Export-ModuleMember`; it defines no functions.
+- Domain files contain function bodies only for one bounded concern and do not
+  dot-source peer files. Shared `$script:` state remains in the module scope.
+- Every domain file is at most 600 physical lines and is copied by installer,
+  Gallery, and Scoop recursive `src` packaging paths.
+- `FunctionsToExport` and `AliasesToExport` in the manifest are unchanged by an
+  internal split.
+
+### 4. Validation & Error Matrix
+
+- Missing listed domain file -> module import fails with the exact path.
+- Bootstrap function definition or unlisted domain file -> structural test fails.
+- Domain dot-source or file over 600 lines -> structural test fails.
+- Any source parse error -> structural test and CI fail before behavior tests.
+- Export inventory drift -> Pester fails with actual and expected command names.
+- Package path omits a domain file -> installer/package structural test fails.
+
+### 5. Good / Base / Bad Cases
+
+- Good: add a function to one domain file and keep the bootstrap list/export
+  unchanged unless the public surface changes.
+- Base: add a new domain file, list it once in bootstrap order, and add a focused
+  regression test.
+- Bad: reintroduce helper functions into the bootstrap or have domains dot-source
+  one another to force load order.
+
+### 6. Tests Required
+
+- Parse bootstrap and every `src` PowerShell file with the AST parser.
+- Assert bootstrap has zero function definitions, all domain files are listed,
+  all domain files are <=600 lines, and no domain dot-sources peers.
+- Import the manifest and compare exported functions/aliases with its declared
+  inventory; measure an import smoke threshold.
+- Run the same full Pester suite under PowerShell 5.1 and 7, plus
+  `Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Error`.
+- Inspect recursive source-copy behavior in `Install.ps1`, both Gallery scripts,
+  and `scripts/New-ScoopPackage.sh`.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```powershell
+# cdp.psm1 grows another domain function and silently imports one peer.
+function Get-CdpStatusHelper { ... }
+. "$PSScriptRoot/Status.ps1"
+```
+
+Correct:
+
+```powershell
+$domainFiles = @('Core.ps1', 'Config.ps1', 'Status.ps1', 'Commands.ps1')
+foreach ($domainFile in $domainFiles) {
+    . (Join-Path $domainRoot $domainFile)
+}
+```

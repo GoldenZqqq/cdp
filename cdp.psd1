@@ -116,6 +116,7 @@ v2.1.0 - Engineering Foundation
 - Security: shell mutations support dry-run and explicit approval for high-impact operations
 - Improved: batch push/workspace actions continue after item failures and report every target
 - Improved: status push previews include remote and upstream identity
+- Refactored: PowerShell implementation is loaded from bounded domain files with a stable bootstrap/export surface
 
 v2.0.5 - Security and Install Integrity
 - Security: command onEnter hooks are skipped by default and require one-time -AllowHook/--allow-hook authorization

@@ -39,7 +39,7 @@ jobs:
 
       - name: Run PSScriptAnalyzer errors
         run: |
-          $results = Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error
+          $results = Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Error
           if ($results) {
               $results | Format-Table -AutoSize
               throw "PSScriptAnalyzer found errors."
@@ -77,7 +77,7 @@ jobs:
 
       - name: Run PSScriptAnalyzer errors
         run: |
-          $results = Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error
+          $results = Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Error
           if ($results) {
               $results | Format-Table -AutoSize
               throw "PSScriptAnalyzer found errors."

@@ -3,7 +3,7 @@
   "name": "v2-1-0-powershell-modularization",
   "title": "拆分 PowerShell 模块边界",
   "description": "将超大 psm1 按 Config、State、Picker、Status、Workspace、Hooks、Commands、Completion 拆分，保持公共行为兼容。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

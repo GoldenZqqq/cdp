@@ -17,6 +17,7 @@
 - Batch status/workspace actions now report each target, preserve later targets after a failure, and expose a non-success result when any target fails.
 - Status push plans now include the resolved remote and upstream before execution.
 - Config discovery is read-only; only explicit config-selection commands persist the active choice.
+- Split the PowerShell implementation into bounded Config, State, Picker, Status, Workspace, Hooks, Commands, Completion, and supporting domain files without changing public exports.
 
 ## 2.0.5
 

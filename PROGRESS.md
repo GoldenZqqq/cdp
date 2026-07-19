@@ -33,16 +33,18 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - [x] Bind persistent command-hook trust to config, project, and command fingerprints without storing command text.
 - [x] Add PowerShell ShouldProcess/WhatIf/Confirm and shell dry-run/yes safety boundaries to mutating commands.
 - [x] Return or print per-target action results and continue safe batch processing after item failures.
+- [x] Split the PowerShell module into bounded domain files with a stable bootstrap, export surface, and recursive package coverage.
 - [ ] Complete the remaining v2.1.0 engineering, performance, CI, media, and documentation tasks.
 - [ ] Pass the full cross-platform release gate and publish/verify every public channel.
 
-## 2.1.0 Atomic Config Verification
+## 2.1.0 Engineering Verification
 
-- PowerShell 7.5.2: Pester `71/71`; PSScriptAnalyzer Error severity reported no findings.
+- PowerShell 7.5.2: Pester `88/88`; PSScriptAnalyzer Error severity reported no findings across `src`.
+- PowerShell modularization: all `119/119` function bodies match the pre-split AST text; the largest domain file is 557 lines.
 - Bash, zsh, and Bash 3.2: persistence, stale-fingerprint, invalid JSON, lock,
   flush/replacement failure, backup recovery, doctor diagnostics, and syntax checks passed.
 - Shell installer digest: `9b265198fbeea63f49ee56de4beadb3a8cc78b8617484e179509b0d868cbc390`.
-- Deterministic Scoop package digest: `b3e59cb048f514f3dabebd02776f66af72a888a3871f0d5f14dcb2f2676899a7`.
+- Deterministic Scoop package digest: `83a89dd5f4a79d1f476b33e018c3118cd5352f4379f317a4481b4e75643ceee8`.
 
 ## 2.0.5 Security Checklist
 
