@@ -18,11 +18,28 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Latest verified public release: v2.0.4 on GitHub Releases and PowerShell Gallery (verified 2026-07-17).
+Latest verified GitHub release: v2.0.5 (verified 2026-07-19). Latest verified PowerShell Gallery release: v2.0.4.
 
-Current release target: v2.0.5.
+Current release target: v2.1.0.
 
-Release status: v2.0.5 security and install-integrity work is in progress. v2.0.4 remains the latest externally verified release until all v2.0.5 channels pass post-release verification.
+Release status: v2.0.5 passed local and hosted CI and is published on GitHub. PowerShell Gallery publication is pending because no Gallery API key is available in the local or GitHub Actions environment. v2.1.0 engineering-foundation work is in progress and is not yet published.
+
+## 2.1.0 Engineering Foundation Checklist
+
+- [x] Route cdp-owned JSON mutations through atomic persistence boundaries in PowerShell and shell.
+- [x] Reject stale writes with SHA-256 fingerprints and sibling locks.
+- [x] Retain three bounded backups and expose explicit recovery helpers.
+- [x] Diagnose valid backups when the active project config is damaged.
+- [ ] Complete the remaining v2.1.0 engineering, performance, CI, media, and documentation tasks.
+- [ ] Pass the full cross-platform release gate and publish/verify every public channel.
+
+## 2.1.0 Atomic Config Verification
+
+- PowerShell 7.5.2: Pester `71/71`; PSScriptAnalyzer Error severity reported no findings.
+- Bash, zsh, and Bash 3.2: persistence, stale-fingerprint, invalid JSON, lock,
+  flush/replacement failure, backup recovery, doctor diagnostics, and syntax checks passed.
+- Shell installer digest: `26d662153b57b891b11352efa5daa2b54cd43d6c7fa0202f8398316ad4e01b47`.
+- Deterministic Scoop package digest: `4bf59e2aa821a9ce7497d2f76448aa2ae4f0a8832d8bffda596deff9e1f9c47c`.
 
 ## 2.0.5 Security Checklist
 
@@ -32,7 +49,7 @@ Release status: v2.0.5 security and install-integrity work is in progress. v2.0.
 - [x] Launch workspace commands through argv instead of command-string injection paths.
 - [x] Pin remote shell installation to v2.0.5 and verify the downloaded script digest.
 - [x] Replace Scoop hash skipping with the independent release package SHA-256.
-- [ ] Pass the full cross-platform release gate and publish/verify every public channel.
+- [ ] Publish and verify v2.0.5 on PowerShell Gallery when an API key is available.
 
 ## 2.0.5 Verification Log
 
@@ -40,7 +57,9 @@ Release status: v2.0.5 security and install-integrity work is in progress. v2.0.
 - PowerShell 7.5.2: PSScriptAnalyzer Error severity reported no findings for `src/cdp.psm1`.
 - Bash and zsh: CLI parser, status, shell v2, installer negative tests, syntax, and shell installer metadata passed.
 - Scoop package: `scripts/New-ScoopPackage.sh` generated `cdp-2.0.5.tar.gz`; local release asset SHA-256 `d97225a5be0f9cc857b2692e1d73f6c951be546c577db760b51ef86e7ad92716` matches `scoop/cdp.json`. CI validates the package contents and manifest hash shape; the published asset is verified byte-for-byte after upload because gzip output differs across tool versions.
-- Release metadata, workflow YAML, and `git diff --check` passed locally. Hosted CI run `29674612897` passed Windows PowerShell 5.1, PowerShell 7, Ubuntu Bash, and macOS Bash/zsh.
+- Release metadata, workflow YAML, and `git diff --check` passed locally. Final hosted CI run `29674789288` passed Windows PowerShell 5.1, PowerShell 7, Ubuntu Bash, and macOS Bash/zsh.
+- GitHub release `v2.0.5` is public at https://github.com/GoldenZqqq/cdp/releases/tag/v2.0.5 from commit `85d798216a7561dcd6c1cae1ef29e47af2651f00`.
+- PowerShell Gallery remains at v2.0.4 because neither the local environment nor GitHub Actions has `PS_GALLERY_API_KEY`.
 
 ## 2.0.4 Stability Checklist
 

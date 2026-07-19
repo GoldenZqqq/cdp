@@ -9,12 +9,197 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 2.0.5
+    Version: 2.1.0
     License: MIT
 #>
 
 $script:CdpProjectConfigCache = @{}
 $script:CdpFzfCommand = $null
+$script:CdpStateFingerprint = 'missing'
+$script:CdpStateWritable = $true
+
+function Get-CdpFileFingerprint {
+    param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+    if (-not (Test-Path -LiteralPath $LiteralPath -PathType Leaf)) {
+        return 'missing'
+    }
+
+    $stream = [System.IO.File]::Open(
+        $LiteralPath,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::ReadWrite
+    )
+    try {
+        $algorithm = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hash = $algorithm.ComputeHash($stream)
+            return ([System.BitConverter]::ToString($hash)).Replace('-', '').ToLowerInvariant()
+        } finally {
+            $algorithm.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
+function Read-CdpJsonDocument {
+    param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+    if (-not (Test-Path -LiteralPath $LiteralPath -PathType Leaf)) {
+        throw "JSON document not found: $LiteralPath"
+    }
+
+    $fingerprint = Get-CdpFileFingerprint -LiteralPath $LiteralPath
+    $content = Get-Content -LiteralPath $LiteralPath -Raw -Encoding UTF8
+    $parsedValue = ConvertFrom-Json -InputObject $content
+    $value = if ($content.TrimStart().StartsWith('[')) { @($parsedValue) } else { $parsedValue }
+    [PSCustomObject]@{
+        Path = $LiteralPath
+        Fingerprint = $fingerprint
+        Value = $value
+    }
+}
+
+function Remove-CdpOldJsonBackups {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][int]$Keep
+    )
+
+    $directory = Split-Path -Parent $LiteralPath
+    $leaf = Split-Path -Leaf $LiteralPath
+    $backups = @(Get-ChildItem -LiteralPath $directory -Filter "$leaf.cdp-backup.*" -File -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name -Descending)
+    if ($backups.Count -le $Keep) { return }
+    $backups | Select-Object -Skip $Keep | Remove-Item -Force -ErrorAction SilentlyContinue
+}
+
+function Write-CdpJsonTemporaryFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][AllowNull()][object]$Value
+    )
+
+    $json = ConvertTo-Json -InputObject $Value -Depth 20
+    [void](ConvertFrom-Json -InputObject $json)
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    $writer = New-Object System.IO.StreamWriter($LiteralPath, $false, $encoding)
+    try {
+        $writer.WriteLine($json)
+        $writer.Flush()
+        $writer.BaseStream.Flush($true)
+    } finally {
+        $writer.Dispose()
+    }
+}
+
+function Move-CdpJsonTemporaryFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$TempPath,
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][string]$Directory,
+        [Parameter(Mandatory = $true)][string]$Leaf
+    )
+
+    if (Test-Path -LiteralPath $LiteralPath -PathType Leaf) {
+        $stamp = [DateTime]::UtcNow.ToString('yyyyMMddHHmmssfffffff')
+        [System.IO.File]::Replace($TempPath, $LiteralPath, (Join-Path $Directory "$Leaf.cdp-backup.$stamp"))
+        return
+    }
+    [System.IO.File]::Move($TempPath, $LiteralPath)
+}
+
+function Write-CdpJsonFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][AllowNull()][object]$Value,
+        [Parameter(Mandatory = $false)][string]$ExpectedFingerprint,
+        [Parameter(Mandatory = $false)][int]$BackupCount = 3
+    )
+
+    $directory = Split-Path -Parent $LiteralPath
+    if ([string]::IsNullOrWhiteSpace($directory)) { $directory = (Get-Location).Path }
+    if (-not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    $leaf = Split-Path -Leaf $LiteralPath
+    $lockPath = Join-Path $directory "$leaf.cdp.lock"
+    $tempPath = Join-Path $directory "$leaf.cdp-tmp.$([Guid]::NewGuid().ToString('N'))"
+    $lockStream = $null
+    $ownsLock = $false
+    try {
+        try {
+            $lockStream = [System.IO.File]::Open(
+                $lockPath,
+                [System.IO.FileMode]::CreateNew,
+                [System.IO.FileAccess]::Write,
+                [System.IO.FileShare]::None
+            )
+            $ownsLock = $true
+        } catch {
+            throw "JSON document is locked by another cdp process: $LiteralPath"
+        }
+
+        $currentFingerprint = Get-CdpFileFingerprint -LiteralPath $LiteralPath
+        if (-not [string]::IsNullOrWhiteSpace($ExpectedFingerprint) -and
+            $ExpectedFingerprint -ne $currentFingerprint) {
+            throw "JSON document changed since it was read: $LiteralPath"
+        }
+
+        Write-CdpJsonTemporaryFile -LiteralPath $tempPath -Value $Value
+        Move-CdpJsonTemporaryFile -TempPath $tempPath -LiteralPath $LiteralPath -Directory $directory -Leaf $leaf
+        Remove-CdpOldJsonBackups -LiteralPath $LiteralPath -Keep $BackupCount
+        Clear-CdpProjectConfigCache -ConfigPath $LiteralPath
+        return Get-CdpFileFingerprint -LiteralPath $LiteralPath
+    } finally {
+        if ($lockStream) { $lockStream.Dispose() }
+        if (Test-Path -LiteralPath $tempPath) { Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue }
+        if ($ownsLock -and (Test-Path -LiteralPath $lockPath)) {
+            Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Get-CdpValidJsonBackups {
+    param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+    $directory = Split-Path -Parent $LiteralPath
+    $leaf = Split-Path -Leaf $LiteralPath
+    @(Get-ChildItem -LiteralPath $directory -Filter "$leaf.cdp-backup.*" -File -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name -Descending |
+        Where-Object {
+            try {
+                [void](ConvertFrom-Json -InputObject (Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8))
+                $true
+            } catch {
+                $false
+            }
+        })
+}
+
+function Restore-CdpJsonBackup {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][string]$BackupPath
+    )
+
+    $validBackups = @(Get-CdpValidJsonBackups -LiteralPath $LiteralPath)
+    $backup = @($validBackups | Where-Object { $_.FullName -eq $BackupPath } | Select-Object -First 1)
+    if ($backup.Count -ne 1) {
+        throw "Backup is missing or invalid: $BackupPath"
+    }
+
+    $content = Get-Content -LiteralPath $backup[0].FullName -Raw -Encoding UTF8
+    $parsedValue = ConvertFrom-Json -InputObject $content
+    $value = if ($content.TrimStart().StartsWith('[')) { @($parsedValue) } else { $parsedValue }
+    Write-CdpJsonFile `
+        -LiteralPath $LiteralPath `
+        -Value $value `
+        -ExpectedFingerprint (Get-CdpFileFingerprint -LiteralPath $LiteralPath)
+}
 
 function Get-CdpCurrentModule {
     Get-Module -Name cdp |
@@ -1389,14 +1574,7 @@ function Initialize-ConfigFile {
     )
 
     if (-not (Test-Path $ConfigPath)) {
-        $configDir = Split-Path -Parent $ConfigPath
-        if (-not (Test-Path $configDir)) {
-            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-        }
-
-        # Create empty project array
-        '[]' | Out-File -FilePath $ConfigPath -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @() -ExpectedFingerprint 'missing')
         Write-Host "Created new config file at: $ConfigPath" -ForegroundColor Green
     }
 }
@@ -1418,14 +1596,18 @@ function New-CdpState {
 function Get-CdpState {
     $statePath = Get-CdpStatePath
     if (-not (Test-Path -LiteralPath $statePath)) {
+        $script:CdpStateFingerprint = 'missing'
+        $script:CdpStateWritable = $true
         return New-CdpState
     }
 
     try {
-        $jsonContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
-        $state = ConvertFrom-Json -InputObject $jsonContent
+        $document = Read-CdpJsonDocument -LiteralPath $statePath
+        $state = $document.Value
 
         if ($null -eq $state -or $state -is [array]) {
+            $script:CdpStateFingerprint = $document.Fingerprint
+            $script:CdpStateWritable = $false
             return New-CdpState
         }
 
@@ -1434,8 +1616,12 @@ function Get-CdpState {
         }
 
         $state.recentProjects = @($state.recentProjects)
+        $script:CdpStateFingerprint = $document.Fingerprint
+        $script:CdpStateWritable = $true
         return $state
     } catch {
+        $script:CdpStateFingerprint = Get-CdpFileFingerprint -LiteralPath $statePath
+        $script:CdpStateWritable = $false
         return New-CdpState
     }
 }
@@ -1447,13 +1633,13 @@ function Save-CdpState {
     )
 
     $statePath = Get-CdpStatePath
-    $stateDir = Split-Path -Parent $statePath
-    if (-not [string]::IsNullOrWhiteSpace($stateDir) -and -not (Test-Path -LiteralPath $stateDir)) {
-        New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+    if (-not $script:CdpStateWritable) {
+        throw "Refusing to overwrite an invalid cdp state document: $statePath"
     }
-
-    ConvertTo-Json -InputObject $State -Depth 10 |
-        Out-File -FilePath $statePath -Encoding UTF8
+    $script:CdpStateFingerprint = Write-CdpJsonFile `
+        -LiteralPath $statePath `
+        -Value $State `
+        -ExpectedFingerprint $script:CdpStateFingerprint
 }
 
 function Add-CdpRecentProject {
@@ -1859,7 +2045,13 @@ function Get-CdpConfigParseResult {
         $checks += New-CdpHealthCheck -Name "JSON" -Passed $true -Message "parsed successfully"
         $parsed = $true
     } catch {
-        $checks += New-CdpHealthCheck -Name "JSON" -Passed $false -Level Error -Message $_.Exception.Message
+        $backupCount = @(Get-CdpValidJsonBackups -LiteralPath $ConfigPath).Count
+        $message = if ($backupCount -gt 0) {
+            "$($_.Exception.Message); $backupCount valid cdp backup(s) available"
+        } else {
+            $_.Exception.Message
+        }
+        $checks += New-CdpHealthCheck -Name "JSON" -Passed $false -Level Error -Message $message
     }
 
     [PSCustomObject]@{ Projects = $projects; Checks = $checks; Parsed = $parsed }
@@ -1991,8 +2183,8 @@ function Add-Project {
 
     # Read existing projects
     try {
-        $jsonContent = Get-Content -Path $ConfigPath -Raw -Encoding UTF8
-        $projects = ConvertFrom-Json -InputObject $jsonContent
+        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $projects = $document.Value
 
         # Check if project already exists
         $existingProject = $projects | Where-Object { $_.rootPath -eq $Path }
@@ -2015,8 +2207,7 @@ function Add-Project {
         $projects = @($projects) + $newProject
 
         # Save updated config
-        $projects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($projects) -ExpectedFingerprint $document.Fingerprint)
 
         Write-Host "Project added successfully!" -ForegroundColor Green
         Write-Host "  Name: $Name" -ForegroundColor Cyan
@@ -2082,8 +2273,8 @@ function Set-ProjectPin {
     Initialize-ConfigFile -ConfigPath $ConfigPath
 
     try {
-        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8)
-        $projects = @($allProjects)
+        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $projects = @($document.Value)
         $targetProjects = if ([string]::IsNullOrWhiteSpace($Name)) {
             $currentPath = Get-CdpComparablePath -Path (Get-Location).Path
             @($projects | Where-Object {
@@ -2117,8 +2308,7 @@ function Set-ProjectPin {
             }
         }
 
-        $projects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($projects) -ExpectedFingerprint $document.Fingerprint)
 
         $stateText = if ($Pinned) { "Pinned" } else { "Unpinned" }
         Write-Host "$stateText project: $($target.name)" -ForegroundColor Green
@@ -2193,8 +2383,8 @@ function Update-CdpProjectStringList {
     Initialize-ConfigFile -ConfigPath $ConfigPath
 
     try {
-        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8)
-        $projects = @($allProjects)
+        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $projects = @($document.Value)
         $targets = @(Get-CdpProjectMatches -Projects $projects -Query $Name)
 
         if ($targets.Count -ne 1) {
@@ -2222,8 +2412,7 @@ function Update-CdpProjectStringList {
             }
         }
 
-        $projects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($projects) -ExpectedFingerprint $document.Fingerprint)
 
         $action = if ($Remove) { "Removed" } else { "Added" }
         Write-Host "$action $PropertyName '$Value' for project: $($target.name)" -ForegroundColor Green
@@ -2315,8 +2504,8 @@ function Repair-ProjectConfig {
     Initialize-ConfigFile -ConfigPath $ConfigPath
 
     try {
-        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $ConfigPath -Raw -Encoding UTF8)
-        $projects = @($allProjects)
+        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $projects = @($document.Value)
         $usedNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         $usedPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         $summary = [ordered]@{ RemovedInvalid = 0; RemovedDuplicatePaths = 0; RenamedDuplicates = 0; DisabledMissingPaths = 0; AddedPinnedFields = 0; FixedEnabledFields = 0 }
@@ -2364,8 +2553,7 @@ function Repair-ProjectConfig {
             $cleanProjects += $project
         }
 
-        ConvertTo-Json -InputObject @($cleanProjects) -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($cleanProjects) -ExpectedFingerprint $document.Fingerprint)
 
         Write-Host "cdp config repaired: $ConfigPath" -ForegroundColor Green
         foreach ($item in $summary.GetEnumerator()) {
@@ -2535,7 +2723,12 @@ function Invoke-CdpWorkspace {
     $wsPath = Get-CdpWorkspacesPath -ConfigPath $ConfigPath
 
     if ($List) {
-        $workspaces = Get-CdpWorkspaces -WorkspacesPath $wsPath
+        $workspaceDocument = if (Test-Path -LiteralPath $wsPath) {
+            Read-CdpJsonDocument -LiteralPath $wsPath
+        } else {
+            [PSCustomObject]@{ Value = @(); Fingerprint = 'missing' }
+        }
+        $workspaces = @($workspaceDocument.Value)
         if ($workspaces.Count -eq 0) {
             Write-Host "No workspaces defined." -ForegroundColor Yellow
             Write-Host "Create one: cdp workspace --add <name> <project1> <project2> ..." -ForegroundColor Gray
@@ -2580,9 +2773,7 @@ function Invoke-CdpWorkspace {
         }
 
         $allWs = @($workspaces) + @($newWs)
-        $wsDir = Split-Path -Parent $wsPath
-        if (-not (Test-Path $wsDir)) { New-Item -ItemType Directory -Path $wsDir -Force | Out-Null }
-        ConvertTo-Json -InputObject @($allWs) -Depth 10 | Out-File -FilePath $wsPath -Encoding UTF8
+        [void](Write-CdpJsonFile -LiteralPath $wsPath -Value @($allWs) -ExpectedFingerprint $workspaceDocument.Fingerprint)
         Write-Host "Workspace '$Add' created with $($Projects.Count) projects." -ForegroundColor Green
         return
     }
@@ -2716,9 +2907,15 @@ function Show-CdpProjectStatus {
         return
     }
 
+    $document = $null
     try {
-        $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
-        $enabledProjects = @($configData.EnabledProjects)
+        if ($Fix) {
+            $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+            $enabledProjects = @(@($document.Value) | Where-Object { $_.enabled })
+        } else {
+            $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
+            $enabledProjects = @($configData.EnabledProjects)
+        }
     } catch {
         Write-Host "Error: Failed to read configuration." -ForegroundColor Red
         return
@@ -2773,7 +2970,7 @@ function Show-CdpProjectStatus {
         if (-not $PSCmdlet.ShouldProcess($resolvedConfig, "Remove $($missingProjects.Count) missing project entries")) {
             return
         }
-        $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $resolvedConfig -Raw -Encoding UTF8)
+        $allProjects = $document.Value
         $missingPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         foreach ($project in $missingProjects) {
             [void]$missingPaths.Add((Get-CdpComparablePath -Path $project.RootPath))
@@ -2782,8 +2979,7 @@ function Show-CdpProjectStatus {
             $_.enabled -ne $true -or
                 -not $missingPaths.Contains((Get-CdpComparablePath -Path ([string]$_.rootPath)))
         })
-        ConvertTo-Json -InputObject $cleaned -Depth 10 | Out-File -FilePath $resolvedConfig -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $resolvedConfig
+        [void](Write-CdpJsonFile -LiteralPath $resolvedConfig -Value @($cleaned) -ExpectedFingerprint $document.Fingerprint)
         Write-Host "`nRemoved $($missingProjects.Count) projects. $($cleaned.Count) projects remain." -ForegroundColor Green
         return
     }
@@ -3106,8 +3302,8 @@ function Import-GitProjects {
     Initialize-ConfigFile -ConfigPath $ConfigPath
 
     try {
-        $jsonContent = Get-Content -Path $ConfigPath -Raw -Encoding UTF8
-        $parsedProjects = ConvertFrom-Json -InputObject $jsonContent
+        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $parsedProjects = $document.Value
         $projects = @()
         if ($null -ne $parsedProjects) {
             $projects = @($parsedProjects)
@@ -3148,9 +3344,7 @@ function Import-GitProjects {
     }
 
     if ($addedProjects.Count -gt 0) {
-        ConvertTo-Json -InputObject @($projects) -Depth 10 |
-            Out-File -FilePath $ConfigPath -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($projects) -ExpectedFingerprint $document.Fingerprint)
     }
 
     Write-Host "Git repositories found: $($repos.Count)" -ForegroundColor Cyan
@@ -3213,8 +3407,8 @@ function Remove-Project {
     }
 
     try {
-        $jsonContent = Get-Content -Path $ConfigPath -Raw -Encoding UTF8
-        $projects = ConvertFrom-Json -InputObject $jsonContent
+        $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+        $projects = $document.Value
 
         if ($projects.Count -eq 0) {
             Write-Host "No projects found in configuration." -ForegroundColor Yellow
@@ -3270,8 +3464,7 @@ function Remove-Project {
 
         # Remove project
         $updatedProjects = $projects | Where-Object { $_.name -ne $Name }
-        $updatedProjects | ConvertTo-Json -Depth 10 | Out-File -FilePath $ConfigPath -Encoding UTF8
-        Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+        [void](Write-CdpJsonFile -LiteralPath $ConfigPath -Value @($updatedProjects) -ExpectedFingerprint $document.Fingerprint)
 
         Write-Host "`nProject removed successfully: $Name" -ForegroundColor Green
 

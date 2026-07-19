@@ -1,5 +1,89 @@
 # Backend Quality Guidelines
 
+## Scenario: Persist cdp JSON Atomically
+
+### 1. Scope / Trigger
+
+Apply whenever code creates or mutates `projects.json`, `state.json`,
+`workspaces.json`, or future cdp-owned JSON state. Direct `Out-File`, shell
+redirection to the live target, or a temp file outside the target directory is
+forbidden.
+
+### 2. Signatures
+
+PowerShell:
+
+```powershell
+Read-CdpJsonDocument -LiteralPath <path>
+Write-CdpJsonFile -LiteralPath <path> -Value <object> `
+    -ExpectedFingerprint <sha256|missing> [-BackupCount 3]
+Get-CdpValidJsonBackups -LiteralPath <path>
+Restore-CdpJsonBackup -LiteralPath <path> -BackupPath <path>
+```
+
+Shell:
+
+```text
+cdp_json_fingerprint <path>
+cdp_commit_json_file <target> <candidate> <sha256|missing>
+cdp_write_json_text <target> <json> <sha256|missing>
+cdp_valid_json_backups <path>
+cdp_restore_json_backup <target> <backup>
+```
+
+### 3. Contracts
+
+- Read and parse before mutation; retain the SHA-256 fingerprint.
+- Lock with a sibling `<file>.cdp.lock` and never wait silently.
+- Recheck the fingerprint while holding the lock.
+- Validate JSON, flush a sibling temporary file, then replace by same-directory
+  rename/replace.
+- Preserve the previous document as `<file>.cdp-backup.*` and retain the three
+  newest backups.
+- PowerShell writes invalidate the project config cache.
+- Invalid active state is read-only until explicitly restored; never reset it
+  silently to an empty document.
+
+### 4. Validation & Error Matrix
+
+- Existing foreign lock -> fail; do not delete the foreign lock.
+- Fingerprint mismatch -> concurrency error; original remains unchanged.
+- Invalid candidate JSON -> fail before replacement.
+- Invalid active state -> report valid backup count; do not overwrite.
+- Permission, flush, backup, or replace error -> nonzero/exception; remove only
+  owned temporary and lock artifacts.
+- Missing target plus expected `missing` -> initialize atomically.
+
+### 5. Good / Base / Bad Cases
+
+- Good: read fingerprint, transform object, persist with that fingerprint.
+- Base: initialize a missing cdp-owned JSON file with expected `missing`.
+- Bad: `ConvertTo-Json ... | Out-File projects.json` or `jq ... > projects.json`.
+
+### 6. Tests Required
+
+- PowerShell 5.1/7 and bash/zsh/Bash 3.2 cover successful replacement.
+- Assert stale fingerprints, invalid JSON, and locks preserve exact original
+  bytes.
+- Assert only three backups remain and an explicit valid backup restores.
+- Assert project cache reads the replacement immediately.
+- Run existing add, metadata, repair, status-fix, workspace, state, and scan
+  regressions because every mutation route shares this boundary.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```text
+jq '<transform>' projects.json > projects.json
+```
+
+Correct:
+
+```text
+fingerprint -> sibling candidate -> cdp_commit_json_file target candidate fingerprint
+```
+
 ## Scenario: Parse CLI Tokens Once Before Dispatch
 
 ### 1. Scope / Trigger

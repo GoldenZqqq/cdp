@@ -121,7 +121,7 @@ cd cdp
 brew install fzf jq
 
 # 一键安装（WSL/Linux/macOS 通用）
-bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.0.5/install-wsl.sh) --auto
+bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.1.0/install-wsl.sh) --auto
 
 source ~/.bashrc  # zsh 用户改为 source ~/.zshrc
 cdp doctor
@@ -209,7 +209,7 @@ cdp -WSL
 fzf 菜单里输入几个字母即可模糊匹配：
 
 ```text
-cdp v2.0.5 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v2.1.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -398,6 +398,8 @@ cdp-scan E:\Projects
 命令 Hook 默认跳过。PowerShell 使用 `cdp api -AllowHook`、bash/zsh 使用 `cdp api --allow-hook`，只授权当前一次切换。cdp 不会持久保存这次授权；使用前应检查当前生效的配置文件。
 
 最近访问记录保存在独立状态文件 `~/.cdp/state.json`，不会写回 `projects.json`。自动化或测试场景可以用 `CDP_STATE_PATH` 指向临时状态文件。
+
+cdp 通过同目录原子替换持久化项目、最近访问和 workspace JSON。并发修改会被拒绝而不是互相覆盖，并保留最新三份 `*.cdp-backup.*` 供显式恢复；项目配置损坏但存在有效备份时，`cdp doctor` 会给出诊断。
 
 ---
 

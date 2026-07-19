@@ -121,7 +121,7 @@ For non-interactive automation, use `.\Install.ps1 -Force`. Add `-SkipFzf` only 
 brew install fzf jq
 
 # One-liner install (WSL/Linux/macOS)
-bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.0.5/install-wsl.sh) --auto
+bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.1.0/install-wsl.sh) --auto
 
 source ~/.bashrc  # zsh users: source ~/.zshrc
 cdp doctor
@@ -209,7 +209,7 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
-cdp v2.0.5 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v2.1.0 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -398,6 +398,8 @@ Structured environment values are applied when a project is entered. Environment
 Command hooks are skipped by default. Authorize a command hook for one switch only with `cdp api -AllowHook` in PowerShell or `cdp api --allow-hook` in bash/zsh. cdp never persists this one-time authorization; review the active config before using it.
 
 Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
+
+cdp persists project, recent-state, and workspace JSON through same-directory atomic replacement. Concurrent changes are rejected instead of overwritten, and the three newest `*.cdp-backup.*` files are retained for explicit recovery. `cdp doctor` reports when a damaged project config has a valid backup.
 
 ---
 

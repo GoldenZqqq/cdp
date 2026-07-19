@@ -13,6 +13,17 @@
 
 ## Acceptance Criteria
 
-- [ ] 中断、无权限、无效 JSON、并发修改测试不会损坏原文件。
-- [ ] 所有已知直接 `Out-File`/重定向配置写入迁移到统一入口。
-- [ ] 成功写入后缓存正确失效，备份数量有上限。
+- [x] 中断、无权限、无效 JSON、并发修改测试不会损坏原文件。
+- [x] 所有已知直接 `Out-File`/重定向配置写入迁移到统一入口。
+- [x] 成功写入后缓存正确失效，备份数量有上限。
+
+## Verification
+
+- PowerShell 7.5.2: Pester `71/71` and PSScriptAnalyzer Error severity passed.
+- bash and zsh: CLI, status, v2, persistence, installer, and syntax suites passed.
+- Bash 3.2: persistence suite and syntax passed in the repository Docker fixture.
+- Release metadata, shell installer digest, deterministic Scoop package hash,
+  workflow YAML, Scoop JSON, ShellCheck Error severity, Trellis validation, and
+  `git diff --check` passed.
+- Windows PowerShell 5.1 remains covered by the unchanged hosted CI job; the
+  current Linux environment cannot execute Windows PowerShell locally.

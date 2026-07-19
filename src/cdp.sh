@@ -6,10 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 2.0.5
+# Version: 2.1.0
 # License: MIT
 
-CDP_VERSION="2.0.5"
+CDP_VERSION="2.1.0"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
@@ -168,6 +168,178 @@ convert_windows_to_wsl() {
     esac
 }
 
+cdp_sha256_file() {
+    local input_file="$1"
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$input_file" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$input_file" | awk '{print $1}'
+    else
+        openssl dgst -sha256 "$input_file" | awk '{print $NF}'
+    fi
+}
+
+cdp_json_fingerprint() {
+    local target_path="$1"
+    if [[ ! -f "$target_path" ]]; then
+        printf '%s\n' missing
+        return 0
+    fi
+    cdp_sha256_file "$target_path"
+}
+
+cdp_json_temp_file() {
+    local target_path="$1"
+    local target_dir
+    local target_name
+    target_dir=$(dirname "$target_path")
+    target_name=$(basename "$target_path")
+    mkdir -p "$target_dir"
+    mktemp "$target_dir/.$target_name.cdp-tmp.XXXXXX"
+}
+
+cdp_prune_json_backups() {
+    local target_path="$1"
+    local keep="${2:-3}"
+    local target_dir
+    local target_name
+    local backup_path
+    local backups=()
+    target_dir=$(dirname "$target_path")
+    target_name=$(basename "$target_path")
+    while IFS= read -r backup_path; do
+        [[ -n "$backup_path" ]] && backups+=("$backup_path")
+    done < <(find "$target_dir" -maxdepth 1 -type f -name "$target_name.cdp-backup.*" -print 2>/dev/null)
+    [[ ${#backups[@]} -le $keep ]] && return 0
+    LC_ALL=C ls -1t "${backups[@]}" 2>/dev/null |
+        awk -v keep="$keep" 'NR > keep' |
+        while IFS= read -r backup_path; do
+            [[ -n "$backup_path" ]] && rm -f -- "$backup_path"
+        done
+}
+
+cdp_flush_file() {
+    local input_file="$1"
+    sync -f "$input_file" 2>/dev/null || sync 2>/dev/null
+}
+
+cdp_stage_json_candidate() {
+    local target_path="$1"
+    local candidate_path="$2"
+    local staged_path
+    staged_path=$(cdp_json_temp_file "$target_path") || return 1
+    if ! cat "$candidate_path" > "$staged_path"; then
+        rm -f -- "$staged_path"
+        return 1
+    fi
+    if ! jq -e . "$staged_path" >/dev/null 2>&1; then
+        rm -f -- "$staged_path"
+        echo "Error: refusing to persist invalid JSON: $target_path" >&2
+        return 1
+    fi
+    if ! cdp_flush_file "$staged_path"; then
+        rm -f -- "$staged_path"
+        echo "Error: failed to flush JSON document: $target_path" >&2
+        return 1
+    fi
+    printf '%s\n' "$staged_path"
+}
+
+cdp_create_json_backup() {
+    local target_path="$1"
+    local backup_stamp
+    local backup_path
+    [[ ! -f "$target_path" ]] && return 0
+    backup_stamp=$(date -u +'%Y%m%d%H%M%S')
+    backup_path=$(mktemp "$target_path.cdp-backup.$backup_stamp.XXXXXX") || return 1
+    if ! cp "$target_path" "$backup_path" || ! cdp_flush_file "$backup_path"; then
+        rm -f -- "$backup_path"
+        echo "Error: failed to preserve JSON backup: $target_path" >&2
+        return 1
+    fi
+    printf '%s\n' "$backup_path"
+}
+
+cdp_commit_json_file() {
+    local target_path="$1"
+    local candidate_path="$2"
+    local expected_fingerprint="${3:-}"
+    local lock_path="$target_path.cdp.lock"
+    local staged_path=""
+    local backup_path=""
+    local current_fingerprint
+
+    mkdir "$lock_path" 2>/dev/null || {
+        echo "Error: JSON document is locked by another cdp process: $target_path" >&2
+        return 1
+    }
+    current_fingerprint=$(cdp_json_fingerprint "$target_path")
+    if [[ -n "$expected_fingerprint" && "$expected_fingerprint" != "$current_fingerprint" ]]; then
+        rmdir "$lock_path" 2>/dev/null || true
+        echo "Error: JSON document changed since it was read: $target_path" >&2
+        return 1
+    fi
+    staged_path=$(cdp_stage_json_candidate "$target_path" "$candidate_path") || {
+        rmdir "$lock_path" 2>/dev/null || true
+        return 1
+    }
+    backup_path=$(cdp_create_json_backup "$target_path") || {
+        rm -f -- "$staged_path"
+        rmdir "$lock_path" 2>/dev/null || true
+        return 1
+    }
+
+    if ! mv -f "$staged_path" "$target_path"; then
+        rm -f -- "$staged_path"
+        [[ -n "$backup_path" ]] && rm -f -- "$backup_path"
+        rmdir "$lock_path" 2>/dev/null || true
+        return 1
+    fi
+    cdp_prune_json_backups "$target_path" 3
+    rmdir "$lock_path" 2>/dev/null || true
+}
+
+cdp_write_json_text() {
+    local target_path="$1"
+    local json_text="$2"
+    local expected_fingerprint="${3:-}"
+    local candidate_path
+    candidate_path=$(cdp_json_temp_file "$target_path") || return 1
+    printf '%s\n' "$json_text" > "$candidate_path"
+    if cdp_commit_json_file "$target_path" "$candidate_path" "$expected_fingerprint"; then
+        rm -f -- "$candidate_path"
+        return 0
+    fi
+    rm -f -- "$candidate_path"
+    return 1
+}
+
+cdp_valid_json_backups() {
+    local target_path="$1"
+    local target_dir
+    local target_name
+    local backup_path
+    target_dir=$(dirname "$target_path")
+    target_name=$(basename "$target_path")
+    find "$target_dir" -maxdepth 1 -type f -name "$target_name.cdp-backup.*" -print 2>/dev/null |
+        sort -r |
+        while IFS= read -r backup_path; do
+            jq -e . "$backup_path" >/dev/null 2>&1 && printf '%s\n' "$backup_path"
+        done
+}
+
+cdp_restore_json_backup() {
+    local target_path="$1"
+    local backup_path="$2"
+    local expected_fingerprint
+    if ! cdp_valid_json_backups "$target_path" | grep -Fx "$backup_path" >/dev/null 2>&1; then
+        echo "Error: backup is missing or invalid: $backup_path" >&2
+        return 1
+    fi
+    expected_fingerprint=$(cdp_json_fingerprint "$target_path")
+    cdp_commit_json_file "$target_path" "$backup_path" "$expected_fingerprint"
+}
+
 # Function to get stored config choice path
 get_stored_config_choice() {
     local config_choice_file="$HOME/.cdp/config"
@@ -203,8 +375,11 @@ initialize_state() {
     state_dir=$(dirname "$state_path")
     mkdir -p "$state_dir"
 
-    if [[ ! -f "$state_path" ]] || ! jq -e 'type == "object"' "$state_path" >/dev/null 2>&1; then
-        echo '{"recentProjects":[]}' > "$state_path"
+    if [[ ! -f "$state_path" ]]; then
+        cdp_write_json_text "$state_path" '{"recentProjects":[]}' missing
+    elif ! jq -e 'type == "object"' "$state_path" >/dev/null 2>&1; then
+        echo "Error: refusing to overwrite invalid cdp state: $state_path" >&2
+        return 1
     fi
 }
 
@@ -217,10 +392,12 @@ cdp_record_recent() {
 
     local state_path
     local temp_file
+    local expected_fingerprint
     local now
     state_path=$(cdp_state_path)
-    initialize_state "$state_path"
-    temp_file=$(mktemp)
+    initialize_state "$state_path" || return 0
+    expected_fingerprint=$(cdp_json_fingerprint "$state_path")
+    temp_file=$(cdp_json_temp_file "$state_path") || return 0
     now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
     if jq --arg name "$name" --arg path "$root_path" --arg now "$now" '
@@ -237,10 +414,11 @@ cdp_record_recent() {
             | reverse
             | .[:20]
         )
-    ' "$state_path" > "$temp_file" 2>/dev/null; then
-        mv "$temp_file" "$state_path"
+    ' "$state_path" > "$temp_file" 2>/dev/null &&
+        cdp_commit_json_file "$state_path" "$temp_file" "$expected_fingerprint"; then
+        rm -f -- "$temp_file"
     else
-        rm -f "$temp_file"
+        rm -f -- "$temp_file"
     fi
 }
 
@@ -422,9 +600,7 @@ initialize_config() {
     local config_path="$1"
 
     if [[ ! -f "$config_path" ]]; then
-        local config_dir=$(dirname "$config_path")
-        mkdir -p "$config_dir"
-        echo "[]" > "$config_path"
+        cdp_write_json_text "$config_path" '[]' missing || return 1
         echo -e "${GREEN}Created new config file at: $config_path${NC}"
     fi
 }
@@ -903,6 +1079,11 @@ cdp-status() {
         return 1
     fi
 
+    local expected_fingerprint=""
+    if $do_fix; then
+        expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    fi
+
     local jq_filter='.[] | select(.enabled == true)'
     if [[ -n "$tag_filter" ]]; then
         local tag_query="${tag_filter#@}"
@@ -1071,7 +1252,7 @@ cdp-status() {
         new_json=$(jq --argjson missing "$missing_json" '[.[] | . as $project | select(($project.enabled != true) or (($missing | index($project.rootPath)) == null))]' "$config_path")
         local kept_count
         kept_count=$(printf '%s\n' "$new_json" | jq 'length')
-        printf '%s\n' "$new_json" > "$config_path"
+        cdp_write_json_text "$config_path" "$new_json" "$expected_fingerprint" || return 1
         echo -e "\n${GREEN}Removed $missing_count projects. $kept_count projects remain.${NC}"
         return
     fi
@@ -1257,15 +1438,19 @@ cdp-workspace() {
             local ws_name="${1:-}"
             [[ $# -gt 0 ]] && shift
             local ws_projects=("$@")
+            local expected_fingerprint=missing
 
             if [[ -z "$ws_name" || ${#ws_projects[@]} -eq 0 ]]; then
                 echo -e "${YELLOW}Usage: cdp workspace --add <name> <project1> <project2> ...${NC}"
                 return
             fi
 
-            if [[ -f "$ws_path" ]] && jq -e --arg n "$ws_name" '.[] | select(.name == $n)' "$ws_path" &>/dev/null; then
-                echo -e "${YELLOW}Workspace '$ws_name' already exists.${NC}"
-                return
+            if [[ -f "$ws_path" ]]; then
+                expected_fingerprint=$(cdp_json_fingerprint "$ws_path")
+                if jq -e --arg n "$ws_name" '.[] | select(.name == $n)' "$ws_path" &>/dev/null; then
+                    echo -e "${YELLOW}Workspace '$ws_name' already exists.${NC}"
+                    return
+                fi
             fi
 
             local projects_json
@@ -1281,10 +1466,9 @@ cdp-workspace() {
             if [[ -f "$ws_path" ]]; then
                 local existing
                 existing=$(cat "$ws_path")
-                echo "$existing" | jq --argjson ws "$new_ws" '. + [$ws]' > "$ws_path"
+                cdp_write_json_text "$ws_path" "$(echo "$existing" | jq --argjson ws "$new_ws" '. + [$ws]')" "$expected_fingerprint" || return 1
             else
-                mkdir -p "$config_dir"
-                echo "[$new_ws]" | jq '.' > "$ws_path"
+                cdp_write_json_text "$ws_path" "$(echo "[$new_ws]" | jq '.')" "$expected_fingerprint" || return 1
             fi
             echo -e "${GREEN}Workspace '$ws_name' created with ${#ws_projects[@]} projects.${NC}"
             ;;
@@ -1841,6 +2025,8 @@ cdp-add() {
     initialize_config "$config_path"
 
     # Check if project already exists
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
     local existing=$(jq -r --arg path "$project_path" '.[] | select(.rootPath == $path) | .name' "$config_path" 2>/dev/null)
 
     if [[ -n "$existing" ]]; then
@@ -1850,12 +2036,14 @@ cdp-add() {
     fi
 
     # Add new project
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(cdp_json_temp_file "$config_path") || return 1
     jq --arg name "$name" --arg path "$project_path" \
         '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
         "$config_path" > "$temp_file"
 
-    mv "$temp_file" "$config_path"
+    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+    rm -f -- "$temp_file"
 
     echo -e "${GREEN}Project added successfully!${NC}"
     echo -e "  ${CYAN}Name:${NC} $name"
@@ -1880,6 +2068,8 @@ set_project_pin() {
     initialize_config "$config_path"
 
     local matches
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
     if [[ -z "$name" ]]; then
         matches=$(jq -r --arg path "$PWD" '.[] | select(.rootPath == $path) | .name' "$config_path" 2>/dev/null)
     else
@@ -1903,7 +2093,7 @@ set_project_pin() {
     local temp_file
     local state_text="Pinned"
     target="$matches"
-    temp_file=$(mktemp)
+    temp_file=$(cdp_json_temp_file "$config_path") || return 1
     if [[ "$pinned" != "true" ]]; then
         state_text="Unpinned"
     fi
@@ -1911,7 +2101,8 @@ set_project_pin() {
     jq --arg name "$target" --argjson pinned "$pinned" '
         map(if .name == $name then . + {"pinned": $pinned} else . end)
     ' "$config_path" > "$temp_file"
-    mv "$temp_file" "$config_path"
+    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+    rm -f -- "$temp_file"
 
     echo -e "${GREEN}$state_text project: $target${NC}"
 }
@@ -1938,8 +2129,10 @@ cdp-clean() {
 
     initialize_config "$config_path"
 
+    local expected_fingerprint
     local temp_file
-    temp_file=$(mktemp)
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    temp_file=$(cdp_json_temp_file "$config_path") || return 1
     jq '
         def valid_project:
             (.name | type == "string") and
@@ -1967,21 +2160,25 @@ cdp-clean() {
             end
         ) | .projects
     ' "$config_path" > "$temp_file"
-    mv "$temp_file" "$config_path"
+    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+    rm -f -- "$temp_file"
 
     local missing_count=0
+    local repaired_json
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    repaired_json=$(cat "$config_path")
     while IFS=$'\t' read -r name raw_project_path; do
         [[ -z "$name" && -z "$raw_project_path" ]] && continue
         local resolved_path
         resolved_path=$(convert_windows_to_wsl "$raw_project_path")
         if [[ ! -d "$resolved_path" ]]; then
-            temp_file=$(mktemp)
-            jq --arg path "$raw_project_path" 'map(if .rootPath == $path then .enabled = false else . end)' \
-                "$config_path" > "$temp_file"
-            mv "$temp_file" "$config_path"
+            repaired_json=$(printf '%s\n' "$repaired_json" | jq --arg path "$raw_project_path" 'map(if .rootPath == $path then .enabled = false else . end)')
             ((missing_count += 1))
         fi
     done < <(jq -r '.[] | select(.enabled == true) | [.name, .rootPath] | @tsv' "$config_path")
+    if [[ $missing_count -gt 0 ]]; then
+        cdp_write_json_text "$config_path" "$repaired_json" "$expected_fingerprint" || return 1
+    fi
 
     echo -e "${GREEN}cdp config repaired:${NC} $config_path"
     echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
@@ -2007,6 +2204,8 @@ update_project_list_value() {
 
     local matches
     local match_count
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
     matches=$(find_project_matches "$config_path" "$name")
     match_count=$(line_count "$matches")
     if [[ "$match_count" -ne 1 ]]; then
@@ -2017,7 +2216,7 @@ update_project_list_value() {
     local target
     local temp_file
     target="$matches"
-    temp_file=$(mktemp)
+    temp_file=$(cdp_json_temp_file "$config_path") || return 1
     jq --arg name "$target" --arg value "$value" --arg property "$property" --argjson remove "$remove" '
         map(if .name == $name then
             .[$property] = (
@@ -2032,7 +2231,8 @@ update_project_list_value() {
             )
         else . end)
     ' "$config_path" > "$temp_file"
-    mv "$temp_file" "$config_path"
+    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+    rm -f -- "$temp_file"
 
     echo -e "${GREEN}Updated $property for project: $target${NC}"
 }
@@ -2086,6 +2286,8 @@ cdp-scan() {
     local added_count=0
     local skipped_count=0
     local repo
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
 
     if [[ -n "$repos" ]]; then
         while IFS= read -r repo <&3; do
@@ -2100,11 +2302,13 @@ cdp-scan() {
             local name
             local temp_file
             name=$(unique_project_name "$repo" "$config_path")
-            temp_file=$(mktemp)
+            temp_file=$(cdp_json_temp_file "$config_path") || return 1
             jq --arg name "$name" --arg path "$repo" \
                 '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
                 "$config_path" > "$temp_file"
-            mv "$temp_file" "$config_path"
+            cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+            rm -f -- "$temp_file"
+            expected_fingerprint=$(cdp_json_fingerprint "$config_path")
             ((added_count += 1))
         done 3<<< "$repos"
     fi
@@ -2191,7 +2395,13 @@ cdp-doctor() {
     if jq -e 'type == "array"' "$config_path" >/dev/null 2>&1; then
         cdp_print_check ok "JSON" "parsed successfully"
     else
-        cdp_print_check fail "JSON" "expected a top-level project array"
+        local backup_count
+        backup_count=$(cdp_valid_json_backups "$config_path" | wc -l | tr -d ' ')
+        if [[ "$backup_count" -gt 0 ]]; then
+            cdp_print_check fail "JSON" "expected a top-level project array; $backup_count valid cdp backup(s) available"
+        else
+            cdp_print_check fail "JSON" "expected a top-level project array"
+        fi
         ((error_count++))
         echo ""
         echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"

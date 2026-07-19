@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.0.5'
+ModuleVersion = '2.1.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.1.0 - Engineering Foundation
+- Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks
+- Added: bounded JSON backups and explicit recovery helpers
+- Improved: project, state, workspace, status-fix, repair, and scan mutations share one persistence boundary
+
 v2.0.5 - Security and Install Integrity
 - Security: command onEnter hooks are skipped by default and require one-time -AllowHook/--allow-hook authorization
 - Security: structured hook environment keys are validated before being applied

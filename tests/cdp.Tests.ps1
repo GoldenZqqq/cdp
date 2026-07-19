@@ -45,7 +45,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '2.0.5'
+        $manifest.Version.ToString() | Should -Be '2.1.0'
     }
 }
 
@@ -397,7 +397,7 @@ Describe 'project configuration helpers' {
 
         $about = Show-CdpAbout -ConfigPath $configPath -PassThru
         $about.Name | Should -Be 'cdp'
-        $about.Version | Should -Be '2.0.5'
+        $about.Version | Should -Be '2.1.0'
         $about.ConfigPath | Should -Be $configPath
         $about.ProjectCount | Should -Be 1
         $about.EnabledProjectCount | Should -Be 1
