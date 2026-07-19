@@ -22,7 +22,7 @@ Latest verified GitHub release: v2.0.5 (verified 2026-07-19). Latest verified Po
 
 Current release target: v2.1.0.
 
-Release status: v2.0.5 passed local and hosted CI and is published on GitHub. PowerShell Gallery publication is pending because no Gallery API key is available in the local or GitHub Actions environment. v2.1.0 engineering-foundation work is in progress and is not yet published.
+Release status: v2.0.5 passed local and hosted CI and is published on GitHub. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally. v2.1.0 engineering work and the full local release matrix are complete; remote push, hosted CI, tag, GitHub Release, Gallery, and public-channel verification are pending explicit authorization/credentials.
 
 ## 2.1.0 Engineering Foundation Checklist
 
@@ -60,6 +60,8 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - CI quality gate baseline: PowerShell 7.5.2 with Pester 5.7.1 passed `98/98`; command coverage is `67.54%` (`2097/3105`) against a 60% threshold. Coverage, package hash, release metadata, and shell installer deliberate-drift fixtures all fail with layer-specific diagnostics.
 - Website quality: Playwright 1.61.1 Chromium smoke passed `6/6`; Node media fixtures passed `6/6`. The current gate records 12 published and 13 repository media files at `67,433,719` / `69,115,162` bytes and rejects missing resources, new over-budget or unreferenced media, total growth, and unregistered duplicates.
 - Documentation quality: Node fixtures passed `5/5`; the current gate validates 39 exported PowerShell functions/aliases across both maintained READMEs and 13 source-backed backend/frontend specs with no template placeholders or stale architecture/commit guidance.
+- Release candidate: all nine engineering child tasks are archived and their work commits resolve. The retained `cdp-2.1.0.tar.gz` is `91,067` bytes with SHA-256 `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`, matching Scoop.
+- Release benchmark rerun: Bash jobs=4 measured min `1.401s`, median `1.443s`, p95 `1.575s`; jobs=8 measured min `1.324s`, median `1.370s`, p95 `1.505s`. PowerShell 7.5.2 workers=4 measured min `0.630s`, median `0.732s`, p95 `1.012s`.
 
 ## 2.0.5 Security Checklist
 
