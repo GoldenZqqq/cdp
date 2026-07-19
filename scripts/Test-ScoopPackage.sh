@@ -3,7 +3,7 @@
 set -euo pipefail
 
 repo_root="${CDP_TEST_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-version="$(sed -n "s/^ModuleVersion = '\([^']*\)'$/\1/p" "$repo_root/cdp.psd1" | head -n 1)"
+version="$(sed 's/\r$//' "$repo_root/cdp.psd1" | sed -n "s/^ModuleVersion = '\([^']*\)'$/\1/p" | head -n 1)"
 package_root="cdp-$version"
 output_path="${1:-}"
 cleanup_output=false

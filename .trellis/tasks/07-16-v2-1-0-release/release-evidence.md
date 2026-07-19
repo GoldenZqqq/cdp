@@ -26,6 +26,18 @@ resolves as a commit object.
 - GitHub CLI account `GoldenZqqq` is authenticated with `repo` and `workflow`.
 - `PS_GALLERY_API_KEY` is missing from the local environment.
 
+## Hosted CI Repair
+
+- Pushed release candidate `f4b7c183f6f696e56f7734a7744fb9334eb28421`
+  to `main`; CI run `29702793941` matched that exact head SHA.
+- Ubuntu exposed a fresh-checkout-only failure in the Scoop quality fixture:
+  `.gitattributes` materialized `cdp.psd1` as CRLF while shell version parsing
+  required an LF line ending. macOS and the pre-existing local worktree passed.
+- Release scripts now strip the trailing carriage return before extracting
+  `ModuleVersion`, and the quality fixture exercises an isolated CRLF checkout.
+- The repaired local package remains byte-identical to the retained asset and
+  Scoop manifest: `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`.
+
 ## Local Quality Matrix
 
 - PowerShell 7.5.2: Pester `98/98`, coverage `2097/3105` (`67.54%`),
@@ -62,8 +74,7 @@ Each benchmark used 50 committed repositories, five runs, and cache TTL 0.
 
 ## External Steps Pending
 
-1. Explicit user authorization for remote write/history operations.
-2. Push release-preparation commit and watch main CI.
-3. Create/push annotated `v2.1.0`, then GitHub Release and upload retained asset.
-4. Set `PS_GALLERY_API_KEY`, publish Gallery, and verify exact v2.1.0.
-5. Verify public GitHub/Scoop asset SHA and installation channels.
+1. Commit and push the hosted CI repair, then watch its exact main CI run.
+2. Create/push annotated `v2.1.0`, then GitHub Release and upload retained asset.
+3. Set `PS_GALLERY_API_KEY`, publish Gallery, and verify exact v2.1.0.
+4. Verify public GitHub/Scoop asset SHA and installation channels.

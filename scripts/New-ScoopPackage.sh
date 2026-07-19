@@ -3,7 +3,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-version="${1:-$(sed -n "s/^ModuleVersion = '\([^']*\)'$/\1/p" "$repo_root/cdp.psd1" | head -n 1)}"
+version="${1:-$(sed 's/\r$//' "$repo_root/cdp.psd1" | sed -n "s/^ModuleVersion = '\([^']*\)'$/\1/p" | head -n 1)}"
 output_path="${2:-$repo_root/cdp-$version.tar.gz}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid version: $version" >&2; exit 1; }
 staging_root="$(mktemp -d "${TMPDIR:-/tmp}/cdp-scoop-package.XXXXXX")"

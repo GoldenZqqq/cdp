@@ -724,6 +724,9 @@ pnpm --dir tests/web test
 - `scripts/Test-ScoopPackage.sh` checks every tracked `src/PowerShell` and
   `src/Shell` source file is packaged, rejects repository-only entries, and
   compares the archive digest with `scoop/cdp.json`.
+- Shell release tooling normalizes a trailing carriage return before parsing
+  `ModuleVersion`; a fresh checkout follows `.gitattributes` and may materialize
+  `cdp.psd1` with CRLF even when a developer's existing worktree is LF or mixed.
 - Browser tooling stays isolated under `tests/web`; the dedicated CI job calls
   repository-owned asset and Playwright entries and uploads its report.
 - Installer/metadata validators do not accept, read, print, or persist Gallery API keys.
@@ -741,6 +744,8 @@ pnpm --dir tests/web test
 - Quality gate tool missing or wrong pinned version -> quality job fails before tests.
 - Package content or digest drift -> package gate lists the missing/forbidden
   entry or expected/actual digest and exits nonzero.
+- CRLF manifest checkout -> version parsing still returns the canonical version
+  and produces the same deterministic package digest.
 - Missing metadata file or invalid manifest/JSON -> validator exits nonzero before release work.
 
 ### 5. Good / Base / Bad Cases
@@ -777,6 +782,8 @@ update manifest version but forget Scoop/CHANGELOG/tests/PROGRESS
 - Exact selection: target path/version succeeds; same version elsewhere fails; wrong version at target fails.
 - Metadata positive: current repository passes in PowerShell 5.1 and 7.
 - Metadata negative: copy required files to `$TestDrive`, mutate Scoop version, run the validator in a separate same-edition process, assert nonzero and `scoop.version` output.
+- Package regression: construct an isolated CRLF-manifest checkout and run the
+  same deterministic content/hash gate used for the normal checkout.
 - CI runs the repository-owned PowerShell quality gate in both Windows jobs and
   uploads the NUnit/JaCoCo reports from PowerShell 7.
 - CI runs the static/media gate before provisioning Chromium, then executes the
