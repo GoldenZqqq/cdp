@@ -234,10 +234,12 @@ cdp-workspace() {
             while IFS= read -r proj_name <&3; do
                 proj_name="${proj_name%$'\r'}"
                 [[ -z "$proj_name" ]] && continue
-                local planned_path
-                planned_path=$(jq -r --arg n "$proj_name" '.[] | select(.enabled == true) | select(.name == $n) | .rootPath' "$config_path" 2>/dev/null | head -1)
-                planned_path="${planned_path%$'\r'}"
-                planned_path=$(convert_windows_to_wsl "$planned_path")
+                local project_json
+                local planned_path=""
+                project_json=$(cdp_project_json_by_name "$config_path" "$proj_name")
+                if [[ -n "$project_json" ]] && cdp_resolve_project_json "$project_json"; then
+                    planned_path="$CDP_PROJECT_RESOLVED_PATH"
+                fi
                 if [[ -z "$planned_path" || ! -d "$planned_path" ]]; then
                     echo -e "  ${YELLOW}skip${NC} $proj_name (project/path unavailable)"
                     cdp_action_result launch-workspace-project "$proj_name" failed false project-or-path-missing

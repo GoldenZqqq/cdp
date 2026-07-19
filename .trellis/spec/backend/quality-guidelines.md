@@ -264,6 +264,121 @@ if ($invocation.Kind -eq 'status') {
 }
 ```
 
+## Scenario: Resolve Cross-Platform Project Path Profiles
+
+### 1. Scope / Trigger
+
+Apply whenever project config schema, switching, picker/list output, status,
+workspace, doctor/repair, add/scan/init, recent paths, or future multi-repository
+execution changes. It prevents raw Project Manager identity from being confused
+with the local filesystem path and prevents a missing explicit mapping from
+falling through to the wrong checkout.
+
+### 2. Signatures
+
+Project config:
+
+```json
+{"rootPath":"C:/Work/api","paths":{"windows":"C:/Work/api","wsl":"/home/me/api","linux":"/srv/api","macos":"/Users/me/api"}}
+```
+
+PowerShell:
+
+```powershell
+Get-CdpCurrentPathProfile [-Profile <windows|wsl|linux|macos>]
+Resolve-CdpProjectPath -Project <object> [-Profile <profile>]
+# RawPath, ResolvedPath, Profile, Source, IsExplicit, ErrorCode, ErrorMessage
+```
+
+Shell:
+
+```text
+cdp_current_path_profile [profile]
+cdp_resolve_project_json <compact-project-json> [profile]
+CDP_PATH_PROFILE=windows|wsl|linux|macos
+```
+
+### 3. Contracts
+
+- `rootPath` is required raw identity and remains readable by Project Manager
+  and older cdp versions.
+- Known `paths` values are optional non-empty strings; unknown fields and future
+  profile keys survive all writes.
+- Selection order is explicit current mapping, WSL conversion of an unprofiled
+  Windows `rootPath`, then unchanged `rootPath` fallback.
+- An explicit current mapping is authoritative even when its directory is
+  missing; do not use another profile or `rootPath`.
+- `CDP_PATH_PROFILE` is case-insensitive and overrides detection. PowerShell
+  `-WSL` requests `wsl` explicitly.
+- Filesystem, Git, launcher, WT, and tmux use resolved paths. Recent identity,
+  hook fingerprints, duplicate identity, and mutation matching use raw paths.
+- New add/scan/init entries write both `rootPath` and `paths.<current>`.
+- Repair/status fix preserve unavailable explicit mappings; legacy fallback
+  missing paths retain the existing disable/remove behavior.
+
+### 4. Validation & Error Matrix
+
+- Invalid override -> command failure; JSON status stderr only, exit 3.
+- `paths` is not an object -> `path_profile_invalid`; no filesystem probe.
+- Any known profile value is non-string/empty -> `path_profile_invalid`; repair
+  refuses to write.
+- Explicit selected path missing -> `path_missing`, correct resolved path shown,
+  no fallback and no destructive fix.
+- Missing current key -> compatible `rootPath` fallback; WSL converts a Windows
+  drive path.
+- Missing legacy fallback path -> existing repair/status-fix behavior applies.
+
+### 5. Good / Base / Bad Cases
+
+Good:
+
+```text
+rootPath=C:/Work/api, paths.linux=/srv/api, profile=linux
+raw identity C:/Work/api -> filesystem/Git /srv/api
+```
+
+Base compatibility:
+
+```text
+rootPath=D:/Code/api, no paths, profile=wsl -> /mnt/d/Code/api
+rootPath=/home/me/api, no paths, profile=linux -> /home/me/api
+```
+
+Bad:
+
+```text
+paths.linux=/missing -> silently enter existing rootPath C:/Work/api
+status --fix on Linux -> delete a project whose explicit Windows path is valid
+```
+
+### 6. Tests Required
+
+- One shared fixture asserts all four profile results in PowerShell and shell.
+- PowerShell 5.1/7 and bash/zsh/Bash 3.2 assert override casing, invalid values,
+  WSL fallback, invalid mappings, and unknown-field preservation.
+- Status JSON asserts raw/resolved separation, `path_profile_invalid`, exit 1,
+  and invalid override fatal exit 3.
+- Add/scan/init assert `rootPath` plus current `paths` mapping.
+- Repair/status fix assert explicit missing entries remain enabled/present and
+  legacy missing behavior stays compatible.
+- Workspace/switch/status tests prove the resolved path reaches Set-Location,
+  Git, WT/tmux, and launcher boundaries.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```text
+consumer reads project.rootPath -> local convert_windows_to_wsl -> filesystem
+```
+
+Correct:
+
+```text
+project object -> shared resolver -> {raw,resolved,profile,source}
+raw -> identity/mutation; resolved -> filesystem/Git/launcher
+```
+
 ## Scenario: Inspect and Mutate Project Status with Stable Path Identity
 
 ### 1. Scope / Trigger
@@ -297,7 +412,10 @@ convert_windows_to_wsl <raw-rootPath> -> <resolved-local-path>
 - Report tracked and untracked changes independently. If both exist, the label contains both counts.
 - `NeedsAttention` is true for tracked changes, untracked files, or a positive behind count. A dirty-only header reports the number actually rendered.
 - Derive ahead/behind only from a successful upstream query. Detached and no-upstream repositories remain at zero.
-- `--fix` removes only enabled missing entries selected by the current scan. Disabled entries remain even when they share the same raw path.
+- `--fix` removes only enabled, non-explicit fallback missing entries selected by
+  the current scan. Disabled entries and unavailable explicit profile mappings
+  remain even when they share the same raw path. Mutation identity is project
+  name plus raw `rootPath`, not raw path alone.
 - `--push` targets only scanned Git repositories with a positive upstream-derived ahead count and reports the native push exit code accurately.
 - Preserve input order while using bounded workers. `CDP_STATUS_CONCURRENCY` and `--jobs`/`-ThrottleLimit` are clamped to 1-16; the default is at most four workers.
 - Keep status caching disabled unless `CDP_STATUS_CACHE_TTL` is a positive value from 1-60 seconds. PowerShell keys include normalized path plus project identity; shell records contain only Git-derived fields and key by normalized path. `--refresh` bypasses the entry.
@@ -345,6 +463,10 @@ print "done" without checking git push exit status
 
 - PowerShell 5.1 and 7: normal repo, linked worktree, dirty plus untracked, behind-only, diverged, detached/no-upstream, missing, and non-Git fixtures.
 - PowerShell and shell: `--fix` preserves a disabled entry that shares the missing enabled entry's raw path.
+- PowerShell and shell: an unavailable explicit current profile is reported with
+  its resolved path and remains present after repair/status fix.
+- PowerShell and shell: two enabled entries sharing raw `rootPath` prove status
+  fix removes only the scanned name+raw identity.
 - Shell: a stubbed Windows path proves status and workspace consume the resolved path.
 - Shell: dirty-only output asserts the rendered project count, not the scanned total.
 - PowerShell and shell: process-count tests assert no legacy Git probes; batch tests assert order, bounded overlap, timeout visibility, cache TTL, and refresh bypass.

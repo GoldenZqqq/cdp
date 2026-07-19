@@ -225,8 +225,9 @@ function Import-GitProjects {
     $existingPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
     $existingNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($project in $projects) {
-        if (-not [string]::IsNullOrWhiteSpace($project.rootPath)) {
-            [void]$existingPaths.Add((Get-CdpComparablePath -Path $project.rootPath))
+        $resolution = Resolve-CdpProjectPath -Project $project
+        if (-not $resolution.ErrorCode -and -not [string]::IsNullOrWhiteSpace($resolution.ResolvedPath)) {
+            [void]$existingPaths.Add((Get-CdpComparablePath -Path $resolution.ResolvedPath))
         }
         if (-not [string]::IsNullOrWhiteSpace($project.name)) {
             [void]$existingNames.Add([string]$project.name)
@@ -243,7 +244,15 @@ function Import-GitProjects {
         }
 
         $name = Get-CdpUniqueProjectName -Path $repoPath -ExistingNames $existingNames
-        $newProject = [PSCustomObject]@{ name = $name; rootPath = $repoPath; enabled = $true; pinned = $false; aliases = @(); tags = @() }
+        $newProject = [PSCustomObject]@{
+            name = $name
+            rootPath = $repoPath
+            enabled = $true
+            pinned = $false
+            aliases = @()
+            tags = @()
+            paths = New-CdpProjectPathMap -RootPath $repoPath
+        }
         $projects += $newProject
         $addedProjects += $newProject
         [void]$existingPaths.Add($repoPath)

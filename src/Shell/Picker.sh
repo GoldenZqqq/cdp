@@ -74,7 +74,8 @@ cdp_picker_preview() {
         echo "cdp project"
         echo "-----------"
         echo "name   $name"
-        echo "path   $raw_path"
+        echo "path   $target_path"
+        echo "raw    $raw_path"
         echo ""
         echo "state  $path_state"
         echo "git    $git_state"
@@ -94,27 +95,34 @@ cdp_picker_rows() {
     while IFS= read -r name; do
         [[ -z "$name" ]] && continue
 
+        local project_json
         local raw_path
         local display_path
         local pinned
         local name_label
         local safe_name
+        local safe_raw_path
         local safe_path
-        raw_path=$(jq -r --arg name "$name" \
-            '.[] | select(.name == $name and .enabled == true) | .rootPath' \
-            "$config_path" 2>/dev/null | head -n1)
+        project_json=$(cdp_project_json_by_name "$config_path" "$name")
+        if cdp_resolve_project_json "$project_json"; then
+            raw_path="$CDP_PROJECT_RAW_PATH"
+            display_path="$CDP_PROJECT_RESOLVED_PATH"
+        else
+            raw_path=$(printf '%s' "$project_json" | jq -r '.rootPath // empty')
+            display_path="<invalid ${CDP_PROJECT_PATH_SOURCE:-path profile}>"
+        fi
         pinned=$(jq -r --arg name "$name" \
             '.[] | select(.name == $name and .enabled == true) | (.pinned == true)' \
             "$config_path" 2>/dev/null | head -n1)
-        display_path=$(convert_windows_to_wsl "$raw_path")
         safe_name=$(sanitize_picker_field "$name")
+        safe_raw_path=$(sanitize_picker_field "$raw_path")
         safe_path=$(sanitize_picker_field "$display_path")
         name_label="$safe_name"
         if [[ "$pinned" == "true" ]]; then
             name_label="[pin] $safe_name"
         fi
 
-        cdp_picker_preview "$safe_name" "$safe_path" "$display_path" "$preview_dir/$index.txt"
+        cdp_picker_preview "$safe_name" "$safe_raw_path" "$display_path" "$preview_dir/$index.txt"
         printf "%s\t%s\t%s\t%b%3d%b\t%b%s%b\t%b%s%b\n" \
             "$index" "$safe_name" "$raw_path" \
             "$GRAY" "$index" "$NC" \
@@ -123,28 +131,6 @@ cdp_picker_rows() {
         ((index++))
     done <<< "$projects"
 }
-
-# Function to convert Windows path to WSL path
-convert_windows_to_wsl() {
-    local input_path="$1"
-
-    case "$input_path" in
-    [A-Za-z]:/*|[A-Za-z]:\\*)
-        local drive
-        drive="$(printf '%s' "${input_path%%:*}" | tr '[:upper:]' '[:lower:]')"
-        local remainder="${input_path#?:}"
-        remainder="${remainder#?}"
-
-        remainder="${remainder//\\//}"
-
-        echo "/mnt/$drive/$remainder"
-        ;;
-    *)
-        echo "$input_path"
-        ;;
-    esac
-}
-
 
 cdp_display_width() {
     local text="$1"

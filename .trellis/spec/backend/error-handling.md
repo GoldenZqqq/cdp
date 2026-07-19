@@ -49,6 +49,10 @@ and release scripts may test whether a secret variable exists but never print it
 - Time-limited status probes surface `status timed out` and allow other repos to
   complete.
 - A dependency missing from `PATH` names the dependency and stops before action.
+- An invalid `CDP_PATH_PROFILE` stops the command before filesystem or Git work;
+  JSON status writes the fatal diagnostic to stderr and returns 3.
+- An invalid per-project `paths` mapping is isolated as
+  `path_profile_invalid`; never fall back to another configured directory.
 
 Trusted examples: `src/PowerShell/Commands.ps1`, `src/Shell/Commands.sh`,
 `tests/cdp.SafeMutations.Tests.*`, and `tests/cdp.Shell.V2.Tests.sh`.

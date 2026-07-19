@@ -146,15 +146,24 @@ function New-CdpPickerLine {
         [object]$Project,
 
         [Parameter(Mandatory = $true)]
-        [int]$Index
+        [int]$Index,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Profile
     )
 
+    $resolution = Resolve-CdpProjectPath -Project $Project -Profile $Profile
     $rawName = ConvertTo-CdpPickerField -Value $Project.name
     $rawPath = ConvertTo-CdpPickerField -Value $Project.rootPath
+    $resolvedPath = if ($resolution.ErrorCode) {
+        "<invalid $($resolution.Source)>"
+    } else {
+        ConvertTo-CdpPickerField -Value $resolution.ResolvedPath
+    }
     $displayIndex = Format-CdpAnsiText -Text ("{0,3}" -f $Index) -Code "38;5;242"
     $nameText = if (Test-CdpProjectPinned -Project $Project) { "[pin] $rawName" } else { $rawName }
     $displayName = Format-CdpAnsiText -Text $nameText -Code "1;38;5;81"
-    $displayPath = Format-CdpAnsiText -Text $rawPath -Code "38;5;245"
+    $displayPath = Format-CdpAnsiText -Text $resolvedPath -Code "38;5;245"
 
     "{0}`t{1}`t{2}`t{3}`t{4}`t{5}" -f $Index, $rawName, $rawPath, $displayIndex, $displayName, $displayPath
 }
@@ -162,13 +171,17 @@ function New-CdpPickerLine {
 function Get-CdpPickerPreviewContent {
     param(
         [Parameter(Mandatory = $true)]
-        [object]$Project
+        [object]$Project,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Profile
     )
 
-    $rootPath = [string]$Project.rootPath
-    $pathExists = Test-Path -LiteralPath $rootPath
-    $pathState = if ($pathExists) { "path exists" } else { "path missing" }
-    $gitPath = Join-Path $rootPath ".git"
+    $resolution = Resolve-CdpProjectPath -Project $Project -Profile $Profile
+    $resolvedPath = [string]$resolution.ResolvedPath
+    $pathExists = -not $resolution.ErrorCode -and (Test-Path -LiteralPath $resolvedPath)
+    $pathState = if ($resolution.ErrorCode) { $resolution.ErrorMessage } elseif ($pathExists) { "path exists" } else { "path missing" }
+    $gitPath = if ([string]::IsNullOrWhiteSpace($resolvedPath)) { '' } else { Join-Path $resolvedPath ".git" }
     $gitState = if ($pathExists -and (Test-Path -LiteralPath $gitPath)) {
         "git repo detected"
     } else {
@@ -179,7 +192,9 @@ function Get-CdpPickerPreviewContent {
         "cdp project"
         "-----------"
         "name   $($Project.name)"
-        "path   $rootPath"
+        "path   $resolvedPath"
+        "raw    $($resolution.RawPath)"
+        "profile $($resolution.Profile) ($($resolution.Source))"
         "pin    $(if (Test-CdpProjectPinned -Project $Project) { 'pinned' } else { 'not pinned' })"
         "alias  $((Get-CdpProjectStringList -Project $Project -PropertyName 'aliases') -join ', ')"
         "tags   $((Get-CdpProjectStringList -Project $Project -PropertyName 'tags') -join ', ')"
@@ -195,7 +210,10 @@ function Get-CdpPickerPreviewContent {
 function New-CdpPickerPreviewDirectory {
     param(
         [Parameter(Mandatory = $true)]
-        [object[]]$Projects
+        [object[]]$Projects,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Profile
     )
 
     $previewDir = Join-Path ([System.IO.Path]::GetTempPath()) "cdp-fzf-$PID-$([guid]::NewGuid().ToString('N'))"
@@ -204,7 +222,7 @@ function New-CdpPickerPreviewDirectory {
     $index = 1
     foreach ($project in $Projects) {
         $previewPath = Join-Path $previewDir "$index.txt"
-        Get-CdpPickerPreviewContent -Project $project |
+        Get-CdpPickerPreviewContent -Project $project -Profile $Profile |
             Set-Content -Path $previewPath -Encoding UTF8
         $index++
     }

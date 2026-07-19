@@ -36,7 +36,11 @@ active state is read-only until explicitly restored; never silently reset it.
 ## Schema Boundaries
 
 - Project entries require string `name`, string `rootPath`, and boolean
-  `enabled`; `pinned`, `aliases`, `tags`, and `onEnter` are optional.
+  `enabled`; `paths`, `pinned`, `aliases`, `tags`, and `onEnter` are optional.
+  `paths` is an object whose known `windows`, `wsl`, `linux`, and `macos`
+  values, when declared, are non-empty strings. `rootPath` remains the raw
+  identity and old-client fallback. Preserve unknown project fields and unknown
+  future profile keys through every mutation.
 - Recent state is an object with `recentProjects`; it is not a project array.
 - Workspace entries contain a name, project-name list, and optional launcher.
 - Hook trust version 1 stores only fingerprints and `trustedAt`, never commands,

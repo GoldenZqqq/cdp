@@ -44,6 +44,10 @@ success, and `Changed` is false for preview/cancel/failure.
 - `--no-color` / `-NoColor` keeps a human table but must contain no ESC byte.
 - Field names, status/reason/error codes, booleans, numbers, nulls, and arrays are
   contracts; localized or styled labels are not machine fields.
+- `rawPath` is always configured `rootPath`; `resolvedPath` is the selected
+  current profile path. `path_profile_invalid` is a stable status and attention
+  reason, while an invalid global profile override is fatal rather than a
+  per-project record.
 
 ## Secret and Hook Redaction
 

@@ -27,6 +27,7 @@ initialize_state() {
 cdp_record_recent() {
     local name="$1"
     local root_path="$2"
+    local project_json="${3:-}"
 
     [[ -z "$name" || -z "$root_path" ]] && return 0
     command -v jq >/dev/null 2>&1 || return 0
@@ -41,16 +42,16 @@ cdp_record_recent() {
     temp_file=$(cdp_json_temp_file "$state_path") || return 0
     now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-    if jq --arg name "$name" --arg path "$root_path" --arg now "$now" '
+    if jq --arg name "$name" --arg path "$root_path" --arg now "$now" --argjson project "${project_json:-null}" '
         .recentProjects as $recent |
         .recentProjects = (
             (($recent // []) | map(select(.rootPath != $path))) +
-            [{
+            [({
                 "name": $name,
                 "rootPath": $path,
                 "lastVisitedAt": $now,
                 "visitCount": (((($recent // []) | map(select(.rootPath == $path)) | .[0].visitCount) // 0) + 1)
-            }]
+            } + (if (($project.paths // null) | type) == "object" then {paths:$project.paths} else {} end))]
             | sort_by(.lastVisitedAt)
             | reverse
             | .[:20]
@@ -127,7 +128,14 @@ cdp-recent() {
         local display_path
         display_name=$(truncate_text "$name" "$name_width")
         display_last=$(truncate_text "$last_used" 24)
-        display_path=$(convert_windows_to_wsl "$project_path")
+        local recent_json
+        recent_json=$(jq -c --arg name "$name" --arg root "$project_path" \
+            '.recentProjects[] | select(.name == $name and .rootPath == $root)' "$state_path" | head -n1)
+        if cdp_resolve_project_json "$recent_json"; then
+            display_path="$CDP_PROJECT_RESOLVED_PATH"
+        else
+            display_path="$project_path"
+        fi
         printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%-24s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_last" "$visits" "$display_path"
         ((index++))
     done <<< "$recent_projects"

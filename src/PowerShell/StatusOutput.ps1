@@ -4,6 +4,7 @@
 function Get-CdpStatusCode {
     param([Parameter(Mandatory = $true)][object]$Info)
 
+    if ($Info.StatusLabel -eq 'path profile invalid') { return 'path_profile_invalid' }
     if (-not $Info.PathExists) { return 'path_missing' }
     if ($Info.StatusLabel -eq 'status timed out') { return 'scan_timeout' }
     if ($Info.StatusLabel -eq 'status failed') { return 'scan_failed' }
@@ -16,7 +17,8 @@ function Get-CdpStatusAttentionReasons {
     param([Parameter(Mandatory = $true)][object]$Info)
 
     $reasons = @()
-    if (-not $Info.PathExists) { $reasons += 'path_missing' }
+    if ($Info.StatusLabel -eq 'path profile invalid') { $reasons += 'path_profile_invalid' }
+    elseif (-not $Info.PathExists) { $reasons += 'path_missing' }
     if ($Info.StatusLabel -eq 'status timed out') { $reasons += 'scan_timeout' }
     if ($Info.StatusLabel -eq 'status failed') { $reasons += 'scan_failed' }
     if ($Info.DirtyCount -gt 0) { $reasons += 'dirty' }
@@ -42,10 +44,11 @@ function ConvertTo-CdpStatusProject {
 
     $branch = if ([string]::IsNullOrWhiteSpace([string]$Info.Branch)) { $null } else { [string]$Info.Branch }
     $lastCommit = if ([string]::IsNullOrWhiteSpace([string]$Info.LastCommitRelative)) { $null } else { [string]$Info.LastCommitRelative }
+    $resolvedPath = if ($Info.PSObject.Properties['ResolvedPath']) { [string]$Info.ResolvedPath } else { [string]$Info.RootPath }
     [PSCustomObject]@{
         name = [string]$Info.Name
         rawPath = [string]$Info.RootPath
-        resolvedPath = [string]$Info.RootPath
+        resolvedPath = $resolvedPath
         pathExists = [bool]$Info.PathExists
         status = Get-CdpStatusCode -Info $Info
         needsAttention = [bool]$Info.NeedsAttention

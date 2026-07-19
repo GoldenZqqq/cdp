@@ -27,7 +27,13 @@ set_project_pin() {
     if [[ -f "$config_path" ]]; then
         config_json=$(cat "$config_path") || return 1
         if [[ -z "$name" ]]; then
-            matches=$(jq -r --arg path "$PWD" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
+            matches=""
+            while IFS= read -r project_json; do
+                if cdp_resolve_project_json "$project_json" && [[ "$CDP_PROJECT_RESOLVED_PATH" == "$PWD" ]]; then
+                    matches="${matches}$(printf '%s' "$project_json" | jq -r '.name')"$'\n'
+                fi
+            done < <(printf '%s\n' "$config_json" | jq -c '.[]')
+            matches="${matches%$'\n'}"
         else
             matches=$(find_project_matches "$config_path" "$name")
         fi

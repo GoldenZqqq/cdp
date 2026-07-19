@@ -136,25 +136,35 @@ cdp-doctor() {
     local invalid_count
     local duplicate_count
     local missing_path_count=0
+    local invalid_profile_count=0
 
     project_count=$(jq 'length' "$config_path")
     enabled_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path")
     invalid_count=$(jq '[.[] | select((.name | type != "string") or (.rootPath | type != "string") or (.enabled | type != "boolean"))] | length' "$config_path")
     duplicate_count=$(jq '[group_by(.name)[] | select(length > 1)] | length' "$config_path")
 
-    while IFS='|' read -r name raw_project_path; do
-        [[ -z "$name" && -z "$raw_project_path" ]] && continue
-        local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
-        if [[ ! -d "$resolved_path" ]]; then
+    while IFS= read -r project_json; do
+        [[ -z "$project_json" ]] && continue
+        if ! cdp_resolve_project_json "$project_json"; then
+            invalid_profile_count=$((invalid_profile_count + 1))
+            continue
+        fi
+        if [[ ! -d "$CDP_PROJECT_RESOLVED_PATH" ]]; then
             ((missing_path_count++))
         fi
-    done < <(jq -r '.[] | select(.enabled == true) | "\(.name)|\(.rootPath)"' "$config_path")
+    done < <(jq -c '.[] | select(.enabled == true)' "$config_path")
 
     if [[ "$invalid_count" -eq 0 ]]; then
         cdp_print_check ok "project schema" "0 invalid project entries"
     else
         cdp_print_check fail "project schema" "$invalid_count invalid project entries"
+        ((error_count++))
+    fi
+
+    if [[ "$invalid_profile_count" -eq 0 ]]; then
+        cdp_print_check ok "path profiles" "0 invalid current path profiles"
+    else
+        cdp_print_check fail "path profiles" "$invalid_profile_count invalid current path profiles"
         ((error_count++))
     fi
 

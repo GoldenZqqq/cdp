@@ -159,11 +159,12 @@ function Switch-Project {
                 -ShownProjectCount $projectsForSelection.Count `
                 -TotalProjectCount $enabledProjects.Count `
                 -ConfigPath $ConfigPath
-            $previewDir = New-CdpPickerPreviewDirectory -Projects $projectsForSelection
+            $pathProfile = if ($WSL) { 'wsl' } else { $null }
+            $previewDir = New-CdpPickerPreviewDirectory -Projects $projectsForSelection -Profile $pathProfile
             $previewCommand = Get-CdpPickerPreviewCommand -PreviewDir $previewDir
             $colorOption = "--color=$(Get-CdpFzfColorTheme)"
             $pickerLines = for ($i = 0; $i -lt $projectsForSelection.Count; $i++) {
-                New-CdpPickerLine -Project $projectsForSelection[$i] -Index ($i + 1)
+                New-CdpPickerLine -Project $projectsForSelection[$i] -Index ($i + 1) -Profile $pathProfile
             }
 
             $selectedLine = $pickerLines | & $fzfCommand `
@@ -212,10 +213,26 @@ function Switch-Project {
         $_.name -eq $selectedProjectName
     }) | Select-Object -First 1
 
-    if ($null -ne $selectedProject -and (Test-Path -Path $selectedProject.rootPath)) {
+    if ($null -eq $selectedProject) {
+        Write-Host "Error: Could not find project '$selectedProjectName'." -ForegroundColor Red
+        return
+    }
+
+    try {
+        $resolution = Resolve-CdpProjectPath -Project $selectedProject -Profile $(if ($WSL) { 'wsl' } else { $null })
+    } catch {
+        Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+    if ($resolution.ErrorCode) {
+        Write-Host "Error: $($resolution.ErrorMessage)" -ForegroundColor Red
+        Write-Host "Project: $selectedProjectName; profile: $($resolution.Profile)" -ForegroundColor Gray
+        return
+    }
+
+    if ($WSL -or (Test-Path -LiteralPath $resolution.ResolvedPath)) {
         if ($WSL) {
-            # Convert Windows path to WSL path and launch WSL
-            $wslPath = Convert-WindowsPathToWSL -WindowsPath $selectedProject.rootPath
+            $wslPath = $resolution.ResolvedPath
             $launchText = if ([string]::IsNullOrWhiteSpace($Open)) {
                 "Launching WSL in project: $($selectedProject.name)"
             } else {
@@ -224,16 +241,16 @@ function Switch-Project {
             Write-Host $launchText -ForegroundColor Green
             Write-Host "WSL path: $wslPath" -ForegroundColor Gray
 
-            Add-CdpRecentProject -Project $selectedProject
-
             if ([string]::IsNullOrWhiteSpace($Open)) {
-                # Launch WSL with cd command
                 wsl --cd $wslPath
             } else {
                 Invoke-CdpWorkspaceLauncher -Project $selectedProject -Open $Open -WSL
             }
+            if ($LASTEXITCODE -eq 0 -or $env:CDP_OPEN_DRY_RUN -eq '1') {
+                Add-CdpRecentProject -Project $selectedProject
+            }
         } else {
-            Set-Location -Path $selectedProject.rootPath
+            Set-Location -LiteralPath $resolution.ResolvedPath
             Add-CdpRecentProject -Project $selectedProject
             Write-Host "Switched to project: $($selectedProject.name)" -ForegroundColor Green
 
@@ -252,7 +269,8 @@ function Switch-Project {
             }
         }
     } else {
-        Write-Host "Error: Invalid path for project '$selectedProjectName'." -ForegroundColor Red
+        Write-Host "Error: Directory not found for project '$selectedProjectName'." -ForegroundColor Red
+        Write-Host "Profile: $($resolution.Profile); path: $($resolution.ResolvedPath)" -ForegroundColor Gray
     }
 }
 
@@ -327,7 +345,9 @@ function Get-ProjectList {
             Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
             Write-Host ("{0,-5} " -f $pinText) -ForegroundColor Yellow -NoNewline
             Write-Host (("{0,-$nameWidth} " -f $projectName)) -ForegroundColor Green -NoNewline
-            Write-Host "$($project.rootPath)" -ForegroundColor DarkGray
+            $resolution = Resolve-CdpProjectPath -Project $project
+            $pathText = if ($resolution.ErrorCode) { "<invalid $($resolution.Source)>" } else { $resolution.ResolvedPath }
+            Write-Host $pathText -ForegroundColor DarkGray
             $index++
         }
 

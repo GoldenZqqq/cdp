@@ -1,1 +1,7 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"约束 PowerShell domain、shell fragment 与生成产物的所有权和兼容性。"}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"约束 Project Manager 数组 schema、未知字段无损保留和原子 mutation。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"约束 resolver 失败、partial status、native 命令和 mutation 前验证。"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"约束人类诊断、status JSON stdout/stderr 和稳定错误码。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"覆盖 raw/resolved identity、status/workspace、跨 shell 与发布门禁。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"统一所有路径消费者，避免再次散落平台转换逻辑。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"配置字段跨 parser、runtime、JSON 输出和 mutation 的完整数据流。"}

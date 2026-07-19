@@ -22,20 +22,22 @@ Latest verified GitHub release: v2.1.0 (verified 2026-07-19). Latest verified Po
 
 Current release target: v2.2.0.
 
-Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development is in progress, starting with the machine-readable status contract.
+Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development has completed the machine-readable status contract and cross-platform path profiles; workspace lifecycle is next.
 
 ## 2.2.0 Automation and Multi-Repository Checklist
 
 - [x] Define status JSON schema version 1, stable attention/error codes, and automation exit codes.
 - [x] Add PowerShell and bash/zsh `--json` / `-Json` plus ANSI-free `--no-color` / `-NoColor` output.
 - [x] Add cross-runtime JSON, parser, stdout/stderr, exit-code, and no-color regressions.
-- [ ] Add cross-platform path profiles.
+- [x] Add cross-platform path profiles.
 - [ ] Add workspace lifecycle operations.
 - [ ] Add safe multi-repository exec.
 - [ ] Add frecency ranking.
 - [ ] Complete and publish v2.2.0.
 
-Status JSON verification: the PowerShell 7.5.2 quality gate passed Pester `104/104`, command coverage `2311/3344` (`69.11%`), PSScriptAnalyzer, and release metadata. bash, zsh, and the fixed Bash 3.2 container passed the shared schema fixture plus existing status/safety/persistence regressions. The current deterministic Scoop draft SHA-256 is `d29537ccb61d7e6937dbeb63503674e5d35aec48f94466ed15290e70c853d839`, and the generated shell SHA-256 is `36220aaf421571fb17fb208901237e1ae532584ea50c3c83a6fa5dfe97da4935`.
+Status JSON verification: the PowerShell 7.5.2 quality gate passed Pester `104/104`, command coverage `2311/3344` (`69.11%`), PSScriptAnalyzer, and release metadata. bash, zsh, and the fixed Bash 3.2 container passed the shared schema fixture plus existing status/safety/persistence regressions.
+
+Path profile verification: PowerShell 7.5.2 passed Pester `117/117`, command coverage `2529/3604` (`70.17%`), PSScriptAnalyzer, and release metadata. One shared fixture covers Windows, WSL, Linux, and macOS resolution, legacy fallback, WSL conversion, invalid overrides/mappings, raw/resolved status identity, safe fix/repair behavior, and add/scan-compatible writes. bash, zsh, and the fixed Bash 3.2 container passed the path contract plus the existing CLI/status/safety/persistence matrices. The generated shell SHA-256 is `fcc934f0593e556f31799d05b3f7823d52f8d4e8b39ec4d46a304d992d5e4e42`; the current deterministic Scoop draft SHA-256 is `ef925c7eca6d73aa4a41662a73445b6fdacc948010a8b62a87c01bf474537a83`.
 
 ## 2.1.0 Engineering Foundation Checklist
 

@@ -111,7 +111,11 @@ v2.2.0 - Automation and Multi-Repository Workflows
 - Added: cdp status --json and Show-CdpProjectStatus -Json emit stable schema version 1 for scripts, CI, and AI agents
 - Added: status --no-color and -NoColor provide ANSI-free human-readable output
 - Added: JSON status exit codes distinguish clean success, attention, partial scan failure, and fatal failure
+- Added: optional Windows, WSL, Linux, and macOS project path profiles with CDP_PATH_PROFILE override
+- Added: shared cross-runtime path-profile fixtures and path_profile_invalid automation diagnostics
 - Improved: structured status keeps raw and resolved paths separate and exposes stable status, attention-reason, and redacted error codes
+- Improved: switching, status, workspace, doctor/repair, add/scan/init, picker/list, and recent paths share one resolver while rootPath remains backward compatible
+- Safety: repair and status fix preserve unavailable explicit platform mappings and mutate missing projects by name plus raw path identity
 
 v2.1.0 - Engineering Foundation
 - Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks

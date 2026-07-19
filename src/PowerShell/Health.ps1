@@ -282,14 +282,23 @@ function Get-CdpProjectHealthChecks {
     $duplicateNames = @($Projects | Group-Object -Property name | Where-Object {
         -not [string]::IsNullOrWhiteSpace($_.Name) -and $_.Count -gt 1
     })
-    $missingPaths = @($enabledProjects | Where-Object {
-        -not [string]::IsNullOrWhiteSpace($_.rootPath) -and
-        -not (Test-Path -LiteralPath $_.rootPath)
-    })
+    $invalidPathProfiles = @()
+    $missingPaths = @()
+    foreach ($project in $enabledProjects) {
+        try {
+            $resolution = Resolve-CdpProjectPath -Project $project
+            if ($resolution.ErrorCode) { $invalidPathProfiles += $project; continue }
+            if (-not (Test-Path -LiteralPath $resolution.ResolvedPath)) { $missingPaths += $project }
+        } catch {
+            $invalidPathProfiles += $project
+        }
+    }
 
     @(
         New-CdpHealthCheck -Name "project schema" -Passed ($invalidProjects.Count -eq 0) `
             -Level Error -Message "$($invalidProjects.Count) invalid project entries"
+        New-CdpHealthCheck -Name "path profiles" -Passed ($invalidPathProfiles.Count -eq 0) `
+            -Level Error -Message "$($invalidPathProfiles.Count) invalid current path profiles"
         New-CdpHealthCheck -Name "enabled projects" -Passed ($enabledProjects.Count -gt 0) `
             -Level Warning -Message "$($enabledProjects.Count) enabled of $($Projects.Count) total"
         New-CdpHealthCheck -Name "duplicate names" -Passed ($duplicateNames.Count -eq 0) `
@@ -402,9 +411,11 @@ function Test-ProjectHealth {
             ProjectCount = $projects.Count
             EnabledProjectCount = @($projects | Where-Object { $_.enabled -eq $true }).Count
             MissingPathCount = @($projects | Where-Object {
-                $_.enabled -eq $true -and
-                -not [string]::IsNullOrWhiteSpace($_.rootPath) -and
-                -not (Test-Path -LiteralPath $_.rootPath)
+                if ($_.enabled -ne $true) { return $false }
+                try {
+                    $resolution = Resolve-CdpProjectPath -Project $_
+                    return -not $resolution.ErrorCode -and -not (Test-Path -LiteralPath $resolution.ResolvedPath)
+                } catch { return $false }
             }).Count
         }
     }

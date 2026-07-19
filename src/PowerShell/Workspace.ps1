@@ -57,11 +57,9 @@ function Invoke-CdpWorkspaceLauncher {
     }
 
     $launcher = Get-CdpWorkspaceLauncher -Open $Open
-    $workingDirectory = if ($WSL) {
-        Convert-WindowsPathToWSL -WindowsPath ([string]$Project.rootPath)
-    } else {
-        [string]$Project.rootPath
-    }
+    $resolution = Resolve-CdpProjectPath -Project $Project -Profile $(if ($WSL) { 'wsl' } else { $null })
+    if ($resolution.ErrorCode) { throw $resolution.ErrorMessage }
+    $workingDirectory = $resolution.ResolvedPath
 
     $result = [PSCustomObject]@{
         ProjectName = [string]$Project.name
@@ -138,7 +136,13 @@ function Invoke-CdpWorkspaceLaunch {
             continue
         }
         $project = $project[0]
-        $projPath = [string]$project.rootPath
+        $resolution = Resolve-CdpProjectPath -Project $project
+        if ($resolution.ErrorCode) {
+            Write-Host "  Invalid path profile for '$projName', skipping." -ForegroundColor Yellow
+            $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status 'failed' -Changed $false -Error $resolution.ErrorMessage
+            continue
+        }
+        $projPath = [string]$resolution.ResolvedPath
         if (-not (Test-Path -LiteralPath $projPath)) {
             Write-Host "  Path missing for '$projName', skipping." -ForegroundColor Yellow
             $results += New-CdpActionResult -Action 'launch-workspace-project' -Target $projName -Status 'failed' -Changed $false -Error 'Project path is missing.'

@@ -7,11 +7,17 @@
 - Added `cdp status --json` and `Show-CdpProjectStatus -Json` with stable schema version 1 for scripts, CI, and AI agents.
 - Added `cdp status --no-color` and `Show-CdpProjectStatus -NoColor` for ANSI-free human-readable output.
 - Added status JSON exit codes for clean success (`0`), attention (`1`), partial scan failure (`2`), and fatal failure (`3`).
+- Added optional `paths.windows`, `paths.wsl`, `paths.linux`, and `paths.macos` mappings plus `CDP_PATH_PROFILE` override for one shared cross-platform project config.
+- Added one shared PowerShell/bash/zsh path-profile contract fixture covering legacy fallback, WSL conversion, invalid mappings, and raw/resolved identity.
 
 ### Changed
 
 - Status JSON separates configured `rawPath` identity from the runtime `resolvedPath` and includes stable status, attention-reason, redacted error, Git count, filter, timing, and summary fields.
 - JSON mode writes exactly one document to stdout, suppresses progress, routes fatal diagnostics to stderr, and remains read-only instead of mixing with status fix/push actions.
+- Switching, picker/list output, status/Git, doctor/repair, workspaces, recent display, add/scan/init, and future exec now share one path resolver while preserving `rootPath` for older clients.
+- New add/scan/init entries record the current platform mapping without rewriting existing projects or unknown fields.
+- Repair and status fix preserve unavailable explicit platform paths; status fix matches name plus raw path so a shared raw identity cannot remove an unselected project.
+- Status schema version 1 now reports the stable `path_profile_invalid` status/reason and uses fatal exit code 3 for an invalid global profile override.
 
 ## 2.1.0
 

@@ -504,6 +504,9 @@ find_project_matches() {
         select(
             ((.name // "") | ascii_downcase | contains($needle)) or
             ((.rootPath // "") | ascii_downcase | contains($needle)) or
+            (if ((.paths // null) | type) == "object" then
+                ((.paths | to_entries | map(select((.value | type) == "string") | (.value | ascii_downcase | contains($needle)))) | any)
+             else false end) or
             (((.aliases // []) | map(ascii_downcase) | map(contains($needle)) | any)) or
             (((.tags // []) | map(ascii_downcase) | map(contains($needle)) | any))
         ) |
@@ -641,6 +644,165 @@ cdp-config() {
     done
 }
 
+# cdp shell domain: Paths.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+CDP_PROJECT_RAW_PATH=""
+CDP_PROJECT_RESOLVED_PATH=""
+CDP_PROJECT_PATH_PROFILE=""
+CDP_PROJECT_PATH_SOURCE=""
+CDP_PROJECT_PATH_EXPLICIT=false
+CDP_PROJECT_PATH_ERROR_CODE=""
+CDP_PROJECT_PATH_ERROR_MESSAGE=""
+
+convert_windows_to_wsl() {
+    local input_path="$1"
+
+    case "$input_path" in
+        [A-Za-z]:/*|[A-Za-z]:\\*)
+            local drive
+            local remainder
+            drive="$(printf '%s' "${input_path%%:*}" | tr '[:upper:]' '[:lower:]')"
+            remainder="${input_path#?:}"
+            remainder="${remainder#?}"
+            remainder="${remainder//\\//}"
+            printf '/mnt/%s/%s\n' "$drive" "$remainder"
+            ;;
+        *) printf '%s\n' "$input_path" ;;
+    esac
+}
+
+cdp_detect_path_profile() {
+    local system_name
+    local kernel_name
+    system_name="$(uname -s 2>/dev/null || printf unknown)"
+    kernel_name="$(uname -r 2>/dev/null || printf unknown)"
+
+    case "$system_name" in
+        Darwin) printf 'macos\n'; return 0 ;;
+        MINGW*|MSYS*|CYGWIN*) printf 'windows\n'; return 0 ;;
+    esac
+    if [[ -n "${WSL_DISTRO_NAME:-}" || -n "${WSL_INTEROP:-}" || "$kernel_name" == *[Mm]icrosoft* ]]; then
+        printf 'wsl\n'
+    else
+        printf 'linux\n'
+    fi
+}
+
+cdp_current_path_profile() {
+    local requested_profile="${1:-}"
+    [[ -n "$requested_profile" ]] || requested_profile="${CDP_PATH_PROFILE:-}"
+    if [[ -z "$requested_profile" ]]; then
+        cdp_detect_path_profile
+        return 0
+    fi
+
+    requested_profile="$(printf '%s' "$requested_profile" | tr '[:upper:]' '[:lower:]')"
+    case "$requested_profile" in
+        windows|wsl|linux|macos) printf '%s\n' "$requested_profile" ;;
+        *)
+            printf "Error: Invalid CDP_PATH_PROFILE '%s'. Expected windows, wsl, linux, or macos.\n" "$requested_profile" >&2
+            return 1
+            ;;
+    esac
+}
+
+cdp_reset_project_path_resolution() {
+    CDP_PROJECT_RAW_PATH=""
+    CDP_PROJECT_RESOLVED_PATH=""
+    CDP_PROJECT_PATH_PROFILE=""
+    CDP_PROJECT_PATH_SOURCE=""
+    CDP_PROJECT_PATH_EXPLICIT=false
+    CDP_PROJECT_PATH_ERROR_CODE=""
+    CDP_PROJECT_PATH_ERROR_MESSAGE=""
+}
+
+cdp_resolve_project_json() {
+    local project_json="$1"
+    local requested_profile="${2:-}"
+    local profile
+    local resolution
+    local state
+    cdp_reset_project_path_resolution
+    profile="$(cdp_current_path_profile "$requested_profile")" || return 1
+    CDP_PROJECT_PATH_PROFILE="$profile"
+
+    resolution=$(printf '%s\n' "$project_json" | jq -jr --arg profile "$profile" '
+        . as $project |
+        (["windows","wsl","linux","macos"] | map(
+            . as $candidate | select(
+                ($project.paths | type) == "object" and ($project.paths | has($candidate)) and
+                ((($project.paths[$candidate] | type) != "string") or (($project.paths[$candidate] | length) == 0))
+            )
+        ) | .[0]) as $invalidProfile |
+        if ((.rootPath | type) != "string") or ((.rootPath | length) == 0) then
+            ["invalid", (.rootPath // ""), "", "rootPath", "false", "Project rootPath must be a non-empty string."]
+        elif has("paths") and ((.paths | type) != "object") then
+            ["invalid", .rootPath, "", ("paths." + $profile), "true", "Project paths must be a JSON object."]
+        elif $invalidProfile != null then
+            ["invalid", .rootPath, "", ("paths." + $invalidProfile), ($invalidProfile == $profile | tostring), ("Project paths." + $invalidProfile + " must be a non-empty string.")]
+        elif ((.paths | type) == "object") and (.paths | has($profile)) then
+            ["explicit", .rootPath, .paths[$profile], ("paths." + $profile), "true", ""]
+        else
+            ["fallback", .rootPath, .rootPath, "rootPath", "false", ""]
+        end | join("\u001c")
+    ' 2>/dev/null) || {
+        CDP_PROJECT_PATH_ERROR_CODE=path_profile_invalid
+        CDP_PROJECT_PATH_ERROR_MESSAGE='Project path configuration is invalid JSON.'
+        return 2
+    }
+
+    IFS=$'\034' read -r state CDP_PROJECT_RAW_PATH CDP_PROJECT_RESOLVED_PATH \
+        CDP_PROJECT_PATH_SOURCE CDP_PROJECT_PATH_EXPLICIT CDP_PROJECT_PATH_ERROR_MESSAGE <<< "$resolution"
+    if [[ "$state" == invalid ]]; then
+        CDP_PROJECT_PATH_ERROR_CODE=path_profile_invalid
+        return 2
+    fi
+    if [[ "$state" == fallback && "$profile" == wsl ]]; then
+        CDP_PROJECT_RESOLVED_PATH="$(convert_windows_to_wsl "$CDP_PROJECT_RAW_PATH")"
+        CDP_PROJECT_PATH_SOURCE='rootPath:wsl-converted'
+    fi
+    return 0
+}
+
+cdp_project_json_by_name() {
+    local config_path="$1"
+    local project_name="$2"
+    jq -c --arg name "$project_name" \
+        '.[] | select(.name == $name and .enabled == true)' "$config_path" 2>/dev/null | head -n1
+}
+
+cdp_find_project_by_local_path_json() {
+    local config_json="$1"
+    local local_path="$2"
+    local candidate_path
+    candidate_path=$(cd "$local_path" 2>/dev/null && pwd -P || printf '%s' "$local_path")
+
+    while IFS= read -r project_json; do
+        [[ -z "$project_json" ]] && continue
+        if cdp_resolve_project_json "$project_json"; then
+            local resolved_path
+            resolved_path=$(cd "$CDP_PROJECT_RESOLVED_PATH" 2>/dev/null && pwd -P || printf '%s' "$CDP_PROJECT_RESOLVED_PATH")
+            if [[ "$resolved_path" == "$candidate_path" ]]; then
+                printf '%s\n' "$project_json"
+                return 0
+            fi
+        fi
+    done < <(printf '%s\n' "$config_json" | jq -c '.[]')
+    return 1
+}
+
+cdp_new_project_json() {
+    local project_name="$1"
+    local project_path="$2"
+    local profile
+    profile="$(cdp_current_path_profile)" || return 1
+    jq -cn --arg name "$project_name" --arg project_path "$project_path" --arg profile "$profile" '
+        {name:$name,rootPath:$project_path,enabled:true,pinned:false,aliases:[],tags:[],paths:{($profile):$project_path}}
+    '
+}
+
 # cdp shell domain: State.sh
 # shellcheck shell=bash
 # Generated from the canonical cdp.sh source; do not source peer fragments.
@@ -670,6 +832,7 @@ initialize_state() {
 cdp_record_recent() {
     local name="$1"
     local root_path="$2"
+    local project_json="${3:-}"
 
     [[ -z "$name" || -z "$root_path" ]] && return 0
     command -v jq >/dev/null 2>&1 || return 0
@@ -684,16 +847,16 @@ cdp_record_recent() {
     temp_file=$(cdp_json_temp_file "$state_path") || return 0
     now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-    if jq --arg name "$name" --arg path "$root_path" --arg now "$now" '
+    if jq --arg name "$name" --arg path "$root_path" --arg now "$now" --argjson project "${project_json:-null}" '
         .recentProjects as $recent |
         .recentProjects = (
             (($recent // []) | map(select(.rootPath != $path))) +
-            [{
+            [({
                 "name": $name,
                 "rootPath": $path,
                 "lastVisitedAt": $now,
                 "visitCount": (((($recent // []) | map(select(.rootPath == $path)) | .[0].visitCount) // 0) + 1)
-            }]
+            } + (if (($project.paths // null) | type) == "object" then {paths:$project.paths} else {} end))]
             | sort_by(.lastVisitedAt)
             | reverse
             | .[:20]
@@ -770,7 +933,14 @@ cdp-recent() {
         local display_path
         display_name=$(truncate_text "$name" "$name_width")
         display_last=$(truncate_text "$last_used" 24)
-        display_path=$(convert_windows_to_wsl "$project_path")
+        local recent_json
+        recent_json=$(jq -c --arg name "$name" --arg root "$project_path" \
+            '.recentProjects[] | select(.name == $name and .rootPath == $root)' "$state_path" | head -n1)
+        if cdp_resolve_project_json "$recent_json"; then
+            display_path="$CDP_PROJECT_RESOLVED_PATH"
+        else
+            display_path="$project_path"
+        fi
         printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%-24s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_last" "$visits" "$display_path"
         ((index++))
     done <<< "$recent_projects"
@@ -857,7 +1027,8 @@ cdp_picker_preview() {
         echo "cdp project"
         echo "-----------"
         echo "name   $name"
-        echo "path   $raw_path"
+        echo "path   $target_path"
+        echo "raw    $raw_path"
         echo ""
         echo "state  $path_state"
         echo "git    $git_state"
@@ -877,27 +1048,34 @@ cdp_picker_rows() {
     while IFS= read -r name; do
         [[ -z "$name" ]] && continue
 
+        local project_json
         local raw_path
         local display_path
         local pinned
         local name_label
         local safe_name
+        local safe_raw_path
         local safe_path
-        raw_path=$(jq -r --arg name "$name" \
-            '.[] | select(.name == $name and .enabled == true) | .rootPath' \
-            "$config_path" 2>/dev/null | head -n1)
+        project_json=$(cdp_project_json_by_name "$config_path" "$name")
+        if cdp_resolve_project_json "$project_json"; then
+            raw_path="$CDP_PROJECT_RAW_PATH"
+            display_path="$CDP_PROJECT_RESOLVED_PATH"
+        else
+            raw_path=$(printf '%s' "$project_json" | jq -r '.rootPath // empty')
+            display_path="<invalid ${CDP_PROJECT_PATH_SOURCE:-path profile}>"
+        fi
         pinned=$(jq -r --arg name "$name" \
             '.[] | select(.name == $name and .enabled == true) | (.pinned == true)' \
             "$config_path" 2>/dev/null | head -n1)
-        display_path=$(convert_windows_to_wsl "$raw_path")
         safe_name=$(sanitize_picker_field "$name")
+        safe_raw_path=$(sanitize_picker_field "$raw_path")
         safe_path=$(sanitize_picker_field "$display_path")
         name_label="$safe_name"
         if [[ "$pinned" == "true" ]]; then
             name_label="[pin] $safe_name"
         fi
 
-        cdp_picker_preview "$safe_name" "$safe_path" "$display_path" "$preview_dir/$index.txt"
+        cdp_picker_preview "$safe_name" "$safe_raw_path" "$display_path" "$preview_dir/$index.txt"
         printf "%s\t%s\t%s\t%b%3d%b\t%b%s%b\t%b%s%b\n" \
             "$index" "$safe_name" "$raw_path" \
             "$GRAY" "$index" "$NC" \
@@ -906,28 +1084,6 @@ cdp_picker_rows() {
         ((index++))
     done <<< "$projects"
 }
-
-# Function to convert Windows path to WSL path
-convert_windows_to_wsl() {
-    local input_path="$1"
-
-    case "$input_path" in
-    [A-Za-z]:/*|[A-Za-z]:\\*)
-        local drive
-        drive="$(printf '%s' "${input_path%%:*}" | tr '[:upper:]' '[:lower:]')"
-        local remainder="${input_path#?:}"
-        remainder="${remainder#?}"
-
-        remainder="${remainder//\\//}"
-
-        echo "/mnt/$drive/$remainder"
-        ;;
-    *)
-        echo "$input_path"
-        ;;
-    esac
-}
-
 
 cdp_display_width() {
     local text="$1"
@@ -1418,25 +1574,35 @@ cdp-doctor() {
     local invalid_count
     local duplicate_count
     local missing_path_count=0
+    local invalid_profile_count=0
 
     project_count=$(jq 'length' "$config_path")
     enabled_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path")
     invalid_count=$(jq '[.[] | select((.name | type != "string") or (.rootPath | type != "string") or (.enabled | type != "boolean"))] | length' "$config_path")
     duplicate_count=$(jq '[group_by(.name)[] | select(length > 1)] | length' "$config_path")
 
-    while IFS='|' read -r name raw_project_path; do
-        [[ -z "$name" && -z "$raw_project_path" ]] && continue
-        local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
-        if [[ ! -d "$resolved_path" ]]; then
+    while IFS= read -r project_json; do
+        [[ -z "$project_json" ]] && continue
+        if ! cdp_resolve_project_json "$project_json"; then
+            invalid_profile_count=$((invalid_profile_count + 1))
+            continue
+        fi
+        if [[ ! -d "$CDP_PROJECT_RESOLVED_PATH" ]]; then
             ((missing_path_count++))
         fi
-    done < <(jq -r '.[] | select(.enabled == true) | "\(.name)|\(.rootPath)"' "$config_path")
+    done < <(jq -c '.[] | select(.enabled == true)' "$config_path")
 
     if [[ "$invalid_count" -eq 0 ]]; then
         cdp_print_check ok "project schema" "0 invalid project entries"
     else
         cdp_print_check fail "project schema" "$invalid_count invalid project entries"
+        ((error_count++))
+    fi
+
+    if [[ "$invalid_profile_count" -eq 0 ]]; then
+        cdp_print_check ok "path profiles" "0 invalid current path profiles"
+    else
+        cdp_print_check fail "path profiles" "$invalid_profile_count invalid current path profiles"
         ((error_count++))
     fi
 
@@ -1631,7 +1797,7 @@ cdp-scan() {
             [[ -z "$repo" ]] && continue
             ((found_count += 1))
 
-            if jq -e --arg path "$repo" '.[] | select(.rootPath == $path)' <<< "$config_json" >/dev/null 2>&1; then
+            if cdp_find_project_by_local_path_json "$config_json" "$repo" >/dev/null; then
                 ((skipped_count += 1))
                 continue
             fi
@@ -1645,9 +1811,9 @@ cdp-scan() {
                 name="$base_name-$suffix"
                 suffix=$((suffix + 1))
             done
-            config_json=$(jq --arg name "$name" --arg path "$repo" \
-                '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
-                <<< "$config_json") || return 1
+            local new_project
+            new_project=$(cdp_new_project_json "$name" "$repo") || return 1
+            config_json=$(jq --argjson project "$new_project" '. += [$project]' <<< "$config_json") || return 1
             ((added_count += 1))
         done 3<<< "$repos"
     fi
@@ -1678,7 +1844,7 @@ cdp-scan() {
 
 # Function to diagnose cdp setup
 
-# cdp shell domain: Status.sh
+# cdp shell domain: StatusBatch.sh
 # shellcheck shell=bash
 # Generated from the canonical cdp.sh source; do not source peer fragments.
 
@@ -1687,10 +1853,7 @@ CDP_STATUS_CACHE_TIMES=()
 CDP_STATUS_CACHE_VALUES=()
 
 cdp_status_setting() {
-    local name="$1"
-    local default_value="$2"
-    local minimum="$3"
-    local maximum="$4"
+    local name="$1" default_value="$2" minimum="$3" maximum="$4"
     local value="$default_value"
     case "$name" in
         CDP_STATUS_CONCURRENCY) value="${CDP_STATUS_CONCURRENCY:-$default_value}" ;;
@@ -1704,11 +1867,7 @@ cdp_status_setting() {
 }
 
 cdp_status_cache_get() {
-    local key="$1"
-    local ttl="$2"
-    local refresh="$3"
-    local now
-    local i
+    local key="$1" ttl="$2" refresh="$3" now i
     [[ "$refresh" == true || "$ttl" -le 0 ]] && return 1
     now=$(date +%s)
     for ((i=0; i<${#CDP_STATUS_CACHE_KEYS[@]}; i++)); do
@@ -1724,11 +1883,7 @@ cdp_status_cache_get() {
 }
 
 cdp_status_cache_set() {
-    local key="$1"
-    local value="$2"
-    local ttl="$3"
-    local now
-    local i
+    local key="$1" value="$2" ttl="$3" now i
     [[ "$ttl" -le 0 ]] && return 0
     now=$(date +%s)
     for ((i=0; i<${#CDP_STATUS_CACHE_KEYS[@]}; i++)); do
@@ -1742,6 +1897,10 @@ cdp_status_cache_set() {
     CDP_STATUS_CACHE_TIMES+=("$now")
     CDP_STATUS_CACHE_VALUES+=("$value")
 }
+
+# cdp shell domain: Status.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
 
 cdp_status_git_command() {
     local timeout_seconds="$1"
@@ -1935,6 +2094,11 @@ cdp-status() {
         cdp_status_fail "$json_mode" "Configuration file not found at: $config_path"; return $?
     fi
 
+    local active_path_profile
+    if ! active_path_profile=$(cdp_current_path_profile); then
+        cdp_status_fail "$json_mode" "Invalid CDP_PATH_PROFILE."; return $?
+    fi
+
     local expected_fingerprint=""
     if $do_fix; then
         expected_fingerprint=$(cdp_json_fingerprint "$config_path")
@@ -1947,7 +2111,7 @@ cdp-status() {
     fi
 
     local projects
-    if ! projects=$(jq -r "$jq_filter | [.name, .rootPath] | @tsv" "$config_path" 2>/dev/null); then
+    if ! projects=$(jq -c "$jq_filter" "$config_path" 2>/dev/null); then
         cdp_status_fail "$json_mode" 'Failed to read configuration.'; return $?
     fi
 
@@ -1961,19 +2125,30 @@ cdp-status() {
     local total=0
     local attention_count=0
     local missing_count=0
+    local explicit_missing_count=0
     local max_name_len=14
     local max_branch_len=12
-    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=() record_kinds=()
+    local -a names=() raw_paths=() paths=() path_profiles=() path_sources=() path_explicit=() branches=() remotes=() upstreams=() record_kinds=()
     local -a statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
     local -a dirty_counts=() untracked_counts=() ahead_counts=() behind_counts=()
 
-    while IFS=$'\t' read -r pname ppath; do
-        pname="${pname%$'\r'}"
-        ppath="${ppath%$'\r'}"
+    while IFS= read -r project_json; do
+        project_json="${project_json%$'\r'}"
+        local pname
+        local ppath
+        pname=$(printf '%s' "$project_json" | jq -r '.name // empty')
         [[ -z "$pname" ]] && continue
+        if cdp_resolve_project_json "$project_json" "$active_path_profile"; then
+            ppath="$CDP_PROJECT_RAW_PATH"
+        else
+            ppath=$(printf '%s' "$project_json" | jq -r '.rootPath // empty')
+        fi
         names+=("$pname")
         raw_paths+=("$ppath")
-        paths+=("$(convert_windows_to_wsl "$ppath")")
+        paths+=("$CDP_PROJECT_RESOLVED_PATH")
+        path_profiles+=("$CDP_PROJECT_PATH_PROFILE")
+        path_sources+=("$CDP_PROJECT_PATH_SOURCE")
+        path_explicit+=("$CDP_PROJECT_PATH_EXPLICIT")
         local name_len
         name_len=$(cdp_display_width "$pname")
         [[ $name_len -gt $max_name_len ]] && max_name_len=$name_len
@@ -1999,7 +2174,9 @@ cdp-status() {
         local i
         for ((i=batch_start; i<batch_end; i++)); do
             local cached_record=""
-            if cached_record=$(cdp_status_cache_get "${paths[$i]}" "$cache_ttl" "$refresh"); then
+            if [[ -z "${paths[$i]}" ]]; then
+                printf 'invalid-profile\034-\034\034\0340\0340\0340\0340\034\n' > "$result_dir/$i.record"
+            elif cached_record=$(cdp_status_cache_get "${path_profiles[$i]}:${paths[$i]}" "$cache_ttl" "$refresh"); then
                 printf '%s\n' "$cached_record" > "$result_dir/$i.record"
             else
                 cdp_status_collect_record "${paths[$i]}" "$timeout_seconds" > "$result_dir/$i.record" &
@@ -2007,7 +2184,9 @@ cdp-status() {
             fi
         done
         local pid
-        for pid in "${pids[@]}"; do wait "$pid" || true; done
+        if (( ${#pids[@]} > 0 )); then
+            for pid in "${pids[@]}"; do wait "$pid" || true; done
+        fi
         batch_start=$batch_end
     done
 
@@ -2017,7 +2196,7 @@ cdp-status() {
         local record=""
         [[ -f "$result_dir/$i.record" ]] && record=$(cat "$result_dir/$i.record")
         [[ -n "$record" ]] || record=$'failed\034-\034\034\0340\0340\0340\0340\034'
-        cdp_status_cache_set "${paths[$i]}" "$record" "$cache_ttl"
+        [[ -n "${paths[$i]}" ]] && cdp_status_cache_set "${path_profiles[$i]}:${paths[$i]}" "$record" "$cache_ttl"
         IFS=$'\034' read -r record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit <<< "$record"
         record_kinds+=("$record_kind")
         branches+=("$branch")
@@ -2034,7 +2213,15 @@ cdp-status() {
         case "$record_kind" in
             missing)
                 statuses+=("path missing"); status_colors+=("$RED"); needs_attention+=(true)
-                missing_count=$((missing_count + 1))
+                if [[ "${path_explicit[$i]}" == true ]]; then
+                    explicit_missing_count=$((explicit_missing_count + 1))
+                else
+                    missing_count=$((missing_count + 1))
+                fi
+                ;;
+            invalid-profile)
+                statuses+=("path profile invalid"); status_colors+=("$RED"); needs_attention+=(true)
+                attention_count=$((attention_count + 1))
                 ;;
             not-git)
                 statuses+=("not a git repo"); status_colors+=("$GRAY"); needs_attention+=(false)
@@ -2081,51 +2268,64 @@ cdp-status() {
 
     # --fix: remove path-missing projects (skip table render)
     if $do_fix; then
+        if [[ $explicit_missing_count -gt 0 ]]; then
+            echo -e "\n${YELLOW}Keeping $explicit_missing_count projects with unavailable explicit profile paths:${NC}"
+            for ((i=0; i<total; i++)); do
+                if [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" == true ]]; then
+                    echo -e "  ${GRAY}${names[$i]} [${path_profiles[$i]}] -> ${paths[$i]}${NC}"
+                fi
+            done
+        fi
         if [[ $missing_count -eq 0 ]]; then
             echo -e "${GREEN}No path-missing projects to remove.${NC}"
             return
         fi
         echo -e "\n${YELLOW}Removing $missing_count path-missing projects:${NC}"
         for ((i=0; i<total; i++)); do
-            if [[ "${statuses[$i]}" == "path missing" ]]; then
+            if [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]]; then
                 echo -e "  ${GRAY}x ${names[$i]}  ${raw_paths[$i]}${NC}"
             fi
         done
         if $dry_run; then
             echo -e "\n${GRAY}Dry run: no project entries were removed.${NC}"
             for ((i=0; i<total; i++)); do
-                [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" preview false
+                [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" preview false
             done
             return 0
         fi
         if ! $assume_yes; then
             echo -e "\n${RED}Action requires explicit confirmation. Re-run with --yes or preview with --dry-run.${NC}"
             for ((i=0; i<total; i++)); do
-                [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" canceled false
+                [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" canceled false
             done
             return 1
         fi
-        local missing_raw_paths=()
+        local missing_identities=()
         for ((i=0; i<total; i++)); do
-            [[ "${statuses[$i]}" == "path missing" ]] && missing_raw_paths+=("${raw_paths[$i]}")
+            if [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]]; then
+                missing_identities+=("$(jq -cn --arg name "${names[$i]}" --arg rootPath "${raw_paths[$i]}" '{name:$name,rootPath:$rootPath}')")
+            fi
         done
         local missing_json
-        missing_json=$(printf '%s\n' "${missing_raw_paths[@]}" | jq -R . | jq -s .)
+        missing_json=$(printf '%s\n' "${missing_identities[@]}" | jq -s '.')
         local new_json
-        new_json=$(jq --argjson missing "$missing_json" '[.[] | . as $project | select(($project.enabled != true) or (($missing | index($project.rootPath)) == null))]' "$config_path")
+        new_json=$(jq --argjson missing "$missing_json" '[.[] | . as $project | select(
+            ($project.enabled != true) or
+            (($missing | map(select(.name == $project.name and .rootPath == $project.rootPath)) | length) == 0)
+        )]' "$config_path")
         local kept_count
         kept_count=$(printf '%s\n' "$new_json" | jq 'length')
         if ! cdp_write_json_text "$config_path" "$new_json" "$expected_fingerprint"; then
             for ((i=0; i<total; i++)); do
-                [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" failed false write-failed
+                [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" failed false write-failed
             done
             return 1
         fi
         echo -e "\n${GREEN}Removed $missing_count projects. $kept_count projects remain.${NC}"
         for ((i=0; i<total; i++)); do
-            [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" succeeded true
+            [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" succeeded true
         done
-        return
+        return 0
     fi
 
     # --push: push all repos ahead of remote (skip table render)
@@ -2279,6 +2479,7 @@ cdp_status_fail() {
 cdp_status_reasons_json() {
     local kind="$1" i="$2" reasons=""
     [[ "$kind" == missing ]] && reasons="${reasons}path_missing\n"
+    [[ "$kind" == invalid-profile ]] && reasons="${reasons}path_profile_invalid\n"
     [[ "$kind" == timed-out ]] && reasons="${reasons}scan_timeout\n"
     [[ "$kind" == failed ]] && reasons="${reasons}scan_failed\n"
     [[ "${dirty_counts[$i]}" -gt 0 ]] && reasons="${reasons}dirty\n"
@@ -2291,6 +2492,7 @@ cdp_status_project_json() {
     local i="$1" kind="${record_kinds[$1]}" status_code=clean error_code="" error_message=""
     local path_exists=true git_repo=false branch="${branches[$i]}" reasons
     [[ "$kind" == missing ]] && { path_exists=false; status_code=path_missing; }
+    [[ "$kind" == invalid-profile ]] && { path_exists=false; status_code=path_profile_invalid; }
     [[ "$kind" == not-git ]] && status_code=not_git
     [[ "$kind" == timed-out ]] && { status_code=scan_timeout; error_code=scan_timeout; error_message='Git status scan timed out.'; }
     [[ "$kind" == failed ]] && { status_code=scan_failed; error_code=scan_failed; error_message='Git status scan failed.'; }
@@ -2630,10 +2832,12 @@ cdp-workspace() {
             while IFS= read -r proj_name <&3; do
                 proj_name="${proj_name%$'\r'}"
                 [[ -z "$proj_name" ]] && continue
-                local planned_path
-                planned_path=$(jq -r --arg n "$proj_name" '.[] | select(.enabled == true) | select(.name == $n) | .rootPath' "$config_path" 2>/dev/null | head -1)
-                planned_path="${planned_path%$'\r'}"
-                planned_path=$(convert_windows_to_wsl "$planned_path")
+                local project_json
+                local planned_path=""
+                project_json=$(cdp_project_json_by_name "$config_path" "$proj_name")
+                if [[ -n "$project_json" ]] && cdp_resolve_project_json "$project_json"; then
+                    planned_path="$CDP_PROJECT_RESOLVED_PATH"
+                fi
                 if [[ -z "$planned_path" || ! -d "$planned_path" ]]; then
                     echo -e "  ${YELLOW}skip${NC} $proj_name (project/path unavailable)"
                     cdp_action_result launch-workspace-project "$proj_name" failed false project-or-path-missing
@@ -2772,7 +2976,10 @@ cdp-add() {
     if [[ -f "$config_path" ]]; then
         config_json=$(cat "$config_path") || return 1
     fi
-    local existing=$(jq -r --arg path "$project_path" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
+    local existing_json=""
+    local existing=""
+    existing_json=$(cdp_find_project_by_local_path_json "$config_json" "$project_path" || true)
+    [[ -n "$existing_json" ]] && existing=$(printf '%s' "$existing_json" | jq -r '.name')
 
     if [[ -n "$existing" ]]; then
         echo -e "${YELLOW}Project already exists: $existing${NC}"
@@ -2782,10 +2989,10 @@ cdp-add() {
     fi
 
     # Add new project
+    local new_project
     local new_json
-    new_json=$(jq --arg name "$name" --arg path "$project_path" \
-        '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
-        <<< "$config_json") || return 1
+    new_project=$(cdp_new_project_json "$name" "$project_path") || return 1
+    new_json=$(jq --argjson project "$new_project" '. += [$project]' <<< "$config_json") || return 1
     if $CDP_SAFETY_DRY_RUN; then
         echo -e "${GRAY}Dry run: no project entry was added.${NC}"
         cdp_action_result add-project "$name" preview false
@@ -2904,24 +3111,35 @@ cdp-clean() {
     ' "$config_path") || return 1
 
     local missing_count=0
-    while IFS=$'\t' read -r name raw_project_path; do
-        [[ -z "$name" && -z "$raw_project_path" ]] && continue
-        local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
-        if [[ ! -d "$resolved_path" ]]; then
-            repaired_json=$(printf '%s\n' "$repaired_json" | jq --arg path "$raw_project_path" 'map(if .rootPath == $path then .enabled = false else . end)')
-            ((missing_count += 1))
+    local unavailable_explicit_count=0
+    while IFS= read -r project_json; do
+        [[ -z "$project_json" ]] && continue
+        local name
+        name=$(printf '%s' "$project_json" | jq -r '.name')
+        if ! cdp_resolve_project_json "$project_json"; then
+            echo -e "${RED}Error: Project '$name' has an invalid $CDP_PROJECT_PATH_SOURCE: $CDP_PROJECT_PATH_ERROR_MESSAGE${NC}"
+            return 1
         fi
-    done < <(printf '%s\n' "$repaired_json" | jq -r '.[] | select(.enabled == true) | [.name, .rootPath] | @tsv')
+        if [[ ! -d "$CDP_PROJECT_RESOLVED_PATH" ]]; then
+            if [[ "$CDP_PROJECT_PATH_EXPLICIT" == true ]]; then
+                unavailable_explicit_count=$((unavailable_explicit_count + 1))
+            else
+                repaired_json=$(printf '%s\n' "$repaired_json" | jq --arg path "$CDP_PROJECT_RAW_PATH" 'map(if .rootPath == $path then .enabled = false else . end)')
+                missing_count=$((missing_count + 1))
+            fi
+        fi
+    done < <(printf '%s\n' "$repaired_json" | jq -c '.[] | select(.enabled == true)')
 
     if jq -e --argjson repaired "$repaired_json" '. == $repaired' "$config_path" >/dev/null 2>&1; then
         echo -e "${GREEN}No project configuration repairs are needed.${NC}"
+        [[ $unavailable_explicit_count -gt 0 ]] && echo -e "${YELLOW}  Kept $unavailable_explicit_count unavailable explicit profile paths unchanged.${NC}"
         cdp_action_result repair-config "$config_path" skipped false
         return 0
     fi
 
     echo -e "${YELLOW}Repair plan:${NC} $config_path"
     echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
+    echo -e "${GRAY}  UnavailableExplicitPaths: $unavailable_explicit_count (kept unchanged)${NC}"
     local approval_status=0
     cdp_require_high_risk_approval "project configuration repair" || approval_status=$?
     if [[ $approval_status -eq 2 ]]; then
@@ -2937,6 +3155,7 @@ cdp-clean() {
 
     echo -e "${GREEN}cdp config repaired:${NC} $config_path"
     echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
+    echo -e "${GRAY}  UnavailableExplicitPaths: $unavailable_explicit_count (kept unchanged)${NC}"
     cdp_action_result repair-config "$config_path" succeeded true
 }
 
@@ -2969,7 +3188,13 @@ set_project_pin() {
     if [[ -f "$config_path" ]]; then
         config_json=$(cat "$config_path") || return 1
         if [[ -z "$name" ]]; then
-            matches=$(jq -r --arg path "$PWD" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
+            matches=""
+            while IFS= read -r project_json; do
+                if cdp_resolve_project_json "$project_json" && [[ "$CDP_PROJECT_RESOLVED_PATH" == "$PWD" ]]; then
+                    matches="${matches}$(printf '%s' "$project_json" | jq -r '.name')"$'\n'
+                fi
+            done < <(printf '%s\n' "$config_json" | jq -c '.[]')
+            matches="${matches%$'\n'}"
         else
             matches=$(find_project_matches "$config_path" "$name")
         fi
@@ -3409,20 +3634,22 @@ cdp() {
         return 0
     fi
 
-    # Get the rootPath for selected project
-    local raw_project_path=$(jq -r --arg name "$selected" \
-        '.[] | select(.name == $name and .enabled == true) | .rootPath' \
-        "$config_path" 2>/dev/null | head -n1)
+    local selected_project_json
+    selected_project_json=$(cdp_project_json_by_name "$config_path" "$selected")
 
-    if [[ -n "$raw_project_path" ]]; then
-        # Convert Windows path to WSL path if needed
-        local project_path
-        project_path=$(convert_windows_to_wsl "$raw_project_path")
+    if [[ -n "$selected_project_json" ]]; then
+        if ! cdp_resolve_project_json "$selected_project_json"; then
+            echo -e "${RED}Error: $CDP_PROJECT_PATH_ERROR_MESSAGE${NC}"
+            echo -e "${GRAY}Project: $selected; profile: $CDP_PROJECT_PATH_PROFILE${NC}"
+            return 1
+        fi
+        local raw_project_path="$CDP_PROJECT_RAW_PATH"
+        local project_path="$CDP_PROJECT_RESOLVED_PATH"
 
         # Check if path exists
         if [[ -d "$project_path" ]]; then
             cd "$project_path" || return 1
-            cdp_record_recent "$selected" "$raw_project_path"
+            cdp_record_recent "$selected" "$raw_project_path" "$selected_project_json"
             echo -e "${GREEN}Switched to project: $selected${NC}"
             echo -e "${GRAY}Path: $project_path${NC}"
 
@@ -3431,8 +3658,6 @@ cdp() {
 
             # Apply safe environment values and run command hooks only on explicit opt-in.
             local on_enter
-            local selected_project_json
-            selected_project_json=$(cdp_hook_project_json "$config_path" "$selected")
             on_enter=$(printf '%s' "$selected_project_json" | jq -r '.onEnter // empty' 2>/dev/null)
             on_enter="${on_enter%$'\r'}"
             if [[ -n "$on_enter" && "$on_enter" != "null" ]]; then
@@ -3510,7 +3735,13 @@ cdp-ls() {
         local display_path
         local display_name
         local pin_text=""
-        display_path=$(convert_windows_to_wsl "$project_path")
+        local project_json
+        project_json=$(cdp_project_json_by_name "$config_path" "$name")
+        if cdp_resolve_project_json "$project_json"; then
+            display_path="$CDP_PROJECT_RESOLVED_PATH"
+        else
+            display_path="<invalid ${CDP_PROJECT_PATH_SOURCE:-path profile}>"
+        fi
         display_name=$(truncate_text "$name" "$name_width")
         if [[ "$pinned" == "true" ]]; then
             pin_text="*"

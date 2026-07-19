@@ -142,12 +142,13 @@ jobs:
           bash -n ./scripts/Test-ScoopPackage.sh
           bash -n ./tests/cdp.QualityGates.Tests.sh
           bash -n ./tests/cdp.Status.Json.Tests.sh
+          bash -n ./tests/cdp.PathProfiles.Tests.sh
 
       - name: Check generated shell artifact
         run: bash ./scripts/Build-ShellScript.sh --check
 
       - name: Run ShellCheck errors
-        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh ./tests/cdp.Status.Json.Tests.sh
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh ./tests/cdp.Status.Json.Tests.sh ./tests/cdp.PathProfiles.Tests.sh
 
       - name: Run shell modularization tests
         run: bash ./tests/cdp.Shell.Modularization.Tests.sh
@@ -160,6 +161,9 @@ jobs:
 
       - name: Run shell status JSON tests
         run: bash ./tests/cdp.Status.Json.Tests.sh
+
+      - name: Run path profile contract tests
+        run: bash ./tests/cdp.PathProfiles.Tests.sh
 
       - name: Run status performance regressions
         run: bash ./tests/cdp.Status.Performance.Tests.sh
@@ -184,6 +188,7 @@ jobs:
             bash ./tests/cdp.Cli.Tests.sh
             bash ./tests/cdp.Status.Tests.sh
             bash ./tests/cdp.Status.Json.Tests.sh
+            bash ./tests/cdp.PathProfiles.Tests.sh
             bash ./tests/cdp.SafeMutations.Tests.sh
             bash ./tests/cdp.Shell.V2.Tests.sh
             bash ./tests/cdp.Persistence.Tests.sh
@@ -218,12 +223,13 @@ jobs:
           bash -n ./scripts/Test-ScoopPackage.sh
           bash -n ./tests/cdp.QualityGates.Tests.sh
           bash -n ./tests/cdp.Status.Json.Tests.sh
+          bash -n ./tests/cdp.PathProfiles.Tests.sh
 
       - name: Check generated shell artifact
         run: bash ./scripts/Build-ShellScript.sh --check
 
       - name: Run ShellCheck errors
-        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh ./tests/cdp.Status.Json.Tests.sh
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh ./tests/cdp.Status.Json.Tests.sh ./tests/cdp.PathProfiles.Tests.sh
 
       - name: Run shell modularization tests
         run: bash ./tests/cdp.Shell.Modularization.Tests.sh
@@ -236,6 +242,9 @@ jobs:
 
       - name: Run shell status JSON tests
         run: zsh ./tests/cdp.Status.Json.Tests.sh
+
+      - name: Run path profile contract tests
+        run: zsh ./tests/cdp.PathProfiles.Tests.sh
 
       - name: Run status performance regressions
         run: bash ./tests/cdp.Status.Performance.Tests.sh

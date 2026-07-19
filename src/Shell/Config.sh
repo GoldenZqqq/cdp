@@ -238,6 +238,9 @@ find_project_matches() {
         select(
             ((.name // "") | ascii_downcase | contains($needle)) or
             ((.rootPath // "") | ascii_downcase | contains($needle)) or
+            (if ((.paths // null) | type) == "object" then
+                ((.paths | to_entries | map(select((.value | type) == "string") | (.value | ascii_downcase | contains($needle)))) | any)
+             else false end) or
             (((.aliases // []) | map(ascii_downcase) | map(contains($needle)) | any)) or
             (((.tags // []) | map(ascii_downcase) | map(contains($needle)) | any))
         ) |

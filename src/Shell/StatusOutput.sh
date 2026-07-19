@@ -14,6 +14,7 @@ cdp_status_fail() {
 cdp_status_reasons_json() {
     local kind="$1" i="$2" reasons=""
     [[ "$kind" == missing ]] && reasons="${reasons}path_missing\n"
+    [[ "$kind" == invalid-profile ]] && reasons="${reasons}path_profile_invalid\n"
     [[ "$kind" == timed-out ]] && reasons="${reasons}scan_timeout\n"
     [[ "$kind" == failed ]] && reasons="${reasons}scan_failed\n"
     [[ "${dirty_counts[$i]}" -gt 0 ]] && reasons="${reasons}dirty\n"
@@ -26,6 +27,7 @@ cdp_status_project_json() {
     local i="$1" kind="${record_kinds[$1]}" status_code=clean error_code="" error_message=""
     local path_exists=true git_repo=false branch="${branches[$i]}" reasons
     [[ "$kind" == missing ]] && { path_exists=false; status_code=path_missing; }
+    [[ "$kind" == invalid-profile ]] && { path_exists=false; status_code=path_profile_invalid; }
     [[ "$kind" == not-git ]] && status_code=not_git
     [[ "$kind" == timed-out ]] && { status_code=scan_timeout; error_code=scan_timeout; error_message='Git status scan timed out.'; }
     [[ "$kind" == failed ]] && { status_code=scan_failed; error_code=scan_failed; error_message='Git status scan failed.'; }

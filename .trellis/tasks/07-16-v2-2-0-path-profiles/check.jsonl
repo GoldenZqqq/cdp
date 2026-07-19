@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"检查 paths 字段 round-trip、raw identity 和破坏性 mutation 安全。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"检查非法 override、显式 profile 缺失和 partial failure 的错误通道。"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"检查 JSON raw/resolved、稳定 status/reason 与 stderr 边界。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"执行跨运行时、Bash 3.2、workspace/status 和最终质量门禁。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"复核所有 filesystem/Git/launcher 消费者均通过统一 resolver。"}

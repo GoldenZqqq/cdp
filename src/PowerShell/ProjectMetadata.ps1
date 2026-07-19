@@ -57,7 +57,9 @@ function Set-ProjectPin {
         $targetProjects = if ([string]::IsNullOrWhiteSpace($Name)) {
             $currentPath = Get-CdpComparablePath -Path (Get-Location).Path
             @($projects | Where-Object {
-                (Get-CdpComparablePath -Path ([string]$_.rootPath)) -eq $currentPath
+                $resolution = Resolve-CdpProjectPath -Project $_
+                -not $resolution.ErrorCode -and
+                    (Get-CdpComparablePath -Path $resolution.ResolvedPath) -eq $currentPath
             })
         } else {
             @(Get-CdpProjectMatches -Projects $projects -Query $Name)

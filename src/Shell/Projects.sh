@@ -44,7 +44,10 @@ cdp-add() {
     if [[ -f "$config_path" ]]; then
         config_json=$(cat "$config_path") || return 1
     fi
-    local existing=$(jq -r --arg path "$project_path" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
+    local existing_json=""
+    local existing=""
+    existing_json=$(cdp_find_project_by_local_path_json "$config_json" "$project_path" || true)
+    [[ -n "$existing_json" ]] && existing=$(printf '%s' "$existing_json" | jq -r '.name')
 
     if [[ -n "$existing" ]]; then
         echo -e "${YELLOW}Project already exists: $existing${NC}"
@@ -54,10 +57,10 @@ cdp-add() {
     fi
 
     # Add new project
+    local new_project
     local new_json
-    new_json=$(jq --arg name "$name" --arg path "$project_path" \
-        '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
-        <<< "$config_json") || return 1
+    new_project=$(cdp_new_project_json "$name" "$project_path") || return 1
+    new_json=$(jq --argjson project "$new_project" '. += [$project]' <<< "$config_json") || return 1
     if $CDP_SAFETY_DRY_RUN; then
         echo -e "${GRAY}Dry run: no project entry was added.${NC}"
         cdp_action_result add-project "$name" preview false
@@ -176,24 +179,35 @@ cdp-clean() {
     ' "$config_path") || return 1
 
     local missing_count=0
-    while IFS=$'\t' read -r name raw_project_path; do
-        [[ -z "$name" && -z "$raw_project_path" ]] && continue
-        local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
-        if [[ ! -d "$resolved_path" ]]; then
-            repaired_json=$(printf '%s\n' "$repaired_json" | jq --arg path "$raw_project_path" 'map(if .rootPath == $path then .enabled = false else . end)')
-            ((missing_count += 1))
+    local unavailable_explicit_count=0
+    while IFS= read -r project_json; do
+        [[ -z "$project_json" ]] && continue
+        local name
+        name=$(printf '%s' "$project_json" | jq -r '.name')
+        if ! cdp_resolve_project_json "$project_json"; then
+            echo -e "${RED}Error: Project '$name' has an invalid $CDP_PROJECT_PATH_SOURCE: $CDP_PROJECT_PATH_ERROR_MESSAGE${NC}"
+            return 1
         fi
-    done < <(printf '%s\n' "$repaired_json" | jq -r '.[] | select(.enabled == true) | [.name, .rootPath] | @tsv')
+        if [[ ! -d "$CDP_PROJECT_RESOLVED_PATH" ]]; then
+            if [[ "$CDP_PROJECT_PATH_EXPLICIT" == true ]]; then
+                unavailable_explicit_count=$((unavailable_explicit_count + 1))
+            else
+                repaired_json=$(printf '%s\n' "$repaired_json" | jq --arg path "$CDP_PROJECT_RAW_PATH" 'map(if .rootPath == $path then .enabled = false else . end)')
+                missing_count=$((missing_count + 1))
+            fi
+        fi
+    done < <(printf '%s\n' "$repaired_json" | jq -c '.[] | select(.enabled == true)')
 
     if jq -e --argjson repaired "$repaired_json" '. == $repaired' "$config_path" >/dev/null 2>&1; then
         echo -e "${GREEN}No project configuration repairs are needed.${NC}"
+        [[ $unavailable_explicit_count -gt 0 ]] && echo -e "${YELLOW}  Kept $unavailable_explicit_count unavailable explicit profile paths unchanged.${NC}"
         cdp_action_result repair-config "$config_path" skipped false
         return 0
     fi
 
     echo -e "${YELLOW}Repair plan:${NC} $config_path"
     echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
+    echo -e "${GRAY}  UnavailableExplicitPaths: $unavailable_explicit_count (kept unchanged)${NC}"
     local approval_status=0
     cdp_require_high_risk_approval "project configuration repair" || approval_status=$?
     if [[ $approval_status -eq 2 ]]; then
@@ -209,5 +223,6 @@ cdp-clean() {
 
     echo -e "${GREEN}cdp config repaired:${NC} $config_path"
     echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
+    echo -e "${GRAY}  UnavailableExplicitPaths: $unavailable_explicit_count (kept unchanged)${NC}"
     cdp_action_result repair-config "$config_path" succeeded true
 }

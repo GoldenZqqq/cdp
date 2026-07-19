@@ -156,7 +156,7 @@ cdp-scan() {
             [[ -z "$repo" ]] && continue
             ((found_count += 1))
 
-            if jq -e --arg path "$repo" '.[] | select(.rootPath == $path)' <<< "$config_json" >/dev/null 2>&1; then
+            if cdp_find_project_by_local_path_json "$config_json" "$repo" >/dev/null; then
                 ((skipped_count += 1))
                 continue
             fi
@@ -170,9 +170,9 @@ cdp-scan() {
                 name="$base_name-$suffix"
                 suffix=$((suffix + 1))
             done
-            config_json=$(jq --arg name "$name" --arg path "$repo" \
-                '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
-                <<< "$config_json") || return 1
+            local new_project
+            new_project=$(cdp_new_project_json "$name" "$repo") || return 1
+            config_json=$(jq --argjson project "$new_project" '. += [$project]' <<< "$config_json") || return 1
             ((added_count += 1))
         done 3<<< "$repos"
     fi

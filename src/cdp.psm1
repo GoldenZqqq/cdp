@@ -23,6 +23,7 @@ $domainRoot = Join-Path $PSScriptRoot 'PowerShell'
 $domainFiles = @(
     'Core.ps1',
     'Config.ps1',
+    'Paths.ps1',
     'State.ps1',
     'Picker.ps1',
     'Hooks.ps1',

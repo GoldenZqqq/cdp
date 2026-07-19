@@ -78,7 +78,7 @@ function Add-Project {
         $projects = @($document.Value)
 
         # Check if project already exists
-        $existingProject = $projects | Where-Object { $_.rootPath -eq $Path }
+        $existingProject = Find-CdpProjectByLocalPath -Projects $projects -Path $Path
         if ($existingProject) {
             Write-Host "Project already exists: $($existingProject.name)" -ForegroundColor Yellow
             Write-Host "Path: $($existingProject.rootPath)" -ForegroundColor Gray
@@ -93,6 +93,7 @@ function Add-Project {
             pinned = $false
             aliases = @()
             tags = @()
+            paths = New-CdpProjectPathMap -RootPath $Path
         }
 
         $actionTarget = "$Name ($Path)"
@@ -181,6 +182,7 @@ function Repair-ProjectConfig {
         $usedNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         $usedPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         $summary = [ordered]@{ RemovedInvalid = 0; RemovedDuplicatePaths = 0; RenamedDuplicates = 0; DisabledMissingPaths = 0; AddedPinnedFields = 0; FixedEnabledFields = 0 }
+        $unavailableExplicitPaths = 0
         $cleanProjects = @()
 
         foreach ($project in $projects) {
@@ -217,9 +219,17 @@ function Repair-ProjectConfig {
                 $summary.RenamedDuplicates++
             }
 
-            if ($project.enabled -eq $true -and -not (Test-Path -LiteralPath ([string]$project.rootPath))) {
-                $project.enabled = $false
-                $summary.DisabledMissingPaths++
+            $resolution = Resolve-CdpProjectPath -Project $project
+            if ($resolution.ErrorCode) {
+                throw "Project '$($project.name)' has an invalid $($resolution.Source): $($resolution.ErrorMessage)"
+            }
+            if ($project.enabled -eq $true -and -not (Test-Path -LiteralPath $resolution.ResolvedPath)) {
+                if ($resolution.IsExplicit) {
+                    $unavailableExplicitPaths++
+                } else {
+                    $project.enabled = $false
+                    $summary.DisabledMissingPaths++
+                }
             }
 
             $cleanProjects += $project
@@ -236,10 +246,14 @@ function Repair-ProjectConfig {
             DisabledMissingPaths = $summary.DisabledMissingPaths
             AddedPinnedFields = $summary.AddedPinnedFields
             FixedEnabledFields = $summary.FixedEnabledFields
+            UnavailableExplicitPaths = $unavailableExplicitPaths
         }
 
         if ($changeCount -eq 0) {
             Write-Host "No project configuration repairs are needed." -ForegroundColor Green
+            if ($unavailableExplicitPaths -gt 0) {
+                Write-Host "  Kept $unavailableExplicitPaths unavailable explicit profile paths unchanged." -ForegroundColor Yellow
+            }
             if ($PassThru) {
                 return New-CdpActionResult -Action 'repair-config' -Target $ConfigPath -Status 'skipped' -Changed $false -Details $details
             }
@@ -259,6 +273,9 @@ function Repair-ProjectConfig {
         Write-Host "cdp config repaired: $ConfigPath" -ForegroundColor Green
         foreach ($item in $summary.GetEnumerator()) {
             Write-Host "  $($item.Key): $($item.Value)" -ForegroundColor Gray
+        }
+        if ($unavailableExplicitPaths -gt 0) {
+            Write-Host "  UnavailableExplicitPaths: $unavailableExplicitPaths (kept unchanged)" -ForegroundColor Yellow
         }
 
         if ($PassThru) {

@@ -6,11 +6,16 @@ function New-CdpGitProjectInfo {
         [Parameter(Mandatory = $true)]
         [object]$Project
     )
-    $rootPath = [string]$Project.rootPath
+    $resolution = Resolve-CdpProjectPath -Project $Project
 
     [PSCustomObject]@{
         Name = [string]$Project.name
-        RootPath = $rootPath
+        RootPath = $resolution.RawPath
+        ResolvedPath = $resolution.ResolvedPath
+        PathProfile = $resolution.Profile
+        PathSource = $resolution.Source
+        IsExplicitPath = $resolution.IsExplicit
+        PathResolutionError = $resolution.ErrorCode
         PathExists = $false
         IsGitRepo = $false
         Branch = ""
@@ -82,8 +87,14 @@ function Get-CdpGitProjectInfo {
         [object]$Project
     )
 
-    $rootPath = [string]$Project.rootPath
     $info = New-CdpGitProjectInfo -Project $Project
+    $rootPath = [string]$info.ResolvedPath
+
+    if ($info.PathResolutionError) {
+        $info.StatusLabel = 'path profile invalid'
+        $info.NeedsAttention = $true
+        return $info
+    }
 
     if (-not (Test-Path -LiteralPath $rootPath)) {
         $info.StatusLabel = "path missing"
@@ -202,6 +213,11 @@ function Show-CdpProjectStatus {
     if ($Json -and $PassThru) { Write-CdpStatusFatal -Message 'The -Json and -PassThru options cannot be used together.' -Json; return }
     if ($NoColor -and $PassThru) { Write-CdpStatusFatal -Message 'The -NoColor and -PassThru options cannot be used together.'; return }
 
+    try { [void](Get-CdpCurrentPathProfile) } catch {
+        Write-CdpStatusFatal -Message $_.Exception.Message -Json:$Json
+        return
+    }
+
     if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
         $ConfigPath = Get-DefaultConfigPath
     }
@@ -263,7 +279,25 @@ function Show-CdpProjectStatus {
     if (-not $Json) { Write-Host "`r                              `r" -NoNewline }
 
     if ($Fix) {
-        $missingProjects = @($statusList | Where-Object { -not $_.PathExists })
+        $invalidPathProjects = @($statusList | Where-Object { $_.PathResolutionError })
+        $explicitMissingProjects = @($statusList | Where-Object {
+            -not $_.PathResolutionError -and -not $_.PathExists -and $_.IsExplicitPath
+        })
+        $missingProjects = @($statusList | Where-Object {
+            -not $_.PathResolutionError -and -not $_.PathExists -and -not $_.IsExplicitPath
+        })
+        if ($invalidPathProjects.Count -gt 0) {
+            Write-Host "`nKeeping $($invalidPathProjects.Count) projects with invalid path profiles:" -ForegroundColor Yellow
+            foreach ($project in $invalidPathProjects) {
+                Write-Host "  $($project.Name) -> $($project.PathSource)" -ForegroundColor DarkGray
+            }
+        }
+        if ($explicitMissingProjects.Count -gt 0) {
+            Write-Host "`nKeeping $($explicitMissingProjects.Count) projects with unavailable explicit profile paths:" -ForegroundColor Yellow
+            foreach ($project in $explicitMissingProjects) {
+                Write-Host "  $($project.Name) [$($project.PathProfile)] -> $($project.ResolvedPath)" -ForegroundColor DarkGray
+            }
+        }
         if ($missingProjects.Count -eq 0) {
             Write-Host "`nNo path-missing projects to remove." -ForegroundColor Green
             if ($PassThru) { return @() }
@@ -285,13 +319,15 @@ function Show-CdpProjectStatus {
             return
         }
         $allProjects = $document.Value
-        $missingPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        $missingIdentities = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         foreach ($project in $missingProjects) {
-            [void]$missingPaths.Add((Get-CdpComparablePath -Path $project.RootPath))
+            $identity = "$($project.Name)`0$(Get-CdpComparablePath -Path $project.RootPath)"
+            [void]$missingIdentities.Add($identity)
         }
         $cleaned = @(@($allProjects) | Where-Object {
+            $identity = "$($_.name)`0$(Get-CdpComparablePath -Path ([string]$_.rootPath))"
             $_.enabled -ne $true -or
-                -not $missingPaths.Contains((Get-CdpComparablePath -Path ([string]$_.rootPath)))
+                -not $missingIdentities.Contains($identity)
         })
         try {
             [void](Write-CdpJsonFile -LiteralPath $resolvedConfig -Value @($cleaned) -ExpectedFingerprint $document.Fingerprint)
@@ -334,7 +370,7 @@ function Show-CdpProjectStatus {
             }
             Write-Host "    running... " -ForegroundColor DarkGray -NoNewline
             try {
-                $pushOutput = @(& git -C $proj.RootPath push --porcelain 2>&1)
+                $pushOutput = @(& git -C $proj.ResolvedPath push --porcelain 2>&1)
                 if ($LASTEXITCODE -eq 0) {
                     Write-Host "done" -ForegroundColor Green
                     $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status 'succeeded' -Changed $true -Details $proj

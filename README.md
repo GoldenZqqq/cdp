@@ -268,11 +268,13 @@ When using Claude Code, Codex, Gemini CLI, or similar tools, the terminal become
 
 When you want to start an AI CLI immediately, use `cdp api -Open codex`, `cdp web -Open claude`, or `cdp tool -Open gemini`. For editors, use `cdp api -Open code` or `cdp api -Open cursor`.
 
-### Windows + WSL
+### Cross-Platform Path Profiles
 
-Windows PowerShell can read Cursor / VS Code Project Manager configs, and the WSL/Linux version can use the same JSON shape. When you need to enter a WSL project from PowerShell, run `cdp -WSL`; Windows paths are converted to `/mnt/c/...` automatically.
+One project can now keep platform-specific local paths while preserving its original Project Manager-compatible `rootPath`. cdp selects `paths.windows`, `paths.wsl`, `paths.linux`, or `paths.macos` for the current runtime. When the current mapping is absent, legacy configs still fall back to `rootPath`; WSL also keeps the automatic `C:\...` to `/mnt/c/...` conversion.
 
-The bash/zsh status and workspace commands use the same Windows-to-WSL path resolution, so a shared Project Manager config works for switching, repository inspection, and workspace launch.
+Set `CDP_PATH_PROFILE=windows|wsl|linux|macos` to override runtime detection for containers or automation. An explicit current-platform path is authoritative: if it is invalid or missing, cdp reports that path instead of silently entering `rootPath` or another platform's directory. PowerShell `cdp -WSL` always resolves the WSL profile.
+
+Switching, pickers, status/Git, doctor/repair, workspaces, add/scan/init, and recent-path display share the same resolver. `rootPath` remains the raw identity used by older cdp versions, while filesystem operations use the resolved local path.
 
 Built-in bash/zsh launcher presets keep editor arguments separate from no-argument AI CLIs, so `codex`, `claude`, and `gemini` start without an unintended display-label argument. Workspace launch and repository scan isolate iteration from child-process input so every configured project is handled. The zsh adapter also preserves executable lookup during path operations and keeps completion indexing consistent, including `workspace` completion.
 
@@ -282,6 +284,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 
 - **Multi-project Git dashboard**: `cdp status` shows branch, dirty and untracked counts, ahead/behind sync, linked worktrees, and last commit time for every project
 - **Machine-readable status**: `cdp status --json` emits stable schema version 1 with raw/resolved paths, Git counts, attention reasons, redacted errors, timing, summaries, and automation exit codes
+- **Cross-platform path profiles**: one Project Manager-compatible entry can map Windows, WSL, Linux, and macOS paths without rewriting `rootPath`
 - **Full cross-platform support**: Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL, all covered by CI
 - **Intelligent tab completion**: Press Tab after `cdp` to auto-complete subcommands and project names on PowerShell, bash, and zsh
 - **Fuzzy project switching**: powered by `fzf`, keyboard-first, no path memorization
@@ -388,6 +391,12 @@ Custom config format:
   {
     "name": "my-api",
     "rootPath": "E:/Projects/my-api",
+    "paths": {
+      "windows": "E:/Projects/my-api",
+      "wsl": "/home/me/work/my-api",
+      "linux": "/srv/work/my-api",
+      "macos": "/Users/me/work/my-api"
+    },
     "enabled": true,
     "pinned": false,
     "aliases": ["backend"],
@@ -404,7 +413,15 @@ Custom config format:
 ]
 ```
 
-`pinned`, `aliases`, and `tags` are optional; old configs without these fields are treated as unpinned and without metadata. Using `/` in JSON paths avoids escaping Windows backslashes.
+`paths`, `pinned`, `aliases`, and `tags` are optional. Old configs continue to use `rootPath` unchanged. New `cdp add`, `cdp scan`, and `cdp init` entries write both `rootPath` and the detected current-platform mapping; older cdp versions and Project Manager ignore the additive `paths` object and keep reading `rootPath`. Using `/` in JSON paths avoids escaping Windows backslashes.
+
+Path selection order is deterministic:
+
+1. An explicit `paths.<current-profile>` value.
+2. On WSL only, automatic conversion of a Windows `rootPath` when `paths.wsl` is absent.
+3. The original `rootPath` fallback for legacy configs.
+
+Allowed profiles are `windows`, `wsl`, `linux`, and `macos`. Declared values must be non-empty strings. Unknown project fields and future `paths` keys are preserved by cdp mutations. To force a profile, set `$env:CDP_PATH_PROFILE = 'wsl'` in PowerShell or `export CDP_PATH_PROFILE=wsl` in bash/zsh; invalid values fail instead of falling back silently.
 
 ### State and Persistence Files
 
@@ -446,13 +463,15 @@ cdp persists project, recent-state, and workspace JSON through same-directory at
 
 PowerShell mutation functions support native `-WhatIf` and `-Confirm`; use `-PassThru` to receive `Action`, `Target`, `Status`, `Changed`, and `Error` fields. Bash/zsh mutations accept `--dry-run` and `--yes` and print one result line per target. Low-risk add, pin, alias/tag, workspace-definition, and hook-trust changes keep their default execution behavior. Repair, remove, scan/import, init, status fix/push, active-config selection, and external workspace launch require explicit approval. Shell high-impact commands never read confirmation from stdin: pass `--yes`, or use `--dry-run` to preview without writing JSON, pushing Git, or starting workspace processes.
 
+`cdp clean` and `cdp status --fix` keep an unavailable explicit platform path instead of deleting or disabling the shared project entry. Legacy fallback paths retain the existing repair behavior. This prevents a missing mount or machine-local checkout from damaging paths that remain valid on another platform.
+
 `cdp config` / `cdp-config` accepts a numbered selection from the displayed list. In shell automation, provide the number as an argument, for example `cdp config 1 --yes`. PowerShell can use `Set-ProjectConfig -Selection 1 -Confirm:$false`.
 
 ### Status automation contract
 
 `cdp status --json` and `Show-CdpProjectStatus -Json` write exactly one JSON document to stdout and send fatal diagnostics to stderr. The document uses `schemaVersion: 1` and contains scan time, active filters, a summary, and a `projects` array. Each project keeps its configured `rawPath` identity separate from the local `resolvedPath`, and includes `pathExists`, stable `status`, `needsAttention`, `attentionReasons`, a redacted `error`, and nested Git fields.
 
-Stable status codes are `clean`, `changed`, `path_missing`, `not_git`, `scan_timeout`, and `scan_failed`. Stable attention reasons are `dirty`, `untracked`, `behind`, `path_missing`, `scan_timeout`, and `scan_failed`. Consumers should reject unsupported schema major versions but may ignore unknown additive fields.
+Stable status codes are `clean`, `changed`, `path_missing`, `path_profile_invalid`, `not_git`, `scan_timeout`, and `scan_failed`. Stable attention reasons are `dirty`, `untracked`, `behind`, `path_missing`, `path_profile_invalid`, `scan_timeout`, and `scan_failed`. Consumers should reject unsupported schema major versions but may ignore unknown additive fields.
 
 JSON mode is read-only and cannot be combined with `--fix` or `--push`. Its exit codes are `0` for clean success, `1` when a rendered project needs attention, `2` for a partial timeout/scan failure, and `3` for a fatal parse, dependency, configuration, or serialization failure. `--dirty` filters the project array while `summary.total` still reports every scanned enabled project. Use `--no-color` / `-NoColor` when a plain human-readable table is preferred.
 

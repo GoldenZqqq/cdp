@@ -97,6 +97,9 @@ function Add-CdpRecentProject {
             lastVisitedAt = [DateTimeOffset]::UtcNow.ToString("o")
             visitCount = $visitCount
         }
+        if ($Project.PSObject.Properties['paths']) {
+            $newEntry | Add-Member -NotePropertyName paths -NotePropertyValue $Project.paths
+        }
 
         $state.recentProjects = @(
             @($recentProjects | Where-Object {
@@ -204,7 +207,9 @@ function Get-CdpRecentProjects {
         Write-Host (("{0,-$nameWidth} " -f $projectName)) -ForegroundColor Green -NoNewline
         Write-Host ("{0,-24} " -f (Limit-CdpText -Text $lastVisited -MaxLength 24)) -ForegroundColor DarkGray -NoNewline
         Write-Host ("{0,-7} " -f $visitCount) -ForegroundColor Cyan -NoNewline
-        Write-Host "$($project.rootPath)" -ForegroundColor DarkGray
+        $resolution = Resolve-CdpProjectPath -Project $project
+        $pathText = if ($resolution.ErrorCode) { "<invalid $($resolution.Source)>" } else { $resolution.ResolvedPath }
+        Write-Host $pathText -ForegroundColor DarkGray
         $index++
     }
 

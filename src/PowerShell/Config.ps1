@@ -1,27 +1,6 @@
 # cdp PowerShell domain: Config.ps1
 # Loaded by src/cdp.psm1; do not dot-source peer files.
 
-function Convert-WindowsPathToWSL {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$WindowsPath
-    )
-
-    # Normalize path separators
-    $normalizedPath = $WindowsPath -replace '\\', '/'
-
-    # Convert drive letter to WSL mount point
-    # C:\path\to\dir -> /mnt/c/path/to/dir
-    if ($normalizedPath -match '^([A-Za-z]):(.*)$') {
-        $driveLetter = $matches[1].ToLower()
-        $pathRemainder = $matches[2]
-        return "/mnt/$driveLetter$pathRemainder"
-    }
-
-    # If no drive letter found, return as-is (might already be WSL path)
-    return $normalizedPath
-}
-
 function Resolve-CdpFzfCommand {
     if (-not [string]::IsNullOrWhiteSpace($env:CDP_FZF_PATH)) {
         $configuredPath = [Environment]::ExpandEnvironmentVariables($env:CDP_FZF_PATH)
@@ -135,11 +114,18 @@ function Get-CdpProjectMatches {
     return @($Projects | Where-Object {
         $projectName = if ($null -eq $_.name) { "" } else { [string]$_.name }
         $projectPath = if ($null -eq $_.rootPath) { "" } else { [string]$_.rootPath }
+        $profilePaths = @()
+        if ($_.PSObject.Properties['paths'] -and $null -ne $_.paths) {
+            $profilePaths = @($_.paths.PSObject.Properties | Where-Object {
+                $_.Value -is [string]
+            } | ForEach-Object { [string]$_.Value })
+        }
         $projectAliases = @(Get-CdpProjectStringList -Project $_ -PropertyName 'aliases')
         $projectTags = @(Get-CdpProjectStringList -Project $_ -PropertyName 'tags')
 
         $projectName.IndexOf($Query, $comparison) -ge 0 -or
             $projectPath.IndexOf($Query, $comparison) -ge 0 -or
+            @($profilePaths | Where-Object { $_.IndexOf($Query, $comparison) -ge 0 }).Count -gt 0 -or
             @($projectAliases | Where-Object { $_.IndexOf($Query, $comparison) -ge 0 }).Count -gt 0 -or
             @($projectTags | Where-Object { $_.IndexOf($Query, $comparison) -ge 0 }).Count -gt 0
     })

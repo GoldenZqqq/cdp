@@ -285,20 +285,22 @@ cdp() {
         return 0
     fi
 
-    # Get the rootPath for selected project
-    local raw_project_path=$(jq -r --arg name "$selected" \
-        '.[] | select(.name == $name and .enabled == true) | .rootPath' \
-        "$config_path" 2>/dev/null | head -n1)
+    local selected_project_json
+    selected_project_json=$(cdp_project_json_by_name "$config_path" "$selected")
 
-    if [[ -n "$raw_project_path" ]]; then
-        # Convert Windows path to WSL path if needed
-        local project_path
-        project_path=$(convert_windows_to_wsl "$raw_project_path")
+    if [[ -n "$selected_project_json" ]]; then
+        if ! cdp_resolve_project_json "$selected_project_json"; then
+            echo -e "${RED}Error: $CDP_PROJECT_PATH_ERROR_MESSAGE${NC}"
+            echo -e "${GRAY}Project: $selected; profile: $CDP_PROJECT_PATH_PROFILE${NC}"
+            return 1
+        fi
+        local raw_project_path="$CDP_PROJECT_RAW_PATH"
+        local project_path="$CDP_PROJECT_RESOLVED_PATH"
 
         # Check if path exists
         if [[ -d "$project_path" ]]; then
             cd "$project_path" || return 1
-            cdp_record_recent "$selected" "$raw_project_path"
+            cdp_record_recent "$selected" "$raw_project_path" "$selected_project_json"
             echo -e "${GREEN}Switched to project: $selected${NC}"
             echo -e "${GRAY}Path: $project_path${NC}"
 
@@ -307,8 +309,6 @@ cdp() {
 
             # Apply safe environment values and run command hooks only on explicit opt-in.
             local on_enter
-            local selected_project_json
-            selected_project_json=$(cdp_hook_project_json "$config_path" "$selected")
             on_enter=$(printf '%s' "$selected_project_json" | jq -r '.onEnter // empty' 2>/dev/null)
             on_enter="${on_enter%$'\r'}"
             if [[ -n "$on_enter" && "$on_enter" != "null" ]]; then
@@ -386,7 +386,13 @@ cdp-ls() {
         local display_path
         local display_name
         local pin_text=""
-        display_path=$(convert_windows_to_wsl "$project_path")
+        local project_json
+        project_json=$(cdp_project_json_by_name "$config_path" "$name")
+        if cdp_resolve_project_json "$project_json"; then
+            display_path="$CDP_PROJECT_RESOLVED_PATH"
+        else
+            display_path="<invalid ${CDP_PROJECT_PATH_SOURCE:-path profile}>"
+        fi
         display_name=$(truncate_text "$name" "$name_width")
         if [[ "$pinned" == "true" ]]; then
             pin_text="*"

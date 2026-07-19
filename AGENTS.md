@@ -98,6 +98,12 @@ cdp metadata:
 {
   "name": "api",
   "rootPath": "E:/Projects/api",
+  "paths": {
+    "windows": "E:/Projects/api",
+    "wsl": "/home/me/api",
+    "linux": "/srv/api",
+    "macos": "/Users/me/api"
+  },
   "enabled": true,
   "pinned": false,
   "aliases": ["backend"],
@@ -112,6 +118,9 @@ cdp metadata:
 
 Recent state, workspace definitions, active selection, and hook trust remain in
 separate files; see README state/persistence tables and backend Trellis specs.
+`rootPath` is always the raw compatibility identity. Project filesystem, Git,
+picker, workspace, and future exec behavior must call `Resolve-CdpProjectPath`
+or `cdp_resolve_project_json` instead of adding local conversion branches.
 
 ## PowerShell Compatibility
 

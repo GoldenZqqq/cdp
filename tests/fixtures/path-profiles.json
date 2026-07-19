@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Mapped",
+    "rootPath": "C:/Work/api",
+    "enabled": true,
+    "paths": {
+      "windows": "C:/Work/api",
+      "wsl": "/home/dev/api",
+      "linux": "/srv/dev/api",
+      "macos": "/Users/dev/api",
+      "future": "/future/api"
+    },
+    "futureField": { "preserve": true }
+  },
+  {
+    "name": "Legacy",
+    "rootPath": "D:/Code/legacy",
+    "enabled": true
+  },
+  {
+    "name": "InvalidLinux",
+    "rootPath": "C:/Work/invalid",
+    "enabled": true,
+    "paths": { "linux": "" }
+  }
+]

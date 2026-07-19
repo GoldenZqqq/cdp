@@ -2,67 +2,6 @@
 # shellcheck shell=bash
 # Generated from the canonical cdp.sh source; do not source peer fragments.
 
-CDP_STATUS_CACHE_KEYS=()
-CDP_STATUS_CACHE_TIMES=()
-CDP_STATUS_CACHE_VALUES=()
-
-cdp_status_setting() {
-    local name="$1"
-    local default_value="$2"
-    local minimum="$3"
-    local maximum="$4"
-    local value="$default_value"
-    case "$name" in
-        CDP_STATUS_CONCURRENCY) value="${CDP_STATUS_CONCURRENCY:-$default_value}" ;;
-        CDP_STATUS_TIMEOUT_SECONDS) value="${CDP_STATUS_TIMEOUT_SECONDS:-$default_value}" ;;
-        CDP_STATUS_CACHE_TTL) value="${CDP_STATUS_CACHE_TTL:-$default_value}" ;;
-    esac
-    [[ "$value" =~ ^[0-9]+$ ]] || value="$default_value"
-    (( value < minimum )) && value="$minimum"
-    (( value > maximum )) && value="$maximum"
-    echo "$value"
-}
-
-cdp_status_cache_get() {
-    local key="$1"
-    local ttl="$2"
-    local refresh="$3"
-    local now
-    local i
-    [[ "$refresh" == true || "$ttl" -le 0 ]] && return 1
-    now=$(date +%s)
-    for ((i=0; i<${#CDP_STATUS_CACHE_KEYS[@]}; i++)); do
-        if [[ "${CDP_STATUS_CACHE_KEYS[$i]}" == "$key" ]]; then
-            if (( now - CDP_STATUS_CACHE_TIMES[$i] < ttl )); then
-                printf '%s' "${CDP_STATUS_CACHE_VALUES[$i]}"
-                return 0
-            fi
-            return 1
-        fi
-    done
-    return 1
-}
-
-cdp_status_cache_set() {
-    local key="$1"
-    local value="$2"
-    local ttl="$3"
-    local now
-    local i
-    [[ "$ttl" -le 0 ]] && return 0
-    now=$(date +%s)
-    for ((i=0; i<${#CDP_STATUS_CACHE_KEYS[@]}; i++)); do
-        if [[ "${CDP_STATUS_CACHE_KEYS[$i]}" == "$key" ]]; then
-            CDP_STATUS_CACHE_TIMES[$i]="$now"
-            CDP_STATUS_CACHE_VALUES[$i]="$value"
-            return 0
-        fi
-    done
-    CDP_STATUS_CACHE_KEYS+=("$key")
-    CDP_STATUS_CACHE_TIMES+=("$now")
-    CDP_STATUS_CACHE_VALUES+=("$value")
-}
-
 cdp_status_git_command() {
     local timeout_seconds="$1"
     shift
@@ -255,6 +194,11 @@ cdp-status() {
         cdp_status_fail "$json_mode" "Configuration file not found at: $config_path"; return $?
     fi
 
+    local active_path_profile
+    if ! active_path_profile=$(cdp_current_path_profile); then
+        cdp_status_fail "$json_mode" "Invalid CDP_PATH_PROFILE."; return $?
+    fi
+
     local expected_fingerprint=""
     if $do_fix; then
         expected_fingerprint=$(cdp_json_fingerprint "$config_path")
@@ -267,7 +211,7 @@ cdp-status() {
     fi
 
     local projects
-    if ! projects=$(jq -r "$jq_filter | [.name, .rootPath] | @tsv" "$config_path" 2>/dev/null); then
+    if ! projects=$(jq -c "$jq_filter" "$config_path" 2>/dev/null); then
         cdp_status_fail "$json_mode" 'Failed to read configuration.'; return $?
     fi
 
@@ -281,19 +225,30 @@ cdp-status() {
     local total=0
     local attention_count=0
     local missing_count=0
+    local explicit_missing_count=0
     local max_name_len=14
     local max_branch_len=12
-    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=() record_kinds=()
+    local -a names=() raw_paths=() paths=() path_profiles=() path_sources=() path_explicit=() branches=() remotes=() upstreams=() record_kinds=()
     local -a statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
     local -a dirty_counts=() untracked_counts=() ahead_counts=() behind_counts=()
 
-    while IFS=$'\t' read -r pname ppath; do
-        pname="${pname%$'\r'}"
-        ppath="${ppath%$'\r'}"
+    while IFS= read -r project_json; do
+        project_json="${project_json%$'\r'}"
+        local pname
+        local ppath
+        pname=$(printf '%s' "$project_json" | jq -r '.name // empty')
         [[ -z "$pname" ]] && continue
+        if cdp_resolve_project_json "$project_json" "$active_path_profile"; then
+            ppath="$CDP_PROJECT_RAW_PATH"
+        else
+            ppath=$(printf '%s' "$project_json" | jq -r '.rootPath // empty')
+        fi
         names+=("$pname")
         raw_paths+=("$ppath")
-        paths+=("$(convert_windows_to_wsl "$ppath")")
+        paths+=("$CDP_PROJECT_RESOLVED_PATH")
+        path_profiles+=("$CDP_PROJECT_PATH_PROFILE")
+        path_sources+=("$CDP_PROJECT_PATH_SOURCE")
+        path_explicit+=("$CDP_PROJECT_PATH_EXPLICIT")
         local name_len
         name_len=$(cdp_display_width "$pname")
         [[ $name_len -gt $max_name_len ]] && max_name_len=$name_len
@@ -319,7 +274,9 @@ cdp-status() {
         local i
         for ((i=batch_start; i<batch_end; i++)); do
             local cached_record=""
-            if cached_record=$(cdp_status_cache_get "${paths[$i]}" "$cache_ttl" "$refresh"); then
+            if [[ -z "${paths[$i]}" ]]; then
+                printf 'invalid-profile\034-\034\034\0340\0340\0340\0340\034\n' > "$result_dir/$i.record"
+            elif cached_record=$(cdp_status_cache_get "${path_profiles[$i]}:${paths[$i]}" "$cache_ttl" "$refresh"); then
                 printf '%s\n' "$cached_record" > "$result_dir/$i.record"
             else
                 cdp_status_collect_record "${paths[$i]}" "$timeout_seconds" > "$result_dir/$i.record" &
@@ -327,7 +284,9 @@ cdp-status() {
             fi
         done
         local pid
-        for pid in "${pids[@]}"; do wait "$pid" || true; done
+        if (( ${#pids[@]} > 0 )); then
+            for pid in "${pids[@]}"; do wait "$pid" || true; done
+        fi
         batch_start=$batch_end
     done
 
@@ -337,7 +296,7 @@ cdp-status() {
         local record=""
         [[ -f "$result_dir/$i.record" ]] && record=$(cat "$result_dir/$i.record")
         [[ -n "$record" ]] || record=$'failed\034-\034\034\0340\0340\0340\0340\034'
-        cdp_status_cache_set "${paths[$i]}" "$record" "$cache_ttl"
+        [[ -n "${paths[$i]}" ]] && cdp_status_cache_set "${path_profiles[$i]}:${paths[$i]}" "$record" "$cache_ttl"
         IFS=$'\034' read -r record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit <<< "$record"
         record_kinds+=("$record_kind")
         branches+=("$branch")
@@ -354,7 +313,15 @@ cdp-status() {
         case "$record_kind" in
             missing)
                 statuses+=("path missing"); status_colors+=("$RED"); needs_attention+=(true)
-                missing_count=$((missing_count + 1))
+                if [[ "${path_explicit[$i]}" == true ]]; then
+                    explicit_missing_count=$((explicit_missing_count + 1))
+                else
+                    missing_count=$((missing_count + 1))
+                fi
+                ;;
+            invalid-profile)
+                statuses+=("path profile invalid"); status_colors+=("$RED"); needs_attention+=(true)
+                attention_count=$((attention_count + 1))
                 ;;
             not-git)
                 statuses+=("not a git repo"); status_colors+=("$GRAY"); needs_attention+=(false)
@@ -401,51 +368,64 @@ cdp-status() {
 
     # --fix: remove path-missing projects (skip table render)
     if $do_fix; then
+        if [[ $explicit_missing_count -gt 0 ]]; then
+            echo -e "\n${YELLOW}Keeping $explicit_missing_count projects with unavailable explicit profile paths:${NC}"
+            for ((i=0; i<total; i++)); do
+                if [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" == true ]]; then
+                    echo -e "  ${GRAY}${names[$i]} [${path_profiles[$i]}] -> ${paths[$i]}${NC}"
+                fi
+            done
+        fi
         if [[ $missing_count -eq 0 ]]; then
             echo -e "${GREEN}No path-missing projects to remove.${NC}"
             return
         fi
         echo -e "\n${YELLOW}Removing $missing_count path-missing projects:${NC}"
         for ((i=0; i<total; i++)); do
-            if [[ "${statuses[$i]}" == "path missing" ]]; then
+            if [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]]; then
                 echo -e "  ${GRAY}x ${names[$i]}  ${raw_paths[$i]}${NC}"
             fi
         done
         if $dry_run; then
             echo -e "\n${GRAY}Dry run: no project entries were removed.${NC}"
             for ((i=0; i<total; i++)); do
-                [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" preview false
+                [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" preview false
             done
             return 0
         fi
         if ! $assume_yes; then
             echo -e "\n${RED}Action requires explicit confirmation. Re-run with --yes or preview with --dry-run.${NC}"
             for ((i=0; i<total; i++)); do
-                [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" canceled false
+                [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" canceled false
             done
             return 1
         fi
-        local missing_raw_paths=()
+        local missing_identities=()
         for ((i=0; i<total; i++)); do
-            [[ "${statuses[$i]}" == "path missing" ]] && missing_raw_paths+=("${raw_paths[$i]}")
+            if [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]]; then
+                missing_identities+=("$(jq -cn --arg name "${names[$i]}" --arg rootPath "${raw_paths[$i]}" '{name:$name,rootPath:$rootPath}')")
+            fi
         done
         local missing_json
-        missing_json=$(printf '%s\n' "${missing_raw_paths[@]}" | jq -R . | jq -s .)
+        missing_json=$(printf '%s\n' "${missing_identities[@]}" | jq -s '.')
         local new_json
-        new_json=$(jq --argjson missing "$missing_json" '[.[] | . as $project | select(($project.enabled != true) or (($missing | index($project.rootPath)) == null))]' "$config_path")
+        new_json=$(jq --argjson missing "$missing_json" '[.[] | . as $project | select(
+            ($project.enabled != true) or
+            (($missing | map(select(.name == $project.name and .rootPath == $project.rootPath)) | length) == 0)
+        )]' "$config_path")
         local kept_count
         kept_count=$(printf '%s\n' "$new_json" | jq 'length')
         if ! cdp_write_json_text "$config_path" "$new_json" "$expected_fingerprint"; then
             for ((i=0; i<total; i++)); do
-                [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" failed false write-failed
+                [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" failed false write-failed
             done
             return 1
         fi
         echo -e "\n${GREEN}Removed $missing_count projects. $kept_count projects remain.${NC}"
         for ((i=0; i<total; i++)); do
-            [[ "${statuses[$i]}" == "path missing" ]] && cdp_action_result status-fix "${names[$i]}" succeeded true
+            [[ "${statuses[$i]}" == "path missing" && "${path_explicit[$i]}" != true ]] && cdp_action_result status-fix "${names[$i]}" succeeded true
         done
-        return
+        return 0
     fi
 
     # --push: push all repos ahead of remote (skip table render)

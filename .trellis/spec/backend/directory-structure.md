@@ -24,6 +24,8 @@ regain business function bodies.
 Use the existing concern boundaries:
 
 - `Core.ps1`: shared formatting, paths, action results, and JSON primitives.
+- `Paths.ps1`: runtime profile detection, raw/resolved project path selection,
+  and backward-compatible new-entry path maps.
 - `Config.ps1` / `State.ps1`: config discovery/cache and recent state.
 - `Parser.ps1` / `Commands.ps1`: raw CLI normalization then dispatch.
 - `Projects.ps1` / `ProjectMetadata.ps1` / `Scan.ps1`: project mutations.
@@ -49,6 +51,10 @@ bash scripts/Build-ShellScript.sh --check
 Fragments use bash/zsh-compatible functions and must retain Bash 3.2 support.
 Do not let a domain source peer fragments; the generated runtime provides the
 shared scope.
+
+Keep `Paths.sh` as the single project-path resolver and `StatusBatch.sh` as the
+status cache/settings owner. Callers must not reintroduce local Windows-to-WSL
+conversion branches.
 
 ## Test and Tool Placement
 

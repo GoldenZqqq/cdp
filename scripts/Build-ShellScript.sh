@@ -18,11 +18,13 @@ fragments=(
     Runtime.sh
     Core.sh
     Config.sh
+    Paths.sh
     State.sh
     Picker.sh
     Hooks.sh
     Health.sh
     Scan.sh
+    StatusBatch.sh
     Status.sh
     StatusOutput.sh
     Workspace.sh

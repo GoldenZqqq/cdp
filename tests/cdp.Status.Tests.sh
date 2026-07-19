@@ -158,6 +158,8 @@ convert_windows_to_wsl() {
     fi
 }
 
+previous_path_profile="${CDP_PATH_PROFILE:-}"
+export CDP_PATH_PROFILE=wsl
 windows_status=$(cdp-status "$windows_config" 2>&1)
 assert_contains "$windows_status" "WindowsMapped"
 assert_contains "$windows_status" "1 dirty + 1 untracked"
@@ -182,5 +184,6 @@ workspace_output=$(
 assert_contains "$workspace_output" "Opened window: WindowsMapped"
 tmux_calls="$(cat "$tmux_log")"
 assert_contains "$tmux_calls" "<-c><$linked_worktree>"
+export CDP_PATH_PROFILE="$previous_path_profile"
 
 echo "cdp status shell tests: ok"

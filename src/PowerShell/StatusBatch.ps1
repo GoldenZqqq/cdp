@@ -27,8 +27,12 @@ function Get-CdpStatusCacheKey {
     param([Parameter(Mandatory = $true)][object]$Project)
 
     $name = ([string]$Project.name).ToUpperInvariant()
-    $path = Get-CdpComparablePath -Path ([string]$Project.rootPath)
-    "$name`0$path"
+    $resolution = Resolve-CdpProjectPath -Project $Project
+    if ($resolution.ErrorCode) {
+        return "$name`0$($resolution.Profile)`0invalid:$($resolution.Source):$($resolution.RawPath)"
+    }
+    $path = Get-CdpComparablePath -Path ([string]$resolution.ResolvedPath)
+    "$name`0$($resolution.Profile)`0$path"
 }
 
 function Get-CdpCachedGitProjectInfo {
@@ -71,7 +75,9 @@ function New-CdpFailedGitProjectInfo {
     )
 
     $info = New-CdpGitProjectInfo -Project $Project
-    $info.PathExists = Test-Path -LiteralPath ([string]$Project.rootPath)
+    if (-not $info.PathResolutionError) {
+        $info.PathExists = Test-Path -LiteralPath ([string]$info.ResolvedPath)
+    }
     $info.StatusLabel = $StatusLabel
     $info.NeedsAttention = $true
     $info
@@ -81,6 +87,27 @@ function Get-CdpStatusWorkerHelperScript {
     @(
         'function New-CdpGitProjectInfo {'
         (Get-Command New-CdpGitProjectInfo).ScriptBlock.ToString()
+        '}'
+        'function Convert-WindowsPathToWSL {'
+        (Get-Command Convert-WindowsPathToWSL).ScriptBlock.ToString()
+        '}'
+        'function Get-CdpDetectedPathProfile {'
+        (Get-Command Get-CdpDetectedPathProfile).ScriptBlock.ToString()
+        '}'
+        'function Get-CdpCurrentPathProfile {'
+        (Get-Command Get-CdpCurrentPathProfile).ScriptBlock.ToString()
+        '}'
+        'function Get-CdpProjectPathProperty {'
+        (Get-Command Get-CdpProjectPathProperty).ScriptBlock.ToString()
+        '}'
+        'function New-CdpPathResolution {'
+        (Get-Command New-CdpPathResolution).ScriptBlock.ToString()
+        '}'
+        'function Get-CdpInvalidKnownPathProfile {'
+        (Get-Command Get-CdpInvalidKnownPathProfile).ScriptBlock.ToString()
+        '}'
+        'function Resolve-CdpProjectPath {'
+        (Get-Command Resolve-CdpProjectPath).ScriptBlock.ToString()
         '}'
         'function ConvertFrom-CdpGitStatusPorcelainV2 {'
         (Get-Command ConvertFrom-CdpGitStatusPorcelainV2).ScriptBlock.ToString()
