@@ -31,7 +31,7 @@ INSTALL_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.cdp"
 SCRIPT_NAME="cdp.sh"
 GITHUB_RAW_URL="https://raw.githubusercontent.com/GoldenZqqq/cdp/$CDP_INSTALL_REF/src/cdp.sh"
-CDP_SCRIPT_SHA256="6a06700d02fcdf081cc0f473fd0aa575ae03dc6efb44e50eacce44d725790d8b"
+CDP_SCRIPT_SHA256="9a68e402b25a362477ec914940287a7649fede544a8e0b065bb32960464fa9d9"
 USE_REMOTE=false
 
 # Parse arguments

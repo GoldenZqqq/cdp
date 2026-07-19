@@ -39,7 +39,7 @@ Release status: v2.0.5 security and install-integrity work is in progress. v2.0.
 - PowerShell 7.5.2: Pester 64/64 passed across core, v2, and installer suites with `USERPROFILE` isolated to `$TestDrive` equivalent.
 - PowerShell 7.5.2: PSScriptAnalyzer Error severity reported no findings for `src/cdp.psm1`.
 - Bash and zsh: CLI parser, status, shell v2, installer negative tests, syntax, and shell installer metadata passed.
-- Scoop package: `scripts/New-ScoopPackage.sh` generated reproducible `cdp-2.0.5.tar.gz` bytes; SHA-256 `54bfc70012084b30e50d5ad05776382955eca520fe51329baa5293a051a99655` matches `scoop/cdp.json`.
+- Scoop package: `scripts/New-ScoopPackage.sh` generated `cdp-2.0.5.tar.gz`; local release asset SHA-256 `d97225a5be0f9cc857b2692e1d73f6c951be546c577db760b51ef86e7ad92716` matches `scoop/cdp.json`. CI validates the package contents and manifest hash shape; the published asset is verified byte-for-byte after upload because gzip output differs across tool versions.
 - Release metadata, workflow YAML, and `git diff --check` passed locally. Windows PowerShell 5.1 and hosted CI remain release-gate checks.
 
 ## 2.0.4 Stability Checklist

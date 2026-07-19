@@ -1348,10 +1348,18 @@ cdp-workspace() {
                     [[ -z "$proj_path" || ! -d "$proj_path" ]] && { echo -e "${YELLOW}  Skipping '$proj_name' (not found)${NC}"; continue; }
 
                     if $first; then
-                        tmux new-session -d -s "$session_name" -c "$proj_path" -n "$proj_name" "${launcher_args[@]}"
+                        if [[ ${#launcher_args[@]} -gt 0 ]]; then
+                            tmux new-session -d -s "$session_name" -c "$proj_path" -n "$proj_name" "${launcher_args[@]}"
+                        else
+                            tmux new-session -d -s "$session_name" -c "$proj_path" -n "$proj_name"
+                        fi
                         first=false
                     else
-                        tmux new-window -t "$session_name" -c "$proj_path" -n "$proj_name" "${launcher_args[@]}"
+                        if [[ ${#launcher_args[@]} -gt 0 ]]; then
+                            tmux new-window -t "$session_name" -c "$proj_path" -n "$proj_name" "${launcher_args[@]}"
+                        else
+                            tmux new-window -t "$session_name" -c "$proj_path" -n "$proj_name"
+                        fi
                     fi
                     echo -e "${GREEN}  Opened window: $proj_name${NC}"
                 done 3<<< "$ws_projects_list"
