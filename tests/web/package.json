@@ -5,7 +5,7 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "test": "pnpm run test:assets && pnpm run test:browser",
-    "test:assets": "node --test ../cdp.WebAssets.Tests.mjs && node ../../scripts/Test-WebAssets.mjs && node --check ../../docs/script.js",
+    "test:assets": "node --test ../cdp.WebAssets.Tests.mjs ../cdp.Documentation.Tests.mjs && node ../../scripts/Test-WebAssets.mjs && node ../../scripts/Test-Documentation.mjs && node --check ../../docs/script.js",
     "test:browser": "playwright test"
   },
   "devDependencies": {

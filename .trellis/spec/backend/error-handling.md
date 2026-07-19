@@ -1,51 +1,49 @@
-# Error Handling
+# Backend Error Handling
 
-> How errors are handled in this project.
+## Error Channels
 
----
+- PowerShell public commands use terminating exceptions for invalid arguments,
+  persistence failures, or unsafe preconditions. Dispatch boundaries catch only
+  when they can add a user-level message or preserve a successful primary action.
+- Shell commands print actionable failures to stderr and return nonzero. Native
+  Git, jq, fzf, tmux, and launcher exit codes must not be reported as success.
+- Structured mutation callers receive `Action`, `Target`, `Status`, `Changed`,
+  and `Error`; shell mutations print the equivalent one-line action result.
 
-## Overview
+## Validate Before Side Effects
 
-<!--
-Document your project's error handling conventions here.
+Follow `parse -> validate -> plan -> approve/preview -> execute -> aggregate`.
 
-Questions to answer:
-- What error types do you define?
-- How are errors propagated?
-- How are errors logged?
-- How are errors returned to clients?
--->
+- Parse all tokens before dependency checks or command dispatch.
+- Resolve project matches, config paths, workspaces, and status targets before
+  writing JSON, pushing Git, or launching external tools.
+- `-WhatIf` / `--dry-run` performs no writes or native side effects.
+- High-impact shell actions require `--yes`; never read approval from stdin.
 
-(To be filled by the team)
+## Partial Failure
 
----
+Batch status push and workspace launch continue safe later targets after one
+item fails. Report every target and return/emit an aggregate failure. Do not stop
+at the first item unless continuing could corrupt shared state.
 
-## Error Types
+Recent-project recording and optional update checks are secondary effects. A
+failure there may be verbose/warning output but must not undo a successful
+directory switch. Persistence or trust failures that protect security remain
+hard failures.
 
-<!-- Custom error classes/types -->
+## Redaction
 
-(To be filled by the team)
+Never include command-hook text, environment values, API keys, or full trust
+payloads in errors. Hook diagnostics identify project and state only. Installer
+and release scripts may test whether a secret variable exists but never print it.
 
----
+## Native Process Rules
 
-## Error Handling Patterns
+- Invoke native tools with argv, not concatenated command strings.
+- Capture and test `$LASTEXITCODE` / shell status before printing success.
+- Time-limited status probes surface `status timed out` and allow other repos to
+  complete.
+- A dependency missing from `PATH` names the dependency and stops before action.
 
-<!-- Try-catch patterns, error propagation -->
-
-(To be filled by the team)
-
----
-
-## API Error Responses
-
-<!-- Standard error response format -->
-
-(To be filled by the team)
-
----
-
-## Common Mistakes
-
-<!-- Error handling mistakes your team has made -->
-
-(To be filled by the team)
+Trusted examples: `src/PowerShell/Commands.ps1`, `src/Shell/Commands.sh`,
+`tests/cdp.SafeMutations.Tests.*`, and `tests/cdp.Shell.V2.Tests.sh`.

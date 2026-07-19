@@ -34,8 +34,8 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 * Follow the PowerShell coding style
 * Include comments in your code where necessary
 * Update the canonical English `README.md` and the Simplified Chinese `README_ZH.md` when applicable
-* Run the Pester test suite when changing PowerShell behavior
-* Ensure your code works on Windows (primary platform)
+* Run the repository-owned quality gate for every affected runtime/layer
+* Preserve PowerShell 5.1/7, bash/zsh, and Bash 3.2 compatibility where applicable
 
 ## Development Setup
 
@@ -54,7 +54,9 @@ git checkout -b feature/your-feature-name
 
 3. **Make your changes**
 
-The main module code is in `cdp/src/cdp.psm1`.
+PowerShell behavior lives in `src/PowerShell/*.ps1` and is loaded by the stable
+`src/cdp.psm1` bootstrap. Shell behavior lives in canonical `src/Shell/*.sh`
+fragments; regenerate `src/cdp.sh` with `scripts/Build-ShellScript.sh`.
 
 4. **Test your changes**
 
@@ -66,24 +68,39 @@ Import-Module ./cdp.psd1 -Force
 cdp doctor .\examples\projects.json
 Get-ProjectList
 
-# Run automated tests
-Import-Module Pester -MinimumVersion 5.5.0 -Force
-Invoke-Pester -Path ./tests -CI
+# Run pinned Pester, coverage, PSScriptAnalyzer, and release metadata
+.\scripts\Invoke-PowerShellQualityGate.ps1
+```
+
+```bash
+# Shell source/generated artifact and cross-shell behavior
+bash ./scripts/Build-ShellScript.sh --check
+bash ./tests/cdp.Shell.Modularization.Tests.sh
+bash ./tests/cdp.Shell.V2.Tests.sh
+
+# Package, documentation, media, and browser quality
+bash ./scripts/Test-ScoopPackage.sh
+node ./scripts/Test-Documentation.mjs
+pnpm --dir tests/web install --frozen-lockfile
+pnpm --dir tests/web test
 ```
 
 5. **Commit your changes**
 
 ```powershell
-git add .
-git commit -m "Add: Your descriptive commit message"
+git add <changed-files>
+git commit -m "feat: 增加简短功能说明"
 ```
 
-Use conventional commit messages:
-- `Add:` for new features
-- `Fix:` for bug fixes
-- `Update:` for updates to existing features
-- `Docs:` for documentation changes
-- `Refactor:` for code refactoring
+Use Conventional Commits with an optional scope and a concise Chinese summary
+(50 characters or fewer, no trailing period):
+
+- `feat: 增加项目能力`
+- `fix(status): 修复仓库状态判断`
+- `test(web): 增加官网回归`
+- `docs: 同步双语文档`
+- `refactor: 拆分内部模块`
+- `chore: 更新工程配置`
 
 6. **Push to your fork**
 
@@ -114,22 +131,33 @@ Go to the original repository and create a pull request from your fork.
 
 ```
 cdp/
+├── cdp.psd1                  # PowerShell manifest and canonical version
 ├── src/
-│   └── cdp.psm1      # Main module file
-├── tests/            # Pester tests
-├── docs/             # Additional documentation and video scripts
-├── cdp.psd1          # Module manifest
-└── Install.ps1       # Installation script
+│   ├── cdp.psm1              # Stable PowerShell bootstrap/export surface
+│   ├── PowerShell/*.ps1      # Bounded PowerShell domains
+│   ├── Shell/*.sh            # Canonical bash/zsh domains
+│   └── cdp.sh                # Generated single-file shell distribution
+├── scripts/                  # Build, quality, package, and release gates
+├── tests/                    # Pester, shell, Node, and Playwright tests
+├── docs/                     # Static website and governed media
+├── scoop/cdp.json            # Scoop release metadata
+├── Install.ps1               # PowerShell installer
+└── install-wsl.sh            # Verified shell installer
 ```
 
 ## Testing
 
-Automated tests use Pester 5+.
+CI pins Pester `5.7.1`, PSScriptAnalyzer `1.24.0`, pnpm `11.9.0`, and
+Playwright `1.61.1`. Use repository scripts instead of copying CI assertions.
 
 ```powershell
-Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
-Import-Module Pester -MinimumVersion 5.5.0 -Force
-Invoke-Pester -Path ./tests -CI
+.\scripts\Invoke-PowerShellQualityGate.ps1
+```
+
+```bash
+bash ./scripts/Build-ShellScript.sh --check
+bash ./scripts/Test-ScoopPackage.sh
+pnpm --dir tests/web test
 ```
 
 Manual testing checklist:
@@ -142,14 +170,18 @@ Manual testing checklist:
 - [ ] Test tab title update in Windows Terminal
 - [ ] Test with custom config path
 - [ ] Test `cdp doctor`
-- [ ] Test WSL/bash behavior if shell scripts changed
+- [ ] Test bash and zsh behavior if shell scripts changed
+- [ ] Test Bash 3.2 compatibility for shared shell changes
+- [ ] Run documentation/media/browser gates for website or docs changes
+- [ ] Verify deterministic package hash if `cdp.psd1` or packaged files changed
 
 ## Documentation
 
 * Update both `README.md` and `README_ZH.md` if you change functionality
 * Update function comment-based help
 * Add examples for new features
-* Update version numbers in cdp.psd1
+* Update `cdp.psd1` version and ReleaseNotes for module release changes
+* Keep `README_EN.md` as a redirect only
 
 ## Questions?
 

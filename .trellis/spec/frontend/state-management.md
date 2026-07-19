@@ -1,51 +1,43 @@
-# State Management
+# Frontend State Management
 
-> How state is managed in this project.
+`docs/script.js` owns one small in-memory state object:
 
----
+```text
+language, command, platform, navOpen, copyTimer
+```
 
-## Overview
+## Sources of Truth
 
-<!--
-Document your project's state management conventions here.
+- `language`: `localStorage['cdp-language']` when valid, otherwise English.
+- `command`: selected command scenario key, default `switch`.
+- `platform`: selected install option, default `powershell`.
+- `navOpen`: boolean controlled by toggle/link/Escape.
+- `copyTimer`: transient timer handle only.
 
-Questions to answer:
-- What state management solution do you use?
-- How is local vs global state decided?
-- How do you handle server state?
-- What are the patterns for derived state?
--->
+DOM attributes/classes render state; they are not a second source of truth.
+Always mutate state first, then call the owning renderer.
 
-(To be filled by the team)
+## Persistence
 
----
+Only the language preference persists in the browser. Handle localStorage read
+and write exceptions so privacy modes do not break the page. Command/platform/nav
+selection resets on reload by design.
 
-## State Categories
+## Translation Coupling
 
-<!-- Local state, global state, server state, URL state -->
+Changing language must update:
 
-(To be filled by the team)
+- `<html lang>`, title, description, and Open Graph metadata;
+- all `data-i18n` text and translated ARIA labels;
+- language pressed state;
+- command/install content and mobile-nav label;
+- English/Chinese documentation links.
 
----
+## Test Isolation
 
-## When to Use Global State
+Playwright creates a fresh context per test. Tests that modify viewport,
+permissions, localStorage, or media preferences keep those changes local. Do not
+make browser tests depend on execution order.
 
-<!-- Criteria for promoting state to global -->
-
-(To be filled by the team)
-
----
-
-## Server State
-
-<!-- How server data is cached and synchronized -->
-
-(To be filled by the team)
-
----
-
-## Common Mistakes
-
-<!-- State management mistakes your team has made -->
-
-(To be filled by the team)
+Do not introduce a state library, global variables outside the controller, or
+persist transient UI state without a product requirement.

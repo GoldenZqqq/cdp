@@ -397,6 +397,19 @@ Custom config format:
 
 `pinned`, `aliases`, and `tags` are optional; old configs without these fields are treated as unpinned and without metadata. Using `/` in JSON paths avoids escaping Windows backslashes.
 
+### State and Persistence Files
+
+| Path | Purpose | Ownership / override |
+| --- | --- | --- |
+| Active `projects.json` | Project names, paths, enabled state, metadata, and `onEnter` | Selected by discovery, `CDP_CONFIG`, or `cdp config` |
+| `~/.cdp/config` | Points to the explicitly selected project config | Written only by config selection |
+| `~/.cdp/state.json` | Recent-project timestamps and visit counts | Override with `CDP_STATE_PATH` for automation |
+| `workspaces.json` beside the active config | Named multi-project workspace definitions | Shared by PowerShell and bash/zsh |
+| `~/.cdp/hook-trust.json` | Versioned hook fingerprints and timestamps only | Override with `CDP_HOOK_TRUST_PATH` for isolated tests |
+| Sibling `*.cdp.lock` / `*.cdp-backup.*` | Concurrent-write exclusion and the three newest valid backups | Managed by the atomic persistence layer |
+
+Project paths remain in `projects.json`; recent state, workspace definitions, and hook trust are deliberately separate. This keeps Project Manager compatibility and prevents trusted command data from leaking into the public project list.
+
 ### Project Environment Hooks
 
 Structured environment values are applied when a project is entered. Environment variable names must use letters, digits, and underscores and cannot start with a digit:
@@ -537,17 +550,33 @@ Import-Module ./cdp.psd1 -Force
 # Run diagnostics
 cdp doctor .\examples\projects.json
 
-# Run tests
-Import-Module Pester -MinimumVersion 5.5.0 -Force
-Invoke-Pester -Path ./tests -CI
+# Run the pinned Pester, coverage, analyzer, and release-metadata gate
+.\scripts\Invoke-PowerShellQualityGate.ps1
+```
+
+```bash
+# Validate canonical shell fragments and the generated distribution
+bash ./scripts/Build-ShellScript.sh --check
+bash ./tests/cdp.Shell.Modularization.Tests.sh
+bash ./tests/cdp.Shell.V2.Tests.sh
+
+# Validate the deterministic release archive
+bash ./scripts/Test-ScoopPackage.sh
+
+# Validate documentation, media policy, and real Chromium interactions
+node ./scripts/Test-Documentation.mjs
+pnpm --dir tests/web install --frozen-lockfile
+pnpm --dir tests/web exec playwright install chromium
+pnpm --dir tests/web test
 ```
 
 CI covers:
 
 - Windows PowerShell 5.1
 - PowerShell 7.x
-- Ubuntu bash smoke test
-- macOS zsh smoke test
+- Chromium website and documentation smoke
+- Ubuntu bash, shell quality, package, performance, and fixed-image Bash 3.2 regression tests
+- macOS bash/zsh smoke and installer tests
 
 ---
 
@@ -569,6 +598,10 @@ CI covers:
 - [x] `cdp init` first-run setup wizard
 - [x] Project tags / aliases
 - [x] `cdp status` multi-project Git status dashboard
+- [x] Multi-project workspace definitions and launcher integration
+- [x] Atomic JSON persistence, safe mutations, and project-scoped hook trust
+- [x] Bounded concurrent status collection with timeouts, cache, and benchmarks
+- [x] Repository-owned coverage, package, documentation, browser, and media quality gates
 - [x] Native macOS support (zsh + bash)
 - [x] Intelligent tab completion (PowerShell + bash + zsh)
 
@@ -587,12 +620,12 @@ Import-Module ./cdp.psd1 -Force
 Invoke-Pester -Path ./tests -CI
 ```
 
-Suggested commit messages:
+Use Conventional Commits with a short Chinese summary:
 
 ```text
-Add: 添加项目健康检查命令
-Fix: 修复 WSL 路径转换
-Docs: 重写快速开始说明
+feat: 增加项目健康检查
+fix: 修复 WSL 路径转换
+docs: 同步双语使用说明
 ```
 
 ---

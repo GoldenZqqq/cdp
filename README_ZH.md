@@ -397,6 +397,19 @@ cdp-scan E:\Projects --yes
 
 `pinned`、`aliases`、`tags` 都是可选字段；旧配置没有这些字段时会按未置顶、无别名、无标签处理。建议在 JSON 中使用 `/`，避免 Windows 反斜杠转义。
 
+### 状态与持久化文件
+
+| 路径 | 用途 | 所有权 / 覆盖方式 |
+| --- | --- | --- |
+| 当前 `projects.json` | 项目名、路径、启用状态、元数据和 `onEnter` | 由自动发现、`CDP_CONFIG` 或 `cdp config` 选择 |
+| `~/.cdp/config` | 指向显式选择的项目配置 | 仅由配置选择命令写入 |
+| `~/.cdp/state.json` | 最近访问时间与访问次数 | 自动化可用 `CDP_STATE_PATH` 覆盖 |
+| 当前配置同目录的 `workspaces.json` | 命名的多项目 workspace 定义 | PowerShell 与 bash/zsh 共享 |
+| `~/.cdp/hook-trust.json` | 只保存带版本的 Hook 指纹与时间戳 | 隔离测试可用 `CDP_HOOK_TRUST_PATH` 覆盖 |
+| 同目录 `*.cdp.lock` / `*.cdp-backup.*` | 并发写入互斥与最新三份有效备份 | 由原子持久化层管理 |
+
+项目路径仍保存在 `projects.json`；最近状态、workspace 定义与 Hook 信任刻意分离，从而保持 Project Manager 兼容，并避免可信命令数据进入公开项目列表。
+
 ### 项目环境 Hook
 
 进入项目时会应用结构化环境变量。环境变量名只能包含字母、数字和下划线，且不能以数字开头：
@@ -537,17 +550,33 @@ Import-Module ./cdp.psd1 -Force
 # 运行诊断
 cdp doctor .\examples\projects.json
 
-# 运行测试
-Import-Module Pester -MinimumVersion 5.5.0 -Force
-Invoke-Pester -Path ./tests -CI
+# 运行固定版本的 Pester、覆盖率、Analyzer 与发布元数据门禁
+.\scripts\Invoke-PowerShellQualityGate.ps1
+```
+
+```bash
+# 验证 canonical shell 分片与生成的发行文件
+bash ./scripts/Build-ShellScript.sh --check
+bash ./tests/cdp.Shell.Modularization.Tests.sh
+bash ./tests/cdp.Shell.V2.Tests.sh
+
+# 验证确定性发布包
+bash ./scripts/Test-ScoopPackage.sh
+
+# 验证文档、媒体策略与真实 Chromium 交互
+node ./scripts/Test-Documentation.mjs
+pnpm --dir tests/web install --frozen-lockfile
+pnpm --dir tests/web exec playwright install chromium
+pnpm --dir tests/web test
 ```
 
 CI 覆盖：
 
 - Windows PowerShell 5.1
 - PowerShell 7.x
-- Ubuntu bash smoke test
-- macOS zsh smoke test
+- Chromium 官网与文档 smoke
+- Ubuntu bash、shell 质量、发布包、性能与固定镜像 Bash 3.2 回归
+- macOS bash/zsh smoke 与安装器测试
 
 ---
 
@@ -569,6 +598,10 @@ CI 覆盖：
 - [x] `cdp init` 首次使用向导
 - [x] 项目标签 / 别名
 - [x] `cdp status` 多项目 Git 状态仪表盘
+- [x] 多项目 workspace 定义与 launcher 集成
+- [x] 原子 JSON 持久化、安全变更与项目级 Hook 信任
+- [x] 有限并发 status、超时、缓存与基准测试
+- [x] 仓库自有覆盖率、发布包、文档、浏览器与媒体质量门禁
 - [x] macOS 原生支持（zsh + bash）
 - [x] 智能 Tab 补全（PowerShell + bash + zsh）
 
@@ -587,12 +620,12 @@ Import-Module ./cdp.psd1 -Force
 Invoke-Pester -Path ./tests -CI
 ```
 
-提交信息建议：
+使用 Conventional Commits，并采用简短中文摘要：
 
 ```text
-Add: 添加项目健康检查命令
-Fix: 修复 WSL 路径转换
-Docs: 重写快速开始说明
+feat: 增加项目健康检查
+fix: 修复 WSL 路径转换
+docs: 同步双语使用说明
 ```
 
 ---

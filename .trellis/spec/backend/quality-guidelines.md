@@ -707,6 +707,7 @@ powershell.exe -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
 pwsh -File scripts/Invoke-PowerShellQualityGate.ps1 [-CoverageThreshold 60]
 bash scripts/Test-ScoopPackage.sh [<output.tar.gz>]
 node scripts/Test-WebAssets.mjs
+node scripts/Test-Documentation.mjs
 pnpm --dir tests/web test
 ```
 

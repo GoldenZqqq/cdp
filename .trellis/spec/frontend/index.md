@@ -1,39 +1,35 @@
 # Frontend Development Guidelines
 
-> Best practices for frontend development in this project.
-
----
-
-## Overview
-
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
-
----
+The frontend is the dependency-free static GitHub Pages site under `docs/` plus
+its Node/Playwright quality tooling. Production has no bundler or component
+framework; semantic HTML, layered CSS, and one DOM controller are the runtime.
 
 ## Guidelines Index
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Static website smoke, accessibility, local resources, and media budgets | Active |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| [Directory Structure](./directory-structure.md) | Static page, CSS layers, media, source renders, and browser tests | Active |
+| [Component Guidelines](./component-guidelines.md) | Semantic page regions, data-attribute contracts, tabs, navigation, and status UI | Active |
+| [DOM Lifecycle](./hook-guidelines.md) | Event binding, initialization order, keyboard handling, and cleanup assumptions | Active |
+| [State Management](./state-management.md) | Language, selected tabs, mobile navigation, clipboard timer, and localStorage | Active |
+| [Quality Guidelines](./quality-guidelines.md) | Chromium smoke, accessibility, resources, and media budgets | Active |
+| [Runtime Contracts](./type-safety.md) | Translation keys, data attributes, policy JSON, null checks, and validation | Active |
 
----
+## Pre-Development Checklist
 
-## How to Fill These Guidelines
+1. Read `PRODUCT.md` and `DESIGN.md` before changing the public site.
+2. Read directory/component/state/lifecycle guidance for HTML/CSS/JS edits.
+3. Read runtime contracts before adding translation keys or data attributes.
+4. Read quality guidance before adding media or browser behavior.
+5. Preserve no-JavaScript readability and reduced-motion behavior.
 
-For each guideline file:
+## Quality Check
 
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
+```bash
+pnpm --dir tests/web install --frozen-lockfile
+pnpm --dir tests/web test
+node scripts/Test-WebAssets.mjs
+node scripts/Test-Documentation.mjs
+```
 
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+Also parse workflow/policy JSON/YAML and run `git diff --check`.

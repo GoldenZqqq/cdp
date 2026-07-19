@@ -16,6 +16,7 @@ pnpm --dir tests/web run test:assets
 pnpm --dir tests/web run test:browser
 pnpm --dir tests/web test
 node scripts/Test-WebAssets.mjs
+node scripts/Test-Documentation.mjs
 node --check docs/script.js
 ```
 

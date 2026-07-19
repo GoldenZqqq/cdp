@@ -1,51 +1,51 @@
-# Logging Guidelines
+# Output and Diagnostics
 
-> How logging is done in this project.
+cdp is an interactive CLI, not a daemon. Output is a user contract rather than
+an application log stream.
 
----
+## PowerShell Output
 
-## Overview
+- Use `Write-Host` for formatted interactive tables, headers, progress summaries,
+  and color. Use Red for errors, Yellow for warnings, Green for success, Cyan for
+  headers, and Gray/DarkGray for secondary detail.
+- Return objects only for explicit structured modes such as `-PassThru`; do not
+  mix accidental pipeline objects into display commands.
+- Use `Write-Verbose` for optional best-effort diagnostics, such as recent-state
+  recording failures.
+- Tests that assert host text capture the information stream with `6>&1`.
 
-<!--
-Document your project's logging conventions here.
+## Shell Output
 
-Questions to answer:
-- What logging library do you use?
-- What are the log levels and when to use each?
-- What should be logged?
-- What should NOT be logged (PII, secrets)?
--->
+- stdout carries normal command results and action records.
+- stderr carries errors, warnings that automation must notice, and live status
+  progress. Clear carriage-return progress before final rows.
+- Keep human output comparable to PowerShell, but do not copy ANSI/platform code
+  when native shell patterns are clearer.
 
-(To be filled by the team)
+## Structured Action Results
 
----
+Mutation results use stable fields/labels:
 
-## Log Levels
+```text
+action=<verb> target=<identity> status=<preview|succeeded|failed|cancelled>
+changed=<true|false> [error=<redacted message>]
+```
 
-<!-- When to use each level: debug, info, warn, error -->
+PowerShell objects use the same semantics with property casing. A preview is not
+success, and `Changed` is false for preview/cancel/failure.
 
-(To be filled by the team)
+## Secret and Hook Redaction
 
----
+- Never print hook command text or environment values.
+- Trust lists show project, platform kind, and trusted/stale/untrusted only.
+- Never print Gallery API keys, authorization headers, or secret-bearing paths.
+- Tests use recognizable secret markers and assert they are absent from output.
 
-## Structured Logging
+## CI Diagnostics
 
-<!-- Log format, required fields -->
+Repository scripts print named stages (`Pester`, coverage, analyzer, metadata,
+package, assets) so workflow failures identify the layer. CI uploads reports
+instead of increasing console verbosity with copied assertions.
 
-(To be filled by the team)
-
----
-
-## What to Log
-
-<!-- Important events to log -->
-
-(To be filled by the team)
-
----
-
-## What NOT to Log
-
-<!-- Sensitive data, PII, secrets -->
-
-(To be filled by the team)
+Avoid debug `echo`, unconditional object dumps, swallowed native errors, and
+success messages emitted before the side effect has been verified.

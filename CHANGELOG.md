@@ -25,6 +25,9 @@
 - Added deterministic Scoop package content/hash validation, negative gate fixtures, CI report artifacts, immutable Bash 3.2 image selection, and explicit job timeouts.
 - Added pinned Chromium smoke for website language, tabs, copy, mobile navigation, keyboard focus, accessibility semantics, and reduced motion.
 - Added executable local-resource and media budgets with negative fixtures, exact legacy baselines, and a non-destructive migration policy.
+- Replaced backend/frontend Trellis templates with source-backed PowerShell, shell, JSON persistence, static-site, and quality contracts.
+- Added a documentation synchronization gate for bilingual README structure, manifest command coverage, spec placeholders, and stale contributor guidance.
+- Refreshed README, CONTRIBUTING, AGENTS, and CLAUDE architecture, state-file, validation, and Conventional Commits guidance for v2.1.0.
 
 ## 2.0.5
 

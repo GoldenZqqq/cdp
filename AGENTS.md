@@ -55,44 +55,63 @@ Get-Module cdp | Format-List
 
 ### Module Structure
 
-- **cdp.psd1**: Module manifest defining metadata, version, exports (functions: `Switch-Project`, `Get-ProjectList`; alias: `cdp`)
-- **src/cdp.psm1**: Core implementation with all functions
-- **Install.ps1**: Installation script that automatically installs fzf (if needed) and copies module to PowerShell modules directory
+- **cdp.psd1**: Canonical PowerShell version, metadata, functions, and aliases.
+- **src/cdp.psm1**: Stable bootstrap that initializes module state, loads ordered `src/PowerShell/*.ps1` domains, and exports the public surface.
+- **src/PowerShell/*.ps1**: Config, state, parser, projects, status, workspace, hooks, completion, health, and other bounded PowerShell domains.
+- **src/Shell/*.sh**: Canonical bash/zsh domain sources. Edit these instead of the generated distribution.
+- **src/cdp.sh**: Deterministically generated single-file shell artifact used by source/offline installs.
+- **scripts/**: Repository-owned build, quality, benchmark, package, documentation, and release validation.
+- **tests/**: Pester, bash/zsh/Bash 3.2, Node, and Playwright regression suites.
+- **Install.ps1 / install-wsl.sh**: PowerShell and verified shell installer entries.
 
 ### Configuration Discovery Logic
 
-The module searches for project configuration in priority order:
+An explicit `-ConfigPath` / positional config always wins. Otherwise discovery
+uses this priority without persisting a choice:
 
-1. `-ConfigPath` parameter (explicit override)
-2. `$env:CDP_CONFIG` environment variable
-3. Cursor Project Manager: `$env:APPDATA\Cursor\User\globalStorage\alefragnani.project-manager\projects.json`
-4. VS Code Project Manager: `$env:APPDATA\Code\User\globalStorage\alefragnani.project-manager\projects.json`
+1. `$env:CDP_CONFIG`
+2. Saved explicit selection from `~/.cdp/config`
+3. Cursor Project Manager
+4. VS Code Project Manager
+5. Custom `~/.cdp/projects.json`
 
-See src/cdp.psm1:61-87 for implementation.
+PowerShell ownership: `src/PowerShell/Config.ps1`. Shell ownership:
+`src/Shell/Config.sh`. Only `Set-ProjectConfig` / `cdp-config` writes the saved
+selection.
 
-### Core Functions
+### Core Execution Flows
 
-**Switch-Project (alias: cdp)**
-- Validates fzf installation (src/cdp.psm1:49-54)
-- Discovers config path using priority logic (src/cdp.psm1:61-87)
-- Parses JSON and filters enabled projects (src/cdp.psm1:95-108)
-- Launches fzf with UTF-8 encoding handling (src/cdp.psm1:110-125)
-- Changes directory and updates terminal tab title using ANSI escape sequences (src/cdp.psm1:128-143)
+- `Invoke-Cdp` / `cdp`: parse once in `Parser.ps1` / `Commands.sh`, then dispatch to switch, status, workspace, health, metadata, scan, config, or hook management.
+- `Switch-Project`: resolve config, normalize project matches, use fzf only when needed, switch directory, record recent state, apply authorized onEnter behavior, and optionally launch a tool.
+- `Show-CdpProjectStatus` / `cdp-status`: collect porcelain-v2 Git state with bounded workers, timeouts, optional TTL cache, and safe fix/push actions.
+- `Invoke-CdpWorkspace` / `cdp-workspace`: persist named project groups beside the active config and launch through argv-safe platform adapters.
+- JSON writes: use the shared atomic persistence boundary with fingerprints, locks, sibling temporary files, and bounded backups.
 
-**Get-ProjectList**
-- Uses same config discovery logic
-- Displays formatted list of enabled projects with paths
+PowerShell and shell features must remain behaviorally aligned, but each runtime
+keeps native implementation patterns and its own regression entry.
 
 ### JSON Config Format
 
-Projects are defined as JSON objects with three fields:
+Projects are defined as JSON objects with required identity fields and optional
+cdp metadata:
 ```json
 {
-  "name": "Display name in fzf menu",
-  "rootPath": "Absolute path (use \\\\ or / for Windows)",
-  "enabled": true/false
+  "name": "api",
+  "rootPath": "E:/Projects/api",
+  "enabled": true,
+  "pinned": false,
+  "aliases": ["backend"],
+  "tags": ["work"],
+  "onEnter": {
+    "env": { "NODE_ENV": "development" },
+    "powershell": "$env:API_PROFILE = 'local'",
+    "bash": "export API_PROFILE=local"
+  }
 }
 ```
+
+Recent state, workspace definitions, active selection, and hook trust remain in
+separate files; see README state/persistence tables and backend Trellis specs.
 
 ## PowerShell Compatibility
 
@@ -118,11 +137,14 @@ Projects are defined as JSON objects with three fields:
 
 ## Commit Message Format
 
-- `Add:` for new features
-- `Fix:` for bug fixes
-- `Update:` for updates to existing features
-- `Docs:` for documentation changes
-- `Refactor:` for code refactoring
+Use Conventional Commits: `<type>(scope): <summary>`.
+
+- Scope is optional.
+- Summary is concise Chinese, starts with a verb, is at most 50 characters, and has no trailing period.
+- Common types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`.
+
+Examples: `feat: 增加项目能力`, `fix(status): 修复仓库判断`,
+`test(web): 增加官网回归`.
 
 ## CRITICAL Development Guidelines
 
@@ -227,10 +249,27 @@ Before committing ANY change, verify:
 **Required local validation before the release commit**:
 
 ```powershell
-powershell -NoLogo -NoProfile -Command "Import-Module Pester -MinimumVersion 5.5.0 -Force; Invoke-Pester -Path ./tests -CI"
-pwsh -NoLogo -NoProfile -Command "Import-Module Pester -MinimumVersion 5.5.0 -Force; Invoke-Pester -Path ./tests -CI"
-pwsh -NoLogo -NoProfile -Command '$results = Invoke-ScriptAnalyzer -Path ./src/cdp.psm1 -Severity Error; if ($results) { $results | Format-Table -AutoSize; throw "PSScriptAnalyzer found errors." } else { "PSScriptAnalyzer: no errors" }'
-wsl -d Arch -- bash -lc 'cd /mnt/c/Learn/cdp && bash -n ./src/cdp.sh && bash -n ./install-wsl.sh && echo bash syntax: ok'
+powershell -NoLogo -NoProfile -File .\scripts\Invoke-PowerShellQualityGate.ps1 -ReportDirectory .\artifacts\powershell-51
+pwsh -NoLogo -NoProfile -File .\scripts\Invoke-PowerShellQualityGate.ps1 -ReportDirectory .\artifacts\powershell-7
+```
+
+```bash
+bash ./scripts/Build-ShellScript.sh --check
+shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/*.sh ./tests/*.Tests.sh
+bash ./tests/cdp.Shell.Modularization.Tests.sh
+bash ./tests/cdp.Cli.Tests.sh
+bash ./tests/cdp.Status.Tests.sh
+bash ./tests/cdp.Status.Performance.Tests.sh
+bash ./tests/cdp.SafeMutations.Tests.sh
+bash ./tests/cdp.Shell.V2.Tests.sh
+bash ./tests/cdp.Persistence.Tests.sh
+zsh ./tests/cdp.Shell.V2.Tests.sh
+zsh ./tests/cdp.Persistence.Tests.sh
+bash ./tests/cdp.Installer.Tests.sh
+bash ./scripts/Test-ScoopPackage.sh
+node ./scripts/Test-Documentation.mjs
+pnpm --dir tests/web install --frozen-lockfile
+pnpm --dir tests/web test
 git diff --check
 ```
 
@@ -341,22 +380,25 @@ When making changes, manually test:
 ### Adding New Configuration Sources
 
 When adding support for new project management tools:
-1. Add path detection in the config discovery logic (src/cdp.psm1:68-86)
-2. Update the error message with the new path (src/cdp.psm1:77-84)
-3. Test with both existing and new config sources
+1. Update both `src/PowerShell/Config.ps1` and `src/Shell/Config.sh`.
+2. Keep automatic discovery read-only; persistence belongs to explicit config selection.
+3. Update diagnostics and both README files.
+4. Test existing and new sources in PowerShell and shell regressions.
 
 ### Adding New Functions
 
-1. Add function to src/cdp.psm1
+1. Add the function to the narrowest `src/PowerShell/*.ps1` domain.
 2. Include comment-based help with .SYNOPSIS, .DESCRIPTION, .PARAMETER, .EXAMPLE
 3. Export in cdp.psd1 under `FunctionsToExport`
 4. Add alias in `AliasesToExport` if needed
-5. Update the command list in both README.md and README_ZH.md
-6. Test import: `Import-Module ./cdp.psd1 -Force`
+5. Add the equivalent shell route/domain behavior when user-facing.
+6. Update command lists in both README files; the documentation gate checks manifest coverage.
+7. Run the PowerShell, shell, documentation, package, and release-metadata gates.
 
 ### Modifying fzf Options
 
-fzf configuration is in src/cdp.psm1:116-121. Options:
+fzf configuration lives in `src/PowerShell/Picker.ps1` and
+`src/Shell/Picker.sh`. Options include:
 - `--prompt`: Search prompt text
 - `--height`: Menu height (percentage or lines)
 - `--layout`: reverse, default
@@ -367,4 +409,6 @@ Users can override via `$env:FZF_DEFAULT_OPTS` environment variable.
 
 ## Version Management
 
-Update version in cdp.psd1:13 using semantic versioning (MAJOR.MINOR.PATCH).
+Update the `ModuleVersion` field in `cdp.psd1` using semantic versioning
+(MAJOR.MINOR.PATCH), then synchronize every release mirror through the release
+metadata workflow.

@@ -122,6 +122,8 @@ v2.1.0 - Engineering Foundation
 - Added: deliberate failure fixtures for coverage, package hash, release metadata, and shell installer integrity gates
 - Added: pinned Chromium smoke for website language, tabs, copy, mobile navigation, accessibility semantics, keyboard focus, and reduced motion
 - Added: executable website resource and media budgets with exact legacy baselines and a non-destructive migration plan
+- Added: bilingual README structure, manifest command coverage, Trellis placeholder, and stale-guidance documentation gates
+- Improved: Trellis specs, README, CONTRIBUTING, AGENTS, and CLAUDE now describe the modular v2.1.0 architecture and complete validation workflow
 - Refactored: PowerShell implementation is loaded from bounded domain files with a stable bootstrap/export surface
 - Refactored: bash/zsh domain fragments deterministically generate the verified single-file installer artifact
 
