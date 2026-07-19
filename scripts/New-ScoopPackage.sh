@@ -15,6 +15,15 @@ cp "$repo_root/cdp.psd1" "$repo_root/Install.ps1" "$package_root/"
 cp "$repo_root/scripts/Cdp.Installation.ps1" "$package_root/scripts/"
 cp -R "$repo_root/src/." "$package_root/src/"
 
+# Git checkout settings can produce mixed CRLF/LF PowerShell files locally.
+# Normalize staged text to LF so the release asset hash is reproducible on
+# Windows, Linux, and macOS regardless of the caller's working-tree settings.
+while IFS= read -r -d '' text_file; do
+    normalized_file="$text_file.normalized"
+    sed 's/\r$//' "$text_file" > "$normalized_file"
+    mv "$normalized_file" "$text_file"
+done < <(find "$package_root" -type f \( -name '*.ps1' -o -name '*.psd1' -o -name '*.psm1' -o -name '*.sh' \) -print0)
+
 tar --sort=name \
     --mtime='UTC 2000-01-01' \
     --owner=0 --group=0 --numeric-owner \

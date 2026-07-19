@@ -29,6 +29,22 @@ assert_contains() {
     esac
 }
 
+assert_project_names() {
+    local config_path="$1"
+    local expected="$2"
+    local actual
+    actual=$(jq -c 'map(.name)' "$config_path") || {
+        echo "Unable to parse project config: $config_path" >&2
+        cat "$config_path" >&2
+        return 1
+    }
+    if [[ "$actual" != "$expected" ]]; then
+        echo "Expected project names $expected, got $actual in $config_path" >&2
+        cat "$config_path" >&2
+        return 1
+    fi
+}
+
 source_repo="$test_root/worktree-source"
 linked_worktree="$test_root/linked-worktree"
 init_repo "$source_repo"
@@ -101,14 +117,20 @@ printf '[
     "$test_root/shared-missing" > "$fix_config"
 
 cdp-status --fix --dry-run "$fix_config" >/dev/null
-jq -e 'map(.name) == ["Existing", "EnabledMissing", "DisabledMissing"]' "$fix_config" >/dev/null
-if cdp-status --fix "$fix_config" >/dev/null 2>&1; then
+assert_project_names "$fix_config" '["Existing","EnabledMissing","DisabledMissing"]'
+set +e
+denied_output=$(cdp-status --fix "$fix_config" 2>&1)
+denied_status=$?
+set -e
+if [[ $denied_status -eq 0 ]]; then
     echo "status --fix should require --yes" >&2
+    echo "$denied_output" >&2
     exit 1
 fi
-jq -e 'map(.name) == ["Existing", "EnabledMissing", "DisabledMissing"]' "$fix_config" >/dev/null
+assert_contains "$denied_output" "Action requires explicit confirmation"
+assert_project_names "$fix_config" '["Existing","EnabledMissing","DisabledMissing"]'
 cdp-status --fix --yes "$fix_config" >/dev/null
-jq -e 'map(.name) == ["Existing", "DisabledMissing"]' "$fix_config" >/dev/null
+assert_project_names "$fix_config" '["Existing","DisabledMissing"]'
 
 converted=$(convert_windows_to_wsl 'C:\Work\api')
 [[ "$converted" == '/mnt/c/Work/api' ]]
