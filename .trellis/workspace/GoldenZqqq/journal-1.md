@@ -343,3 +343,36 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: 完成 v2.1.0 status 性能优化
+
+**Date**: 2026-07-19
+**Task**: 完成 v2.1.0 status 性能优化
+**Branch**: `main`
+
+### Summary
+
+使用 porcelain-v2、有限并发、超时、可选 TTL 缓存与 refresh 优化 PowerShell/bash/zsh status；补齐 benchmark、跨 shell 回归、CI、双语文档、规范和发布摘要。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `89fed0b` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
