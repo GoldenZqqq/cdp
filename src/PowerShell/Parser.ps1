@@ -24,6 +24,8 @@ function New-CdpInvocation {
         TagFilter = $null
         WorkspaceAction = $null
         WorkspaceName = $null
+        WorkspaceLayout = $null
+        ClearOpen = $false
         Projects = @()
         Name = $null
         Value = $null
@@ -175,38 +177,108 @@ function ConvertFrom-CdpStatusTokens {
     $result
 }
 
+function Split-CdpWorkspaceOptions {
+    param([string[]]$Tokens)
+
+    $result = [PSCustomObject]@{ Tokens=@(); Layout=$null; ClearOpen=$false; Fix=$false }
+    $items = New-Object 'System.Collections.Generic.List[string]'
+    for ($i = 0; $i -lt $Tokens.Count; $i++) {
+        if ($Tokens[$i] -in @('--layout', '-layout')) {
+            if ($i + 1 -ge $Tokens.Count) { throw 'Missing value after --layout.' }
+            if ($result.Layout) { throw 'The --layout option was specified more than once.' }
+            $result.Layout = $Tokens[++$i]
+        } elseif ($Tokens[$i] -in @('--clear-open', '-clear-open')) { $result.ClearOpen = $true }
+        elseif ($Tokens[$i] -in @('--fix', '-fix')) { $result.Fix = $true }
+        else { $items.Add($Tokens[$i]) }
+    }
+    $result.Tokens = @($items)
+    $result
+}
+
+function Set-CdpWorkspaceReadAction {
+    param([object]$Result, [string]$Action, [string[]]$Tokens, [string]$Open, [bool]$DryRun, [bool]$Yes)
+
+    if ($Action -eq 'list') {
+        if ($DryRun -or $Yes) { throw 'Workspace --list does not accept safety options.' }
+        if ($Open) { throw 'The --open option is not valid with workspace --list.' }
+        if ($Tokens.Count -ne 1) { throw 'Workspace --list does not accept project arguments.' }
+    } else {
+        if ($Tokens.Count -ne 2) { throw "Workspace $Action requires one workspace name." }
+        if ($Open -or $Result.WorkspaceLayout -or $Result.ClearOpen -or $Result.Fix) { throw "Workspace $Action does not accept update options." }
+        if (($DryRun -or $Yes) -and $Action -eq 'show') { throw 'Workspace show does not accept safety options.' }
+        $Result.WorkspaceName = $Tokens[1]
+    }
+    $Result.WorkspaceAction = $Action
+    $Result
+}
+
+function Set-CdpWorkspaceValidateAction {
+    param([object]$Result, [string[]]$Tokens, [string]$Open, [bool]$DryRun, [bool]$Yes)
+
+    if ($Tokens.Count -gt 2) { throw 'Workspace validate accepts at most one workspace name.' }
+    if ($Open -or $Result.WorkspaceLayout -or $Result.ClearOpen) { throw 'Workspace validate does not accept launcher or layout options.' }
+    if (($DryRun -or $Yes) -and -not $Result.Fix) { throw 'Workspace validate safety options require --fix.' }
+    $Result.WorkspaceAction = 'validate'
+    if ($Tokens.Count -eq 2) { $Result.WorkspaceName = $Tokens[1] }
+    $Result
+}
+
+function Set-CdpWorkspaceWriteAction {
+    param([object]$Result, [string]$Action, [string[]]$Tokens, [string]$Open)
+
+    if ($Action -eq 'add') {
+        if ($Tokens.Count -lt 3) { throw 'Workspace --add requires a name and at least one project.' }
+        if ($Result.ClearOpen -or $Result.Fix) { throw 'Workspace add does not accept --clear-open or --fix.' }
+    } else {
+        if ($Tokens.Count -lt 2) { throw 'Workspace edit requires one workspace name.' }
+        if ($Result.Fix) { throw 'Workspace edit does not accept --fix.' }
+        if ($Open -and $Result.ClearOpen) { throw 'Workspace --open and --clear-open cannot be used together.' }
+    }
+    $Result.WorkspaceAction = $Action
+    $Result.WorkspaceName = $Tokens[1]
+    $Result.Projects = @($Tokens | Select-Object -Skip 2)
+    if ($Action -eq 'edit' -and $Result.Projects.Count -eq 0 -and -not $Open -and -not $Result.ClearOpen -and -not $Result.WorkspaceLayout) {
+        throw 'Workspace edit requires projects or an open/layout update.'
+    }
+    $Result
+}
+
 function ConvertFrom-CdpWorkspaceTokens {
     param([string[]]$Tokens, [string]$ConfigPath, [string]$Open, [bool]$DryRun, [bool]$Yes)
 
-    $result = New-CdpInvocation -Kind 'workspace'
+    $result = New-CdpInvocation -Kind "workspace"
     $result.ConfigPath = $ConfigPath
     $result.Open = $Open
     $result.DryRun = $DryRun
     $result.Yes = $Yes
+    $options = Split-CdpWorkspaceOptions -Tokens $Tokens
+    $result.WorkspaceLayout = $options.Layout
+    $result.ClearOpen = $options.ClearOpen
+    $result.Fix = $options.Fix
+    $Tokens = @($options.Tokens)
     if ($Tokens.Count -eq 0) {
         if ($DryRun -or $Yes) { throw "Workspace safety options require --add or a workspace name." }
         if ($Open) { throw "The --open option requires a workspace name or --add action." }
-        $result.WorkspaceAction = 'usage'
+        $result.WorkspaceAction = "usage"
         return $result
     }
     $action = $Tokens[0].ToLowerInvariant()
-    if ($action -in @('--list', '-l', 'list')) {
-        if ($DryRun -or $Yes) { throw "Workspace --list does not accept safety options." }
-        if ($Open) { throw "The --open option is not valid with workspace --list." }
-        if ($Tokens.Count -ne 1) { throw "Workspace --list does not accept project arguments." }
-        $result.WorkspaceAction = 'list'
-        return $result
-    }
-    if ($action -in @('--add', '-a', 'add')) {
-        if ($Tokens.Count -lt 3) { throw "Workspace --add requires a name and at least one project." }
-        $result.WorkspaceAction = 'add'
+    if ($action -in @("--list", "-l", "list")) { return Set-CdpWorkspaceReadAction $result list $Tokens $Open $DryRun $Yes }
+    if ($action -in @("show", "remove")) { return Set-CdpWorkspaceReadAction $result $action $Tokens $Open $DryRun $Yes }
+    if ($action -eq "validate") { return Set-CdpWorkspaceValidateAction $result $Tokens $Open $DryRun $Yes }
+    if ($action -in @("--add", "-a", "add")) { return Set-CdpWorkspaceWriteAction $result add $Tokens $Open }
+    if ($action -eq "edit") { return Set-CdpWorkspaceWriteAction $result edit $Tokens $Open }
+    if ($action -eq "open") {
+        if ($Tokens.Count -ne 2) { throw "Workspace open requires one workspace name." }
+        if ($result.WorkspaceLayout -or $result.ClearOpen -or $result.Fix) { throw "Workspace open does not accept layout/update options." }
+        $result.WorkspaceAction = "open"
         $result.WorkspaceName = $Tokens[1]
-        $result.Projects = @($Tokens | Select-Object -Skip 2)
         return $result
     }
     if ($Tokens.Count -ne 1) { throw "Workspace launch accepts one workspace name." }
-    if ($Tokens[0].StartsWith('-')) { throw "Unknown workspace option: $($Tokens[0])" }
-    $result.WorkspaceAction = 'open'
+    if ($Tokens[0].StartsWith("-")) { throw "Unknown workspace option: $($Tokens[0])" }
+    if ($result.WorkspaceLayout -or $result.ClearOpen -or $result.Fix) { throw "Workspace launch does not accept layout/update options." }
+    $result.WorkspaceAction = "open"
     $result.WorkspaceName = $Tokens[0]
     $result
 }

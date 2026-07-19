@@ -221,15 +221,22 @@ Describe 'cdp v2 workspace behavior' {
     It 'persists and lists workspace projects with a default launcher' {
         $configPath = Join-Path $TestDrive 'workspace-projects.json'
         $workspacesPath = Join-Path $TestDrive 'workspaces.json'
-        '[]' | Set-Content -LiteralPath $configPath -Encoding UTF8
+        $apiPath = Join-Path $TestDrive 'workspace-api'
+        $webPath = Join-Path $TestDrive 'workspace-web'
+        New-Item -ItemType Directory -Path $apiPath, $webPath -Force | Out-Null
+        Write-TestConfigV2 -Path $configPath -Projects @(
+            [PSCustomObject]@{ name = 'api'; rootPath = $apiPath; enabled = $true },
+            [PSCustomObject]@{ name = 'web'; rootPath = $webPath; enabled = $true }
+        )
 
-        Invoke-CdpWorkspace -Add 'fullstack' -Projects @('api', 'web') -Open 'codex' -ConfigPath $configPath
+        Invoke-CdpWorkspace -Add 'fullstack' -Projects @('api', 'web') -Open 'codex' -ConfigPath $configPath -Confirm:$false
         $output = @(& { Invoke-CdpWorkspace -List -ConfigPath $configPath } 6>&1) -join [Environment]::NewLine
         $workspaces = @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $workspacesPath -Raw -Encoding UTF8))
 
         $workspaces.Count | Should -Be 1
         $workspaces[0].name | Should -Be 'fullstack'
-        @($workspaces[0].projects) | Should -Be @('api', 'web')
+        @($workspaces[0].projects.name) | Should -Be @('api', 'web')
+        @($workspaces[0].projects.rootPath) | Should -Be @($apiPath, $webPath)
         $workspaces[0].open | Should -Be 'codex'
         $output | Should -Match 'fullstack'
         $output | Should -Match '\[codex\]'
@@ -244,9 +251,9 @@ Describe 'cdp v2 workspace behavior' {
             [PSCustomObject]@{ name = 'Api'; rootPath = $projectPath; enabled = $true },
             [PSCustomObject]@{ name = 'Missing'; rootPath = $missingPath; enabled = $true }
         )
-        @(
+        ConvertTo-Json -InputObject @(
             [PSCustomObject]@{ name = 'team'; projects = @('Api', 'Missing', 'Unknown'); open = 'code' }
-        ) | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Encoding UTF8
+        ) -Depth 6 | Set-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Encoding UTF8
 
         InModuleScope cdp -Parameters @{ ConfigPath = $configPath; ProjectPath = $projectPath } {
             Mock Get-Command { [PSCustomObject]@{ Name = 'wt.exe' } } -ParameterFilter { $Name -eq 'wt.exe' }
@@ -264,8 +271,8 @@ Describe 'cdp v2 workspace behavior' {
                 $ArgumentList[7] -eq '--' -and
                 $ArgumentList[8] -eq 'codex'
             }
-            $output | Should -Match "Path missing for 'Missing'"
-            $output | Should -Match "Project 'Unknown' not found"
+            $output | Should -Match "Cannot launch 'Missing': missing-path"
+            $output | Should -Match "Cannot launch 'Unknown': missing-project"
         }
     }
 
@@ -535,6 +542,36 @@ Describe 'cdp v2 argument completers' {
             InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
                 Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
             }
+        }
+    }
+
+    It 'completes workspace lifecycle actions names projects launchers and layouts' {
+        $configPath = Join-Path $TestDrive 'workspace-completion-projects.json'
+        Write-TestConfigV2 -Path $configPath -Projects @(
+            [PSCustomObject]@{ name = 'CompleteApi'; rootPath = $TestDrive; enabled = $true },
+            [PSCustomObject]@{ name = 'CompleteHidden'; rootPath = $TestDrive; enabled = $false }
+        )
+        ConvertTo-Json -InputObject @([PSCustomObject]@{ name='complete-team'; projects=@('CompleteApi') }) -Depth 6 |
+            Set-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Encoding UTF8
+        $previousConfig = $env:CDP_CONFIG
+        $env:CDP_CONFIG = $configPath
+
+        try {
+            $actionLine = 'Invoke-Cdp workspace sh'
+            $nameLine = 'Invoke-Cdp workspace show complete'
+            $projectLine = 'Invoke-Cdp workspace add new Complete'
+            $launcherLine = 'Invoke-Cdp workspace open complete-team --open co'
+            $layoutLine = 'Invoke-Cdp workspace edit complete-team --layout sp'
+
+            @(TabExpansion2 $actionLine $actionLine.Length).CompletionMatches.CompletionText | Should -Contain show
+            @(TabExpansion2 $nameLine $nameLine.Length).CompletionMatches.CompletionText | Should -Contain 'complete-team'
+            $projectMatches = @(TabExpansion2 $projectLine $projectLine.Length).CompletionMatches.CompletionText
+            $projectMatches | Should -Contain CompleteApi
+            $projectMatches | Should -Not -Contain CompleteHidden
+            @(TabExpansion2 $launcherLine $launcherLine.Length).CompletionMatches.CompletionText | Should -Contain codex
+            @(TabExpansion2 $layoutLine $layoutLine.Length).CompletionMatches.CompletionText | Should -Contain split-horizontal
+        } finally {
+            $env:CDP_CONFIG = $previousConfig
         }
     }
 }

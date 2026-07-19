@@ -55,10 +55,10 @@ Describe 'cdp safe mutation contracts' {
         $configPath = Join-Path $TestDrive 'preview-projects.json'
         $workspacePath = Join-Path $TestDrive 'workspaces.json'
         New-Item -ItemType Directory -Path $projectPath | Out-Null
-        @([PSCustomObject]@{ name = 'Api'; rootPath = $projectPath; enabled = $true }) |
-            ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $configPath -Encoding UTF8
-        @([PSCustomObject]@{ name = 'team'; projects = @('Api') }) |
-            ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $workspacePath -Encoding UTF8
+        ConvertTo-Json -InputObject @([PSCustomObject]@{ name = 'Api'; rootPath = $projectPath; enabled = $true }) `
+            -Depth 6 | Set-Content -LiteralPath $configPath -Encoding UTF8
+        ConvertTo-Json -InputObject @([PSCustomObject]@{ name = 'team'; projects = @('Api') }) `
+            -Depth 6 | Set-Content -LiteralPath $workspacePath -Encoding UTF8
 
         InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
             Mock Get-Command { [PSCustomObject]@{ Name = 'wt.exe' } } -ParameterFilter { $Name -eq 'wt.exe' }
@@ -82,8 +82,8 @@ Describe 'cdp safe mutation contracts' {
             [PSCustomObject]@{ name = 'First'; rootPath = $firstPath; enabled = $true },
             [PSCustomObject]@{ name = 'Second'; rootPath = $secondPath; enabled = $true }
         ) | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $configPath -Encoding UTF8
-        @([PSCustomObject]@{ name = 'team'; projects = @('First', 'Second') }) |
-            ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $workspacePath -Encoding UTF8
+        ConvertTo-Json -InputObject @([PSCustomObject]@{ name = 'team'; projects = @('First', 'Second') }) `
+            -Depth 6 | Set-Content -LiteralPath $workspacePath -Encoding UTF8
 
         InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
             $script:launchCount = 0

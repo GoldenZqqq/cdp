@@ -31,7 +31,8 @@ Use the existing concern boundaries:
 - `Projects.ps1` / `ProjectMetadata.ps1` / `Scan.ps1`: project mutations.
 - `Status.ps1` / `StatusOutput.ps1` / `StatusBatch.ps1`: Git collection,
   schema/table projection, cache, workers, and actions.
-- `Workspace.ps1` / `Hooks.ps1`: multi-project launch and trusted onEnter.
+- `WorkspaceLifecycle.ps1` / `Workspace.ps1`: stable workspace schema, CRUD,
+  validation/migration, launch planning, and WT execution; `Hooks.ps1` owns trusted onEnter.
 - `Picker.ps1` / `Completion.ps1` / `Health.ps1`: interaction and diagnostics.
 
 New functions belong in the narrowest existing domain. Add a new domain only
@@ -52,9 +53,10 @@ Fragments use bash/zsh-compatible functions and must retain Bash 3.2 support.
 Do not let a domain source peer fragments; the generated runtime provides the
 shared scope.
 
-Keep `Paths.sh` as the single project-path resolver and `StatusBatch.sh` as the
-status cache/settings owner. Callers must not reintroduce local Windows-to-WSL
-conversion branches.
+Keep `Paths.sh` as the single project-path resolver, `WorkspaceLifecycle.sh` as
+the workspace schema/CRUD/plan owner, and `StatusBatch.sh` as the status
+cache/settings owner. Callers must not reintroduce local Windows-to-WSL
+conversion branches or duplicate stable-reference resolution in `Workspace.sh`.
 
 ## Test and Tool Placement
 

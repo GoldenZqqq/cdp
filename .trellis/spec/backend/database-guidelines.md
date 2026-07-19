@@ -10,7 +10,7 @@ one active-config pointer. Treat these files with database-level consistency.
 | Project config | discovered `projects.json` | projects, metadata, repair, scan, status fix |
 | Active choice | `~/.cdp/config` | explicit config selection |
 | Recent state | `~/.cdp/state.json` or `CDP_STATE_PATH` | successful project switches |
-| Workspaces | `workspaces.json` beside active project config | workspace add/list/open |
+| Workspaces | `workspaces.json` beside active project config | workspace lifecycle and launch planning |
 | Hook trust | `~/.cdp/hook-trust.json` or `CDP_HOOK_TRUST_PATH` | hook list/trust/revoke |
 
 Project Manager-compatible `projects.json` remains an array. cdp-only state must
@@ -42,12 +42,23 @@ active state is read-only until explicitly restored; never silently reset it.
   identity and old-client fallback. Preserve unknown project fields and unknown
   future profile keys through every mutation.
 - Recent state is an object with `recentProjects`; it is not a project array.
-- Workspace entries contain a name, project-name list, and optional launcher.
+- Workspace entries contain a non-empty `name`, a `projects` array, optional
+  default `open`, and optional `layout`. New project references are objects with
+  non-empty `name` and exact raw `rootPath`; optional reference `open` overrides
+  the workspace launcher and integer `size` is limited to 10-90. Layout is
+  `{mode:"tabs"}` or `{mode:"split",direction:"horizontal|vertical"}`.
+  Legacy string project names remain readable until explicit `validate --fix`.
+  Preserve unknown workspace/reference fields through edit and migration.
 - Hook trust version 1 stores only fingerprints and `trustedAt`, never commands,
   config contents, paths, or environment values.
 
 Normalize data at the read boundary. Do not let every command invent defaults
 or write raw parsed objects independently.
+
+Workspace migration resolves legacy strings by one exact current project name
+and object references by one exact raw `rootPath`. A renamed object updates only
+its `name` hint; missing or ambiguous identities remain untouched. If migration
+produces no semantic change, do not write, create a backup, or change bytes.
 
 ## Failure and Recovery
 

@@ -181,7 +181,7 @@ workspace_output=$(
     export PATH="$fake_bin:$PATH"
     cdp-workspace mapped --config "$windows_config" --yes 2>&1
 )
-assert_contains "$workspace_output" "Opened window: WindowsMapped"
+assert_contains "$workspace_output" "Opened workspace item: WindowsMapped"
 tmux_calls="$(cat "$tmux_log")"
 assert_contains "$tmux_calls" "<-c><$linked_worktree>"
 export CDP_PATH_PROFILE="$previous_path_profile"

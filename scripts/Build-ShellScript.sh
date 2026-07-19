@@ -27,6 +27,7 @@ fragments=(
     StatusBatch.sh
     Status.sh
     StatusOutput.sh
+    WorkspaceLifecycle.sh
     Workspace.sh
     Projects.sh
     ProjectMetadata.sh

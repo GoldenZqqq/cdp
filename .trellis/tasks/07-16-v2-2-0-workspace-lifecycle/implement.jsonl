@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"workspace JSON schema、原子写入、迁移与未知字段保留。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"引用诊断、partial launch failure 与 native exit code。"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"show/validate/plan/action result 输出契约。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"parser、workspace launch、安全 mutation、跨 shell fixture。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"workspace schema 到 parser、resolver、WT/tmux 的数据流。"}

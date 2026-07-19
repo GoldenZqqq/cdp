@@ -397,7 +397,10 @@ function Test-CdpInvocationMutation {
     param([Parameter(Mandatory = $true)][object]$Invocation)
 
     if ($Invocation.Kind -eq 'status') { return $Invocation.Fix -or $Invocation.Push }
-    if ($Invocation.Kind -eq 'workspace') { return $Invocation.WorkspaceAction -in @('add', 'open') }
+    if ($Invocation.Kind -eq 'workspace') {
+        return $Invocation.WorkspaceAction -in @('add', 'edit', 'remove', 'open') -or
+            ($Invocation.WorkspaceAction -eq 'validate' -and $Invocation.Fix)
+    }
     if ($Invocation.Kind -eq 'hook') { return $Invocation.HookAction -in @('trust', 'revoke') }
     if ($Invocation.Kind -eq 'doctor') { return $Invocation.Fix }
     $Invocation.Kind -in @('add', 'remove', 'pin', 'unpin', 'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'config')

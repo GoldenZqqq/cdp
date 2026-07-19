@@ -23,6 +23,24 @@ if [[ -n "${BASH_VERSION:-}" ]]; then
     export -f cdp-scan
 fi
 
+cdp_completion_project_names() {
+    local config_path
+    config_path=$(get_default_config 2>/dev/null)
+    [[ -n "$config_path" && -f "$config_path" ]] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null
+}
+
+cdp_completion_workspace_names() {
+    local config_path workspace_path
+    config_path=$(get_default_config 2>/dev/null)
+    [[ -n "$config_path" ]] || return 0
+    workspace_path="$(dirname "$config_path")/workspaces.json"
+    [[ -f "$workspace_path" ]] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    jq -r '.[] | .name' "$workspace_path" 2>/dev/null
+}
+
 _cdp_completions() {
     local cur prev
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -30,9 +48,14 @@ _cdp_completions() {
 
     local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config"
     local launchers="code cursor codex claude gemini"
+    local layouts="tabs split-horizontal split-vertical"
 
     if [[ "$prev" == "--open" || "$prev" == "-o" ]]; then
         COMPREPLY=($(compgen -W "$launchers" -- "$cur"))
+        return
+    fi
+    if [[ "$prev" == "--layout" ]]; then
+        COMPREPLY=($(compgen -W "$layouts" -- "$cur"))
         return
     fi
 
@@ -45,6 +68,17 @@ _cdp_completions() {
         fi
         COMPREPLY=($(compgen -W "$subcommands $projects" -- "$cur"))
         return
+    fi
+
+    if [[ "${COMP_WORDS[1]}" =~ ^(workspace|ws)$ ]]; then
+        local workspace_actions="list show add edit remove validate open"
+        local workspace_action="${COMP_WORDS[2]:-}"
+        local workspace_names projects
+        workspace_names=$(cdp_completion_workspace_names | tr '\r\n' '  ')
+        projects=$(cdp_completion_project_names | tr '\r\n' '  ')
+        if [[ $COMP_CWORD -eq 2 ]]; then COMPREPLY=($(compgen -W "$workspace_actions $workspace_names" -- "$cur")); return; fi
+        if [[ "$workspace_action" =~ ^(show|remove|validate|open)$ && $COMP_CWORD -eq 3 ]]; then COMPREPLY=($(compgen -W "$workspace_names" -- "$cur")); return; fi
+        if [[ "$workspace_action" =~ ^(add|edit)$ && $COMP_CWORD -ge 4 ]]; then COMPREPLY=($(compgen -W "$projects" -- "$cur")); return; fi
     fi
 
     if [[ "${COMP_WORDS[1]}" =~ ^(pin|unpin|alias|unalias|tag|untag)$ && $COMP_CWORD -eq 2 ]]; then
@@ -70,11 +104,16 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
         local -a completion_words=("$@")
         local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config)
         local launchers=(code cursor codex claude gemini)
+        local layouts=(tabs split-horizontal split-vertical)
         local cur="${completion_words[$completion_current]}"
         local prev="${completion_words[$((completion_current-1))]}"
 
         if [[ "$prev" == "--open" || "$prev" == "-o" ]]; then
             compadd -a launchers
+            return
+        fi
+        if [[ "$prev" == "--layout" ]]; then
+            compadd -a layouts
             return
         fi
 
@@ -88,6 +127,18 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
             compadd -a subcommands
             compadd -a projects
             return
+        fi
+
+        if [[ "${completion_words[2]}" =~ ^(workspace|ws)$ ]]; then
+            local workspace_actions=(list show add edit remove validate open)
+            local workspace_action="${completion_words[3]:-}"
+            local workspace_names=()
+            local projects=()
+            workspace_names=(${(f)"$(cdp_completion_workspace_names)"})
+            projects=(${(f)"$(cdp_completion_project_names)"})
+            if [[ $completion_current -eq 3 ]]; then compadd -a workspace_actions; compadd -a workspace_names; return; fi
+            if [[ "$workspace_action" =~ ^(show|remove|validate|open)$ && $completion_current -eq 4 ]]; then compadd -a workspace_names; return; fi
+            if [[ "$workspace_action" =~ ^(add|edit)$ && $completion_current -ge 5 ]]; then compadd -a projects; return; fi
         fi
 
         if [[ "${completion_words[2]}" =~ ^(pin|unpin|alias|unalias|tag|untag)$ && $completion_current -eq 3 ]]; then

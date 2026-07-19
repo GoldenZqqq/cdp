@@ -9,6 +9,8 @@
 - Added status JSON exit codes for clean success (`0`), attention (`1`), partial scan failure (`2`), and fatal failure (`3`).
 - Added optional `paths.windows`, `paths.wsl`, `paths.linux`, and `paths.macos` mappings plus `CDP_PATH_PROFILE` override for one shared cross-platform project config.
 - Added one shared PowerShell/bash/zsh path-profile contract fixture covering legacy fallback, WSL conversion, invalid mappings, and raw/resolved identity.
+- Added the complete workspace lifecycle: list/show/add/edit/remove/validate/fix/open, stable `{name, rootPath}` references, and legacy-reference migration.
+- Added tabs, horizontal/vertical split layouts, per-project launcher overrides, 10-90 split sizes, and workspace-aware completion.
 
 ### Changed
 
@@ -18,6 +20,8 @@
 - New add/scan/init entries record the current platform mapping without rewriting existing projects or unknown fields.
 - Repair and status fix preserve unavailable explicit platform paths; status fix matches name plus raw path so a shared raw identity cannot remove an unselected project.
 - Status schema version 1 now reports the stable `path_profile_invalid` status/reason and uses fatal exit code 3 for an invalid global profile override.
+- Workspace launch planning now resolves schema, stable identity, path profile, launcher precedence, and native WT/tmux argv before starting processes; unsafe items fail without blocking later safe targets.
+- Workspace edits and migration preserve unknown fields, avoid same-name fallback after deletion, and skip persistence when `validate --fix` has no semantic change.
 
 ## 2.1.0
 

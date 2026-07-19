@@ -43,15 +43,18 @@ fi
 
 config_path="$test_root/projects.json"
 workspace_path="$test_root/workspaces.json"
-printf '[]\n' > "$config_path"
+mkdir -p "$test_root/api" "$test_root/web"
+printf '[{"name":"api","rootPath":"%s","enabled":true},{"name":"web","rootPath":"%s","enabled":true}]\n' \
+    "$test_root/api" "$test_root/web" > "$config_path"
 
 cdp-workspace --add team api web --open codex --config "$config_path"
 
 jq -e '
     length == 1 and
     .[0].name == "team" and
-    .[0].projects == ["api", "web"] and
+    (.[0].projects | map(.name)) == ["api", "web"] and
+    (.[0].projects | map(.rootPath)) == [$api, $web] and
     .[0].open == "codex"
-' "$workspace_path" >/dev/null
+' --arg api "$test_root/api" --arg web "$test_root/web" "$workspace_path" >/dev/null
 
 echo "cdp CLI parser shell tests: ok"

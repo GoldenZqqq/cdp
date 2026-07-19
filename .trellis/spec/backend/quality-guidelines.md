@@ -190,9 +190,12 @@ Status fields:
 
 Workspace fields:
 
-- `WorkspaceAction`: `usage`, `list`, `add`, or `open`.
-- `WorkspaceName`: required for `add` and `open`.
-- `Projects`: project names only; option names and option values are forbidden.
+- `WorkspaceAction`: `usage`, `list`, `show`, `add`, `edit`, `remove`,
+  `validate`, or `open`.
+- `WorkspaceName`: required for show/add/edit/remove/open and optional for validate.
+- `Projects`: add/edit project names only; option names and values are forbidden.
+- `WorkspaceLayout`: `tabs`, `split-horizontal`, or `split-vertical`.
+- `ClearOpen` and `Fix`: explicit edit/migration controls.
 
 Management fields:
 
@@ -211,6 +214,9 @@ Management fields:
 - `status --json --no-color`, or either output mode with `--fix` / `--push` -> parser error; no scan or mutation.
 - `workspace --list --open ...` -> invalid combination error.
 - `workspace --add` without a name and at least one project -> required argument error.
+- `workspace edit` without projects/open/layout change -> required update error.
+- `workspace --open` plus `--clear-open` -> conflict before config access.
+- workspace safety options on read-only list/show/validate -> parser error.
 
 ### 5. Good / Base / Bad Cases
 
@@ -616,6 +622,89 @@ Correct:
 ```text
 parse -> validate -> plan -> approve/preview -> execute each -> aggregate status
 ```
+
+## Scenario: Maintain Stable Multi-Project Workspaces
+
+### 1. Scope / Trigger
+
+Apply whenever workspace parsing, `workspaces.json`, path identity, launcher
+selection, WT/tmux layout argv, completion, or workspace safety behavior changes.
+
+### 2. Signatures
+
+```text
+cdp workspace list
+cdp workspace show <name>
+cdp workspace add <name> <projects...> [--open <launcher>] [--layout <layout>]
+cdp workspace edit <name> [projects...] [--open <launcher>|--clear-open] [--layout <layout>]
+cdp workspace remove <name>
+cdp workspace validate [name] [--fix]
+cdp workspace open <name> [--open <launcher>]
+cdp workspace <name>                 # compatibility launch
+```
+
+PowerShell uses native `-WhatIf`, `-Confirm`, and `-PassThru`; shell mutations
+use `--dry-run`, and external launch requires `--yes`.
+
+### 3. Contracts
+
+- New references persist `{name,rootPath}`; `rootPath` is exact raw identity and
+  `name` is a hint. Object references never fall back to a same-name project.
+- Legacy strings resolve by one exact current name and remain readable.
+- `validate --fix` upgrades resolvable strings, refreshes renamed hints, preserves
+  unresolved references and every unknown field, and skips byte writes if unchanged.
+- Effective launcher precedence is CLI, reference `open`, workspace `open`.
+- Layouts are tabs, horizontal split, or vertical split. Reference `size` is an
+  integer 10-90 and applies only when creating a later split pane.
+- `show` and preview expose name, status, raw/resolved path, launcher, and layout.
+- Complete all schema/path/argv planning before process creation; later safe
+  targets continue after one native failure, while the aggregate result fails.
+
+### 4. Validation & Error Matrix
+
+- Missing/non-string object `name` or `rootPath` -> `invalid-reference`.
+- Non-integer/out-of-range `size` -> `invalid-size`.
+- Unsafe launcher token -> `invalid-launcher`; no process.
+- Zero raw-path matches -> `missing-project`; multiple -> `ambiguous-project`.
+- Unique raw identity with stale hint -> `renamed`, launch current project safely.
+- Deleted identity plus reused name -> `missing-project`, never name fallback.
+- Invalid explicit path profile -> `invalid-path-profile`; absent directory -> `missing-path`.
+- Invalid layout -> no WT/tmux process. WhatIf/dry-run -> no write or process.
+
+### 5. Good / Base / Bad Cases
+
+- Good: renamed `api-v2` keeps `C:/Work/api`; validation says `renamed`, fix
+  updates only the hint, and launch uses the current resolved path.
+- Base: `projects:["api"]` launches and migrates intentionally with `--fix`.
+- Bad: bind `{name:"api",rootPath:"C:/Deleted/api"}` to a new same-name checkout.
+
+### 6. Tests Required
+
+- PowerShell 5.1/7 and bash/zsh/Bash 3.2 cover parser conflicts, CRUD, unknown
+  fields, legacy migration, rename/delete/name-reuse/ambiguity, and no-op fix bytes.
+- Assert PowerShell WT and shell tmux exact argv for tabs, both split directions,
+  size, per-project launcher, CLI override, paths with spaces, and no command eval.
+- Put an unsafe item before a safe item; assert aggregate failure and later native call.
+- Completion asserts actions, workspace names, add/edit projects, launchers, layouts.
+- Run existing persistence, safe-mutation, path-profile, CLI, and shell-v2 suites.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```json
+{"name":"team","projects":["api"]}
+```
+
+as a new write, followed by runtime name fallback after project replacement.
+
+Correct:
+
+```json
+{"name":"team","projects":[{"name":"api","rootPath":"C:/Work/api"}]}
+```
+
+Resolve only the exact raw identity; keep the string form as read compatibility.
 
 ## Scenario: Build Cross-Version PowerShell Regression Fixtures
 

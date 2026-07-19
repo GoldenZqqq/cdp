@@ -26,6 +26,13 @@ Batch status push and workspace launch continue safe later targets after one
 item fails. Report every target and return/emit an aggregate failure. Do not stop
 at the first item unless continuing could corrupt shared state.
 
+Workspace launch plans use stable statuses: `ok`, `legacy`, and `renamed` are
+launchable; `invalid-workspace`, `invalid-layout`, `invalid-reference`,
+`invalid-size`, `invalid-launcher`, `missing-project`, `ambiguous-project`,
+`disabled-project`, `invalid-path-profile`, and `missing-path` are not. Complete
+schema, reference, path, launcher, and native-argv planning before the first WT
+or tmux process. A CLI launcher override must validate before any target starts.
+
 Recent-project recording and optional update checks are secondary effects. A
 failure there may be verbose/warning output but must not undo a successful
 directory switch. Persistence or trust failures that protect security remain

@@ -199,8 +199,11 @@ cdp status --push --dry-run
 Show-CdpProjectStatus -DirtyOnly -PassThru
 
 # 创建并启动多项目工作区
-cdp workspace --add fullstack api web --open codex
-cdp workspace fullstack --yes
+cdp workspace add fullstack api web --open codex --layout split-horizontal
+cdp workspace show fullstack
+cdp workspace edit fullstack api web --open codex
+cdp workspace validate fullstack --fix --dry-run
+cdp workspace open fullstack --yes
 
 # 预览或确认项目删除与当前配置选择
 cdp remove api --dry-run
@@ -268,6 +271,28 @@ git    git repo detected
 
 需要直接启动 AI CLI 时，可以用 `cdp api -Open codex`、`cdp web -Open claude` 或 `cdp tool -Open gemini`。如果想打开编辑器，可以用 `cdp api -Open code` 或 `cdp api -Open cursor`。
 
+### Workspace 生命周期
+
+`cdp workspace` 现在支持完整生命周期：`list`、`show <name>`、`add <name> <projects...>`、`edit <name> [projects...]`、`remove <name>`、`validate [name] [--fix]` 和 `open <name>`。兼容写法 `cdp workspace <name>` 仍可直接启动。补全同时覆盖 action、workspace 名、项目名、launcher，以及 `tabs`、`split-horizontal`、`split-vertical` 布局。
+
+新定义不再只保存项目名，而是保存稳定项目引用：
+
+```json
+{
+  "name": "fullstack",
+  "open": "codex",
+  "layout": { "mode": "split", "direction": "horizontal" },
+  "projects": [
+    { "name": "api", "rootPath": "C:/Work/api" },
+    { "name": "web", "rootPath": "C:/Work/web", "open": "code", "size": 40 }
+  ]
+}
+```
+
+`rootPath` 是稳定身份，`name` 是可读提示。如果项目只改名、raw `rootPath` 不变，验证会报告 `renamed`，启动时安全使用当前项目；如果项目被删除，或旧名称被另一个 raw path 复用，cdp 会报告 `missing-project`，不会按名称错误绑定。旧字符串引用仍可读取；`workspace validate --fix` 会升级可解析字符串、刷新重命名提示，同时保留无法解析的引用与未知未来字段。
+
+Launcher 优先级为 CLI `--open`、项目级 `open`、workspace 级 `open`。split 的 `size` 必须是 10 到 90 的整数。Windows Terminal 接收 `new-tab` / `split-pane` argv，tmux 接收 `new-window` / `split-window` argv；cdp 不会执行拼接的 workspace 命令字符串。启动前会先完成所有引用与本机路径规划；某项失败后仍继续后续安全项目，但只要存在不安全目标，最终结果就失败。使用 PowerShell `-WhatIf` 或 shell `--dry-run` 可在不写入、不启动进程的情况下查看 workspace、layout、当前名称、raw/resolved path、launcher 和引用状态；shell 真正启动仍要求 `--yes`。
+
 ### 跨平台路径 Profile
 
 同一个项目现在可以保存不同平台的本机路径，同时保留原有、兼容 Project Manager 的 `rootPath`。cdp 会按当前运行环境选择 `paths.windows`、`paths.wsl`、`paths.linux` 或 `paths.macos`。当前映射缺失时，旧配置仍回退到 `rootPath`；WSL 也继续支持把 `C:\...` 自动转换为 `/mnt/c/...`。
@@ -311,7 +336,7 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
 | `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git 状态仪表盘，支持 `--dirty`、`@tag`、`--jobs`、`--refresh`、`--json` 和 `--no-color` |
-| `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
+| `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | 列出、查看、添加、编辑、删除、验证、迁移或启动稳定多项目 workspace |
 | `Invoke-Cdp` | `cdp hook list/trust/revoke` | 查看脱敏后的 Hook 状态，并管理项目级持久信任 |
 | `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
@@ -343,7 +368,7 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | --- | --- |
 | `cdp` | 打开 fzf 菜单并切换项目 |
 | `cdp status` / `cdp-status` | Git 状态仪表盘，支持 `--dirty`、`@tag`、`--jobs`、`--refresh`、`--json` 和 `--no-color` |
-| `cdp workspace` / `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
+| `cdp workspace` / `cdp ws` | 完整 workspace 生命周期，支持稳定引用、验证/修复、launcher 覆盖和 tabs/split 布局 |
 | `cdp hook list/trust/revoke` | 查看脱敏后的 Hook 状态，并管理项目级持久信任 |
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp api --open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
@@ -430,11 +455,11 @@ cdp-scan E:\Projects --yes
 | 当前 `projects.json` | 项目名、路径、启用状态、元数据和 `onEnter` | 由自动发现、`CDP_CONFIG` 或 `cdp config` 选择 |
 | `~/.cdp/config` | 指向显式选择的项目配置 | 仅由配置选择命令写入 |
 | `~/.cdp/state.json` | 最近访问时间与访问次数 | 自动化可用 `CDP_STATE_PATH` 覆盖 |
-| 当前配置同目录的 `workspaces.json` | 命名的多项目 workspace 定义 | PowerShell 与 bash/zsh 共享 |
+| 当前配置同目录的 `workspaces.json` | 带稳定 `{name, rootPath}` 引用、launcher 与布局的命名 workspace 定义 | PowerShell 与 bash/zsh 共享；v2.2+ 写入稳定引用 schema |
 | `~/.cdp/hook-trust.json` | 只保存带版本的 Hook 指纹与时间戳 | 隔离测试可用 `CDP_HOOK_TRUST_PATH` 覆盖 |
 | 同目录 `*.cdp.lock` / `*.cdp-backup.*` | 并发写入互斥与最新三份有效备份 | 由原子持久化层管理 |
 
-项目路径仍保存在 `projects.json`；最近状态、workspace 定义与 Hook 信任刻意分离，从而保持 Project Manager 兼容，并避免可信命令数据进入公开项目列表。
+项目路径仍保存在 `projects.json`；最近状态、workspace 定义与 Hook 信任刻意分离，从而保持 Project Manager 兼容，并避免可信命令数据进入公开项目列表。旧字符串 workspace 引用仍可读取，但生命周期编辑与 `validate --fix` 会使用 v2.2 稳定引用 schema。
 
 ### 项目环境 Hook
 
@@ -634,7 +659,7 @@ CI 覆盖：
 - [x] `cdp init` 首次使用向导
 - [x] 项目标签 / 别名
 - [x] `cdp status` 多项目 Git 状态仪表盘
-- [x] 多项目 workspace 定义与 launcher 集成
+- [x] 带稳定引用、验证/迁移和 tabs/split launcher 的完整 workspace 生命周期
 - [x] 原子 JSON 持久化、安全变更与项目级 Hook 信任
 - [x] 有限并发 status、超时、缓存与基准测试
 - [x] 仓库自有覆盖率、发布包、文档、浏览器与媒体质量门禁

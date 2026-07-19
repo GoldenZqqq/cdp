@@ -34,6 +34,12 @@ changed=<true|false> [error=<redacted message>]
 PowerShell objects use the same semantics with property casing. A preview is not
 success, and `Changed` is false for preview/cancel/failure.
 
+Workspace `show`, launch preview, and shell dry-run render the same plan fields:
+workspace, normalized layout, current project name, reference status, raw
+`rootPath`, resolved local path, and effective launcher. Diagnostics use the
+stable workspace status codes rather than localized prose. `validate --fix`
+returns/prints `skipped` with `Changed=false` when no migration is needed.
+
 ## Machine-Readable Status
 
 - `status --json` / `-Json` owns stdout and emits one schema-versioned document.

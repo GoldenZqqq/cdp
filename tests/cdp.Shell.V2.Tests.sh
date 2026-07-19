@@ -299,11 +299,16 @@ assert_contains "$status_output" "not a git repo"
 echo "  lifecycle, hooks, and status: ok"
 
 workspace_path="$test_root/workspaces.json"
+jq --arg missing_path "$test_root/missing-project" \
+    '. + [{name:"MissingProject",rootPath:$missing_path,enabled:true,pinned:false,aliases:[],tags:[]}]' \
+    "$config_path" > "$config_path.next"
+mv "$config_path.next" "$config_path"
 cdp-workspace --add team HookProject MissingProject --open codex --config "$config_path" >/dev/null
 jq -e '
     length == 1 and
     .[0].name == "team" and
-    .[0].projects == ["HookProject", "MissingProject"] and
+    (.[0].projects | map(.name)) == ["HookProject", "MissingProject"] and
+    (.[0].projects | all(.rootPath | type == "string" and length > 0)) and
     .[0].open == "codex"
 ' "$workspace_path" >/dev/null
 
@@ -332,8 +337,8 @@ set -e
 [[ $workspace_status -ne 0 ]] || fail "workspace launch should report the missing project"
 export PATH="$original_path"
 command -v basename >/dev/null 2>&1 || fail "basename missing after workspace; PATH=$PATH"
-assert_contains "$workspace_launch" "Opened window: HookProject"
-assert_contains "$workspace_launch" "project/path unavailable"
+assert_contains "$workspace_launch" "Opened workspace item: HookProject"
+assert_contains "$workspace_launch" "missing-path"
 tmux_calls="$(cat "$tmux_log")"
 assert_contains "$tmux_calls" "<new-session><-d><-s><cdp-team><-c><$project_path><-n><HookProject><codex>"
 assert_not_contains "$tmux_calls" "<send-keys>"
@@ -383,6 +388,30 @@ if [[ -n "${BASH_VERSION:-}" ]]; then
     completion_text="${COMPREPLY[*]}"
     assert_contains "$completion_text" "code"
     assert_contains "$completion_text" "codex"
+
+    COMP_WORDS=(cdp workspace sh)
+    COMP_CWORD=2
+    COMPREPLY=()
+    _cdp_completions
+    assert_contains "${COMPREPLY[*]}" "show"
+
+    COMP_WORDS=(cdp workspace show te)
+    COMP_CWORD=3
+    COMPREPLY=()
+    _cdp_completions
+    assert_contains "${COMPREPLY[*]}" "team"
+
+    COMP_WORDS=(cdp workspace add new Hoo)
+    COMP_CWORD=4
+    COMPREPLY=()
+    _cdp_completions
+    assert_contains "${COMPREPLY[*]}" "HookProject"
+
+    COMP_WORDS=(cdp workspace edit team --layout sp)
+    COMP_CWORD=5
+    COMPREPLY=()
+    _cdp_completions
+    assert_contains "${COMPREPLY[*]}" "split-horizontal"
     shell_name="bash"
 elif [[ -n "${ZSH_VERSION:-}" ]]; then
     typeset -ga CDP_TEST_COMPLETIONS
@@ -418,6 +447,18 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
     completion_text="${CDP_TEST_COMPLETIONS[*]}"
     assert_contains "$completion_text" "code"
     assert_contains "$completion_text" "codex"
+
+    run_zsh_completion cdp workspace sh
+    assert_contains "${CDP_TEST_COMPLETIONS[*]}" "show"
+
+    run_zsh_completion cdp workspace show te
+    assert_contains "${CDP_TEST_COMPLETIONS[*]}" "team"
+
+    run_zsh_completion cdp workspace add new Hoo
+    assert_contains "${CDP_TEST_COMPLETIONS[*]}" "HookProject"
+
+    run_zsh_completion cdp workspace edit team --layout sp
+    assert_contains "${CDP_TEST_COMPLETIONS[*]}" "split-horizontal"
     shell_name="zsh"
 else
     fail "unsupported shell"

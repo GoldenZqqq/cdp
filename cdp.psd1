@@ -113,9 +113,12 @@ v2.2.0 - Automation and Multi-Repository Workflows
 - Added: JSON status exit codes distinguish clean success, attention, partial scan failure, and fatal failure
 - Added: optional Windows, WSL, Linux, and macOS project path profiles with CDP_PATH_PROFILE override
 - Added: shared cross-runtime path-profile fixtures and path_profile_invalid automation diagnostics
+- Added: full workspace list/show/add/edit/remove/validate/fix/open lifecycle with stable raw-path references
+- Added: tabs and horizontal/vertical split layouts, per-project launchers, split sizes, and workspace completion
 - Improved: structured status keeps raw and resolved paths separate and exposes stable status, attention-reason, and redacted error codes
 - Improved: switching, status, workspace, doctor/repair, add/scan/init, picker/list, and recent paths share one resolver while rootPath remains backward compatible
 - Safety: repair and status fix preserve unavailable explicit platform mappings and mutate missing projects by name plus raw path identity
+- Safety: workspace migration preserves unknown/unresolved references, launch planning validates every target before native WT/tmux argv execution, and dry-run starts no process
 
 v2.1.0 - Engineering Foundation
 - Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks

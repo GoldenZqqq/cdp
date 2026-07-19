@@ -3,7 +3,7 @@
   "name": "v2-2-0-workspace-lifecycle",
   "title": "完善 workspace 生命周期",
   "description": "增加 show、edit、remove、validate、dry-run、补全和稳定项目引用，完善 launcher 与布局配置。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

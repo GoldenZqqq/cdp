@@ -199,8 +199,11 @@ cdp status --push --dry-run
 Show-CdpProjectStatus -DirtyOnly -PassThru
 
 # Create and launch a multi-project workspace
-cdp workspace --add fullstack api web --open codex
-cdp workspace fullstack --yes
+cdp workspace add fullstack api web --open codex --layout split-horizontal
+cdp workspace show fullstack
+cdp workspace edit fullstack api web --open codex
+cdp workspace validate fullstack --fix --dry-run
+cdp workspace open fullstack --yes
 
 # Preview or approve project removal and active-config selection
 cdp remove api --dry-run
@@ -268,6 +271,28 @@ When using Claude Code, Codex, Gemini CLI, or similar tools, the terminal become
 
 When you want to start an AI CLI immediately, use `cdp api -Open codex`, `cdp web -Open claude`, or `cdp tool -Open gemini`. For editors, use `cdp api -Open code` or `cdp api -Open cursor`.
 
+### Workspace Lifecycle
+
+`cdp workspace` now supports the full lifecycle: `list`, `show <name>`, `add <name> <projects...>`, `edit <name> [projects...]`, `remove <name>`, `validate [name] [--fix]`, and `open <name>`. The compatibility form `cdp workspace <name>` still launches the workspace. Completion covers actions, workspace names, project names, launchers, and `tabs`, `split-horizontal`, or `split-vertical` layouts.
+
+New definitions store stable project references instead of names alone:
+
+```json
+{
+  "name": "fullstack",
+  "open": "codex",
+  "layout": { "mode": "split", "direction": "horizontal" },
+  "projects": [
+    { "name": "api", "rootPath": "C:/Work/api" },
+    { "name": "web", "rootPath": "C:/Work/web", "open": "code", "size": 40 }
+  ]
+}
+```
+
+`rootPath` is the stable identity and `name` is a readable hint. If a project is renamed but keeps the same raw `rootPath`, validation reports `renamed` and launch uses the current project safely. If a project is deleted or its old name is reused for another raw path, cdp reports `missing-project` instead of binding by name. Legacy string references remain readable; `workspace validate --fix` upgrades resolvable strings and refreshes renamed hints while preserving unresolved references and unknown future fields.
+
+Launcher priority is CLI `--open`, then per-project `open`, then workspace `open`. Split sizes must be integers from 10 through 90. Windows Terminal receives `new-tab` / `split-pane` argv and tmux receives `new-window` / `split-window` argv—cdp never evaluates a concatenated workspace command string. Launch planning resolves every reference and local path before the first process, continues later safe projects after an item failure, and returns failure when any target is unsafe. Use PowerShell `-WhatIf` or shell `--dry-run` to inspect the workspace, layout, current name, raw/resolved path, launcher, and reference status without writing or launching; shell execution still requires `--yes`.
+
 ### Cross-Platform Path Profiles
 
 One project can now keep platform-specific local paths while preserving its original Project Manager-compatible `rootPath`. cdp selects `paths.windows`, `paths.wsl`, `paths.linux`, or `paths.macos` for the current runtime. When the current mapping is absent, legacy configs still fall back to `rootPath`; WSL also keeps the automatic `C:\...` to `/mnt/c/...` conversion.
@@ -311,7 +336,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
 | `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, `--refresh`, `--json`, and `--no-color` controls |
-| `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
+| `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | Lists, shows, adds, edits, removes, validates, migrates, or launches stable multi-project workspaces |
 | `Invoke-Cdp` | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
@@ -343,7 +368,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
 | `cdp status` / `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, `--refresh`, `--json`, and `--no-color` controls |
-| `cdp workspace` / `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
+| `cdp workspace` / `cdp ws` | Full workspace lifecycle with stable references, validation/fix, launcher overrides, and tabs/split layouts |
 | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp api --open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
@@ -430,11 +455,11 @@ Allowed profiles are `windows`, `wsl`, `linux`, and `macos`. Declared values mus
 | Active `projects.json` | Project names, paths, enabled state, metadata, and `onEnter` | Selected by discovery, `CDP_CONFIG`, or `cdp config` |
 | `~/.cdp/config` | Points to the explicitly selected project config | Written only by config selection |
 | `~/.cdp/state.json` | Recent-project timestamps and visit counts | Override with `CDP_STATE_PATH` for automation |
-| `workspaces.json` beside the active config | Named multi-project workspace definitions | Shared by PowerShell and bash/zsh |
+| `workspaces.json` beside the active config | Named workspace definitions with stable `{name, rootPath}` references, launchers, and layouts | Shared by PowerShell and bash/zsh; v2.2+ writes the stable-reference schema |
 | `~/.cdp/hook-trust.json` | Versioned hook fingerprints and timestamps only | Override with `CDP_HOOK_TRUST_PATH` for isolated tests |
 | Sibling `*.cdp.lock` / `*.cdp-backup.*` | Concurrent-write exclusion and the three newest valid backups | Managed by the atomic persistence layer |
 
-Project paths remain in `projects.json`; recent state, workspace definitions, and hook trust are deliberately separate. This keeps Project Manager compatibility and prevents trusted command data from leaking into the public project list.
+Project paths remain in `projects.json`; recent state, workspace definitions, and hook trust are deliberately separate. This keeps Project Manager compatibility and prevents trusted command data from leaking into the public project list. Older string-based workspace references remain readable, but lifecycle edits and `validate --fix` use the v2.2 stable-reference schema.
 
 ### Project Environment Hooks
 
@@ -634,7 +659,7 @@ CI covers:
 - [x] `cdp init` first-run setup wizard
 - [x] Project tags / aliases
 - [x] `cdp status` multi-project Git status dashboard
-- [x] Multi-project workspace definitions and launcher integration
+- [x] Full workspace lifecycle with stable references, validation/migration, and tabs/split launchers
 - [x] Atomic JSON persistence, safe mutations, and project-scoped hook trust
 - [x] Bounded concurrent status collection with timeouts, cache, and benchmarks
 - [x] Repository-owned coverage, package, documentation, browser, and media quality gates
