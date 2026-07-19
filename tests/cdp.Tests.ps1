@@ -766,6 +766,44 @@ Describe 'cdp invocation parser' {
         }
     }
 
+    It 'parses hook management and no-hook without stealing a hook project query' {
+        InModuleScope cdp {
+            $configPath = 'C:\Temp\projects.json'
+            $management = ConvertFrom-CdpInvokeArguments `
+                -Command 'hook' `
+                -ConfigPath 'trust' `
+                -RemainingArgs @('api', '--config', $configPath)
+            $switch = ConvertFrom-CdpInvokeArguments `
+                -Command 'hook' `
+                -ConfigPath $configPath `
+                -RemainingArgs @('--no-hook')
+
+            $management.Kind | Should -Be 'hook'
+            $management.HookAction | Should -Be 'trust'
+            $management.Name | Should -Be 'api'
+            $management.ConfigPath | Should -Be $configPath
+            $switch.Kind | Should -Be 'switch'
+            $switch.Query | Should -Be 'hook'
+            $switch.NoHook | Should -BeTrue
+
+            {
+                ConvertFrom-CdpInvokeArguments `
+                    -Command 'api' `
+                    -RemainingArgs @('--allow-hook', '--no-hook')
+            } | Should -Throw '*cannot be used together*'
+        }
+    }
+
+    It 'routes hook management to the trust command' {
+        InModuleScope cdp {
+            Mock Invoke-CdpHookCommand {}
+            Invoke-Cdp hook trust api --config 'C:\Temp\projects.json'
+            Should -Invoke Invoke-CdpHookCommand -Times 1 -Exactly -ParameterFilter {
+                $Action -eq 'trust' -and $Name -eq 'api' -and $ConfigPath -eq 'C:\Temp\projects.json'
+            }
+        }
+    }
+
     It 'routes combined status filters to the status command' {
         InModuleScope cdp {
             Mock Show-CdpProjectStatus {}

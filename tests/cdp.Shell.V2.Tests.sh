@@ -22,6 +22,7 @@ original_home="${HOME:-}"
 original_path="$PATH"
 export HOME="$test_root/home"
 export CDP_STATE_PATH="$test_root/state.json"
+export CDP_HOOK_TRUST_PATH="$test_root/hook-trust.json"
 mkdir -p "$HOME"
 
 source "$repo_root/src/cdp.sh"
@@ -188,6 +189,76 @@ echo "  dependency and config errors: ok"
     assert_equals "enabled" "$CDP_TEST_HOOK_ENV"
     assert_equals "ran" "$CDP_TEST_HOOK_BASH"
 )
+
+hook_list=$(cd "$test_root" && cdp hook list "$config_path" 2>&1)
+assert_contains "$hook_list" "HookProject"
+assert_contains "$hook_list" "untrusted"
+assert_not_contains "$hook_list" "CDP_TEST_HOOK_BASH"
+cdp hook trust HookProject "$config_path" >/dev/null
+trust_json=$(cat "$CDP_HOOK_TRUST_PATH")
+assert_not_contains "$trust_json" "CDP_TEST_HOOK_BASH"
+assert_not_contains "$trust_json" "export"
+trusted_list=$(cd "$test_root" && cdp hook list --config "$config_path" 2>&1)
+assert_contains "$trusted_list" "HookProject"
+assert_contains "$trusted_list" "trusted"
+assert_not_contains "$trusted_list" "CDP_TEST_HOOK_BASH"
+(
+    cd "$test_root"
+    unset CDP_TEST_HOOK_BASH
+    cdp HookProject "$config_path" >/dev/null
+    assert_equals "ran" "$CDP_TEST_HOOK_BASH"
+)
+
+jq 'map(if .name == "HookProject" then .tags = ["config-change"] else . end)' \
+    "$config_path" > "$config_path.next"
+mv "$config_path.next" "$config_path"
+content_stale_output=$(cd "$test_root" && cdp HookProject "$config_path" 2>&1)
+assert_contains "$content_stale_output" "command skipped"
+assert_not_contains "$content_stale_output" "export CDP_TEST_HOOK_BASH"
+cdp hook trust HookProject "$config_path" >/dev/null
+
+jq 'map(if .name == "HookProject" then .onEnter.bash = "export CDP_TEST_HOOK_BASH=changed" else . end)' \
+    "$config_path" > "$config_path.next"
+mv "$config_path.next" "$config_path"
+stale_output=$(cd "$test_root" && cdp HookProject "$config_path" 2>&1)
+assert_contains "$stale_output" "command skipped"
+assert_not_contains "$stale_output" "changed"
+cdp hook revoke HookProject --config "$config_path" >/dev/null
+revoked_list=$(cd "$test_root" && cdp hook list --config "$config_path" 2>&1)
+assert_contains "$revoked_list" "untrusted"
+
+jq 'map(if .name == "HookProject" then .onEnter.bash = "export CDP_TEST_HOOK_BASH=ran" else . end)' \
+    "$config_path" > "$config_path.next"
+mv "$config_path.next" "$config_path"
+no_hook_result=$(
+    cd "$test_root"
+    unset CDP_TEST_HOOK_BASH CDP_TEST_HOOK_ENV
+    cdp HookProject "$config_path" --no-hook 2>&1
+    printf '\nVALUES=%s|%s\n' "${CDP_TEST_HOOK_BASH:-}" "${CDP_TEST_HOOK_ENV:-}"
+)
+assert_contains "$no_hook_result" "--no-hook"
+assert_contains "$no_hook_result" "VALUES=|"
+if [[ "$(uname -s)" == Darwin* ]]; then
+    trust_mode=$(stat -f '%Lp' "$CDP_HOOK_TRUST_PATH")
+else
+    trust_mode=$(stat -c '%a' "$CDP_HOOK_TRUST_PATH")
+fi
+assert_equals "600" "$trust_mode"
+
+printf '{\n' > "$CDP_HOOK_TRUST_PATH"
+chmod 600 "$CDP_HOOK_TRUST_PATH"
+invalid_trust_result=$(
+    cd "$test_root"
+    unset CDP_TEST_HOOK_BASH
+    cdp HookProject "$config_path" 2>&1
+    printf '\nVALUE=%s\n' "${CDP_TEST_HOOK_BASH:-}"
+)
+assert_contains "$invalid_trust_result" "invalid cdp hook trust store"
+assert_contains "$invalid_trust_result" "command skipped"
+assert_contains "$invalid_trust_result" "VALUE="
+assert_not_contains "$invalid_trust_result" "export CDP_TEST_HOOK_BASH"
+printf '%s\n' '{"version":1,"entries":[]}' > "$CDP_HOOK_TRUST_PATH"
+chmod 600 "$CDP_HOOK_TRUST_PATH"
 
 legacy_output=$(cd "$test_root" && cdp LegacyFailure "$config_path" 2>&1)
 assert_contains "$legacy_output" "onEnter command skipped"

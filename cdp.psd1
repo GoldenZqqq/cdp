@@ -110,6 +110,7 @@ ReleaseNotes = @'
 v2.1.0 - Engineering Foundation
 - Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks
 - Added: bounded JSON backups and explicit recovery helpers
+- Added: project-scoped command-hook trust with redacted list, trust, revoke, and no-hook controls
 - Improved: project, state, workspace, status-fix, repair, and scan mutations share one persistence boundary
 
 v2.0.5 - Security and Install Integrity

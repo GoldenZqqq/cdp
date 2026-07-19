@@ -351,6 +351,125 @@ Describe 'cdp v2 onEnter isolation' {
             }
         }
     }
+
+    It 'persists hook trust without exposing command text and invalidates changes' {
+        $trustPath = Join-Path $TestDrive 'hook-trust.json'
+        $configPath = Join-Path $TestDrive 'trusted-hook-projects.json'
+        $projectPath = Join-Path $TestDrive 'trusted-hook-project'
+        New-Item -ItemType Directory -Path $projectPath | Out-Null
+        $project = [PSCustomObject]@{
+            name = 'TrustedHook'
+            rootPath = $projectPath
+            enabled = $true
+            onEnter = [PSCustomObject]@{ powershell = '$env:CDP_TEST_TRUSTED = "ran"' }
+        }
+        @($project) | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $configPath -Encoding UTF8
+        $previousTrustPath = $env:CDP_HOOK_TRUST_PATH
+        $previousValue = $env:CDP_TEST_TRUSTED
+        $env:CDP_HOOK_TRUST_PATH = $trustPath
+        Remove-Item Env:CDP_TEST_TRUSTED -ErrorAction SilentlyContinue
+
+        try {
+            InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
+                Add-CdpHookTrust -ConfigPath $ConfigPath -Name 'TrustedHook'
+            }
+            $storedTrust = Get-Content -LiteralPath $trustPath -Raw -Encoding UTF8
+            $storedTrust | Should -Not -Match 'CDP_TEST_TRUSTED'
+            $storedTrust | Should -Not -Match 'powershell'
+            $list = InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
+                @(& { Show-CdpHookTrustList -ConfigPath $ConfigPath } 6>&1) -join [Environment]::NewLine
+            }
+            $list | Should -Match 'TrustedHook.*trusted'
+            $list | Should -Not -Match 'CDP_TEST_TRUSTED'
+
+            InModuleScope cdp -Parameters @{ ConfigPath = $configPath; Project = $project } {
+                Invoke-CdpOnEnter -Project $Project -ConfigPath $ConfigPath
+            }
+            $env:CDP_TEST_TRUSTED | Should -Be 'ran'
+
+            $projectWithTag = [PSCustomObject]@{
+                name = 'TrustedHook'; rootPath = $projectPath; enabled = $true; tags = @('changed')
+                onEnter = [PSCustomObject]@{ powershell = '$env:CDP_TEST_TRUSTED = "ran"' }
+            }
+            @($projectWithTag) | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $configPath -Encoding UTF8
+            Remove-Item Env:CDP_TEST_TRUSTED -ErrorAction SilentlyContinue
+            $contentChangeOutput = InModuleScope cdp -Parameters @{ ConfigPath = $configPath; Project = $projectWithTag } {
+                @(& { Invoke-CdpOnEnter -Project $Project -ConfigPath $ConfigPath } 6>&1) -join [Environment]::NewLine
+            }
+            $env:CDP_TEST_TRUSTED | Should -BeNullOrEmpty
+            $contentChangeOutput | Should -Match 'command skipped'
+            InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
+                Clear-CdpProjectConfigCache -ConfigPath $ConfigPath
+                Add-CdpHookTrust -ConfigPath $ConfigPath -Name 'TrustedHook'
+            }
+
+            $changed = [PSCustomObject]@{
+                name = 'TrustedHook'; rootPath = $projectPath; enabled = $true; tags = @('changed')
+                onEnter = [PSCustomObject]@{ powershell = '$env:CDP_TEST_TRUSTED = "changed"' }
+            }
+            @($changed) | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $configPath -Encoding UTF8
+            Remove-Item Env:CDP_TEST_TRUSTED -ErrorAction SilentlyContinue
+            $output = InModuleScope cdp -Parameters @{ ConfigPath = $configPath; Project = $changed } {
+                @(& { Invoke-CdpOnEnter -Project $Project -ConfigPath $ConfigPath } 6>&1) -join [Environment]::NewLine
+            }
+            $env:CDP_TEST_TRUSTED | Should -BeNullOrEmpty
+            $output | Should -Match 'trust this project hook'
+            $output | Should -Not -Match 'changed'
+
+            [IO.File]::WriteAllText($trustPath, '{')
+            $invalidStoreOutput = InModuleScope cdp -Parameters @{ ConfigPath = $configPath; Project = $changed } {
+                @(& { Invoke-CdpOnEnter -Project $Project -ConfigPath $ConfigPath } 6>&1) -join [Environment]::NewLine
+            }
+            $env:CDP_TEST_TRUSTED | Should -BeNullOrEmpty
+            $invalidStoreOutput | Should -Match 'onEnter warning'
+            $invalidStoreOutput | Should -Not -Match 'changed'
+            (Get-Content -LiteralPath $trustPath -Raw) | Should -BeExactly '{'
+        } finally {
+            $env:CDP_HOOK_TRUST_PATH = $previousTrustPath
+            if ($null -eq $previousValue) { Remove-Item Env:CDP_TEST_TRUSTED -ErrorAction SilentlyContinue }
+            else { $env:CDP_TEST_TRUSTED = $previousValue }
+        }
+    }
+
+    It 'honors no-hook and revokes persistent trust' {
+        $trustPath = Join-Path $TestDrive 'hook-nohook-trust.json'
+        $configPath = Join-Path $TestDrive 'nohook-projects.json'
+        $project = [PSCustomObject]@{
+            name = 'NoHookProject'; rootPath = $TestDrive; enabled = $true
+            onEnter = [PSCustomObject]@{
+                env = [PSCustomObject]@{ CDP_TEST_NOHOOK = 'set' }
+                powershell = '$env:CDP_TEST_NOHOOK_COMMAND = "ran"'
+            }
+        }
+        @($project) | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $configPath -Encoding UTF8
+        $previousTrustPath = $env:CDP_HOOK_TRUST_PATH
+        $previousValue = $env:CDP_TEST_NOHOOK
+        $env:CDP_HOOK_TRUST_PATH = $trustPath
+        Remove-Item Env:CDP_TEST_NOHOOK -ErrorAction SilentlyContinue
+        try {
+            $output = InModuleScope cdp -Parameters @{ ConfigPath = $configPath; Project = $project } {
+                @(& { Invoke-CdpOnEnter -Project $Project -ConfigPath $ConfigPath -NoHook } 6>&1) -join [Environment]::NewLine
+            }
+            $env:CDP_TEST_NOHOOK | Should -BeNullOrEmpty
+            $output | Should -Match '--no-hook'
+
+            InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
+                Add-CdpHookTrust -ConfigPath $ConfigPath -Name 'NoHookProject'
+                Remove-CdpHookTrust -ConfigPath $ConfigPath -Name 'NoHookProject'
+            }
+            $list = InModuleScope cdp -Parameters @{ ConfigPath = $configPath } {
+                @(& { Show-CdpHookTrustList -ConfigPath $ConfigPath } 6>&1) -join [Environment]::NewLine
+            }
+            $list | Should -Match 'NoHookProject.*untrusted'
+            if ([System.IO.Path]::DirectorySeparatorChar -ne '\') {
+                (& stat -c '%a' $trustPath) | Should -Be '600'
+            }
+        } finally {
+            $env:CDP_HOOK_TRUST_PATH = $previousTrustPath
+            if ($null -eq $previousValue) { Remove-Item Env:CDP_TEST_NOHOOK -ErrorAction SilentlyContinue }
+            else { $env:CDP_TEST_NOHOOK = $previousValue }
+        }
+    }
 }
 
 Describe 'cdp v2 argument completers' {

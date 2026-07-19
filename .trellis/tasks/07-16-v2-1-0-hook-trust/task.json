@@ -3,7 +3,7 @@
   "name": "v2-1-0-hook-trust",
   "title": "建立 onEnter hook 信任模型",
   "description": "默认安全执行 env，命令 hook 按配置指纹显式信任，提供 no-hook、trust、revoke 和失败隔离。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

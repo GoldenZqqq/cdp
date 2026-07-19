@@ -1,5 +1,71 @@
 # Backend Quality Guidelines
 
+## Scenario: Trust Project Command Hooks Without Storing Commands
+
+### 1. Scope / Trigger
+
+Apply whenever `onEnter`, switch options, hook management, or hook trust
+storage changes. Structured `env` data is not command trust; command execution
+always requires one-switch authorization or a current persistent fingerprint.
+
+### 2. Signatures
+
+```text
+cdp <project> [--allow-hook|--no-hook]
+cdp hook list [--config <projects.json>]
+cdp hook trust <project> [--config <projects.json>]
+cdp hook revoke <project|--all> [--config <projects.json>]
+CDP_HOOK_TRUST_PATH=<test/automation override>
+```
+
+### 3. Contracts
+
+- `--no-hook` wins over environment and command behavior.
+- `--allow-hook` authorizes one switch and is never persisted.
+- Persistent entries contain config, project, and command SHA-256 values plus
+  `trustedAt`; command text and environment values are forbidden.
+- Config path, any config content, project name/root path, or command changes invalidate trust.
+- The trust file uses atomic JSON persistence and mode `0600` / current-user ACL.
+- List, warnings, and failures identify projects or states but never commands.
+
+### 4. Validation & Error Matrix
+
+- `--allow-hook` plus `--no-hook` -> parser error; no switch.
+- Untrusted/stale command -> skip and show redacted trust/one-switch hint.
+- Invalid env key -> skip key without rendering key or value.
+- Invalid trust JSON or permission hardening failure -> no command execution.
+- Ambiguous/missing project or missing platform command -> mutation fails.
+- Hook runtime error -> redacted warning; successful directory switch remains.
+
+### 5. Good / Base / Bad Cases
+
+- Good: inspect config, `hook trust api`, command runs until its fingerprint changes.
+- Base: structured env applies, command remains skipped by default.
+- Bad: store command text, log it on failure, or trust only by project name.
+
+### 6. Tests Required
+
+- PowerShell 5.1/7 and bash/zsh cover default deny, one-switch allow, persistent
+  trust, stale command, revoke, list redaction, and no-hook.
+- Assert invalid env names and hook failures never reveal names/commands.
+- Assert trust JSON contains only fingerprints/timestamp and file mode is `0600`
+  on Unix; redirect storage with `CDP_HOOK_TRUST_PATH` in tests.
+- Preserve project/alias named `hook` unless the next token is a management action.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```text
+{ "project": "api", "command": "export TOKEN=..." }
+```
+
+Correct:
+
+```text
+{ "configFingerprint": "...", "projectFingerprint": "...", "hookFingerprint": "...", "trustedAt": "..." }
+```
+
 ## Scenario: Persist cdp JSON Atomically
 
 ### 1. Scope / Trigger

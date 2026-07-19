@@ -189,6 +189,12 @@ Show-CdpProjectStatus -DirtyOnly -PassThru
 cdp workspace --add fullstack api web --open codex
 cdp workspace fullstack
 
+# 查看、信任、撤销或跳过项目命令 Hook
+cdp hook list
+cdp hook trust api
+cdp hook revoke api
+cdp api --no-hook
+
 # Tab 补全：输入 cdp 后按 Tab 自动补全子命令和项目名
 cdp s<TAB>  # → status, scan, ...
 
@@ -284,6 +290,7 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
 | `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
 | `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
+| `Invoke-Cdp` | `cdp hook list/trust/revoke` | 查看脱敏后的 Hook 状态，并管理项目级持久信任 |
 | `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `Switch-Project` | - | 打开 fzf 菜单并切换项目 |
@@ -315,6 +322,7 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | `cdp` | 打开 fzf 菜单并切换项目 |
 | `cdp status` / `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
 | `cdp workspace` / `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
+| `cdp hook list/trust/revoke` | 查看脱敏后的 Hook 状态，并管理项目级持久信任 |
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
 | `cdp api --open codex` | 切换到项目并启动 Codex、Claude、Gemini、VS Code、Cursor 或其他 PATH 命令 |
 | `cdp doctor` / `cdp-doctor` | 诊断依赖、配置和项目路径 |
@@ -395,7 +403,7 @@ cdp-scan E:\Projects
 }
 ```
 
-命令 Hook 默认跳过。PowerShell 使用 `cdp api -AllowHook`、bash/zsh 使用 `cdp api --allow-hook`，只授权当前一次切换。cdp 不会持久保存这次授权；使用前应检查当前生效的配置文件。
+命令 Hook 默认跳过。PowerShell 使用 `cdp api -AllowHook`、bash/zsh 使用 `cdp api --allow-hook`，只授权当前一次切换。需要持久项目级授权时，先检查当前生效的配置，再运行 `cdp hook trust api`；用 `cdp hook list` 查看状态，用 `cdp hook revoke api` 或 `cdp hook revoke --all` 撤销。信任绑定配置规范化路径、配置内容 SHA-256、项目身份与命令 SHA-256，因此配置移动或内容变化后必须重新信任。`~/.cdp/hook-trust.json` 只保存指纹与时间戳，不保存命令正文、配置内容或环境变量值，并限制文件权限。`--no-hook` 会在本次切换中同时跳过结构化环境变量和命令。
 
 最近访问记录保存在独立状态文件 `~/.cdp/state.json`，不会写回 `projects.json`。自动化或测试场景可以用 `CDP_STATE_PATH` 指向临时状态文件。
 

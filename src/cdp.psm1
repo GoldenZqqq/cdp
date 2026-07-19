@@ -517,46 +517,285 @@ function Limit-CdpText {
     return $result + "..."
 }
 
+function Get-CdpStringFingerprint {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
+
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Value)
+        $hash = $algorithm.ComputeHash($bytes)
+        ([System.BitConverter]::ToString($hash)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $algorithm.Dispose()
+    }
+}
+
+function Get-CdpHookTrustPath {
+    if (-not [string]::IsNullOrWhiteSpace($env:CDP_HOOK_TRUST_PATH)) {
+        return [Environment]::ExpandEnvironmentVariables($env:CDP_HOOK_TRUST_PATH)
+    }
+    Join-Path $env:USERPROFILE '.cdp\hook-trust.json'
+}
+
+function Get-CdpNormalizedConfigPath {
+    param([Parameter(Mandatory = $true)][string]$ConfigPath)
+
+    $fullPath = [System.IO.Path]::GetFullPath($ConfigPath)
+    if ([System.IO.Path]::DirectorySeparatorChar -eq '\') {
+        return $fullPath.ToLowerInvariant()
+    }
+    $fullPath
+}
+
+function Get-CdpHookDescriptor {
+    param([Parameter(Mandatory = $true)][object]$Project)
+
+    if (-not $Project.PSObject.Properties['onEnter'] -or $null -eq $Project.onEnter) { return $null }
+    $onEnter = $Project.onEnter
+    $command = if ($onEnter -is [string]) {
+        [string]$onEnter
+    } elseif ($onEnter.PSObject.Properties['powershell']) {
+        [string]$onEnter.powershell
+    } else {
+        ''
+    }
+    if ([string]::IsNullOrWhiteSpace($command)) { return $null }
+    [PSCustomObject]@{ Kind = 'powershell'; Command = $command }
+}
+
+function Get-CdpHookIdentity {
+    param(
+        [Parameter(Mandatory = $true)][string]$ConfigPath,
+        [Parameter(Mandatory = $true)][object]$Project
+    )
+
+    $descriptor = Get-CdpHookDescriptor -Project $Project
+    if (-not $descriptor) { return $null }
+    $nameHash = Get-CdpStringFingerprint -Value ([string]$Project.name)
+    $rootHash = Get-CdpStringFingerprint -Value ([string]$Project.rootPath)
+    $commandHash = Get-CdpStringFingerprint -Value $descriptor.Command
+    $configContentHash = Get-CdpFileFingerprint -LiteralPath $ConfigPath
+    [PSCustomObject]@{
+        ConfigFingerprint = Get-CdpStringFingerprint -Value (Get-CdpNormalizedConfigPath $ConfigPath)
+        ProjectFingerprint = Get-CdpStringFingerprint -Value "name=$nameHash;root=$rootHash"
+        HookFingerprint = Get-CdpStringFingerprint -Value "config=$configContentHash;kind=$($descriptor.Kind);command=$commandHash"
+        Kind = $descriptor.Kind
+    }
+}
+
+function Protect-CdpHookTrustStore {
+    param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+    if ([System.IO.Path]::DirectorySeparatorChar -ne '\') {
+        & chmod 600 $LiteralPath
+        if ($LASTEXITCODE -ne 0) { throw "Unable to secure the cdp hook trust store." }
+        return
+    }
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    $acl = New-Object System.Security.AccessControl.FileSecurity
+    $acl.SetOwner($identity)
+    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($identity, 'FullControl', 'Allow')
+    $acl.AddAccessRule($rule)
+    Set-Acl -LiteralPath $LiteralPath -AclObject $acl
+}
+
+function Read-CdpHookTrustStore {
+    $path = Get-CdpHookTrustPath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return [PSCustomObject]@{
+            Path = $path
+            Fingerprint = 'missing'
+            Value = [PSCustomObject]@{ version = 1; entries = @() }
+        }
+    }
+    Protect-CdpHookTrustStore -LiteralPath $path
+    $document = Read-CdpJsonDocument -LiteralPath $path
+    $value = $document.Value
+    if ($null -eq $value -or $value.version -ne 1 -or -not $value.PSObject.Properties['entries']) {
+        throw "Invalid cdp hook trust store."
+    }
+    $value.entries = @($value.entries)
+    [PSCustomObject]@{ Path = $path; Fingerprint = $document.Fingerprint; Value = $value }
+}
+
+function Save-CdpHookTrustStore {
+    param([Parameter(Mandatory = $true)][object]$Document)
+
+    [void](Write-CdpJsonFile `
+        -LiteralPath $Document.Path `
+        -Value $Document.Value `
+        -ExpectedFingerprint $Document.Fingerprint)
+    Protect-CdpHookTrustStore -LiteralPath $Document.Path
+}
+
+function Test-CdpHookTrusted {
+    param(
+        [Parameter(Mandatory = $true)][string]$ConfigPath,
+        [Parameter(Mandatory = $true)][object]$Project
+    )
+
+    $identity = Get-CdpHookIdentity -ConfigPath $ConfigPath -Project $Project
+    if (-not $identity) { return $false }
+    $store = Read-CdpHookTrustStore
+    @($store.Value.entries | Where-Object {
+        $_.configFingerprint -eq $identity.ConfigFingerprint -and
+        $_.projectFingerprint -eq $identity.ProjectFingerprint -and
+        $_.hookFingerprint -eq $identity.HookFingerprint
+    }).Count -gt 0
+}
+
+function Get-CdpHookProjects {
+    param([Parameter(Mandatory = $true)][string]$ConfigPath)
+
+    $document = Read-CdpJsonDocument -LiteralPath $ConfigPath
+    @(@($document.Value) | Where-Object {
+        $_.enabled -eq $true -and (Get-CdpHookDescriptor -Project $_)
+    })
+}
+
+function Show-CdpHookTrustList {
+    param([Parameter(Mandatory = $true)][string]$ConfigPath)
+
+    $store = Read-CdpHookTrustStore
+    $projects = @(Get-CdpHookProjects -ConfigPath $ConfigPath)
+    if ($projects.Count -eq 0) { Write-Host 'No command hooks found.' -ForegroundColor Yellow; return }
+    Write-Host 'cdp hook trust' -ForegroundColor Cyan
+    foreach ($project in $projects) {
+        $identity = Get-CdpHookIdentity -ConfigPath $ConfigPath -Project $project
+        $projectEntries = @($store.Value.entries | Where-Object {
+            $_.configFingerprint -eq $identity.ConfigFingerprint -and
+            $_.projectFingerprint -eq $identity.ProjectFingerprint
+        })
+        $state = if (@($projectEntries | Where-Object { $_.hookFingerprint -eq $identity.HookFingerprint }).Count) {
+            'trusted'
+        } elseif ($projectEntries.Count -gt 0) {
+            'stale'
+        } else {
+            'untrusted'
+        }
+        Write-Host "  $($project.name) [$($identity.Kind)] $state"
+    }
+}
+
+function Add-CdpHookTrust {
+    param([string]$ConfigPath, [string]$Name)
+
+    $projects = @(Get-CdpHookProjects -ConfigPath $ConfigPath)
+    $matches = @(Get-CdpProjectMatches -Projects $projects -Query $Name)
+    if ($matches.Count -ne 1) { throw "Hook trust requires one project match; found $($matches.Count)." }
+    $identity = Get-CdpHookIdentity -ConfigPath $ConfigPath -Project $matches[0]
+    $store = Read-CdpHookTrustStore
+    $entries = @($store.Value.entries | Where-Object {
+        -not ($_.configFingerprint -eq $identity.ConfigFingerprint -and
+            $_.projectFingerprint -eq $identity.ProjectFingerprint)
+    })
+    $entries += [PSCustomObject]@{
+        configFingerprint = $identity.ConfigFingerprint
+        projectFingerprint = $identity.ProjectFingerprint
+        hookFingerprint = $identity.HookFingerprint
+        trustedAt = [DateTime]::UtcNow.ToString('o')
+    }
+    $store.Value.entries = @($entries)
+    Save-CdpHookTrustStore -Document $store
+    Write-Host "Trusted hook for project: $($matches[0].name)" -ForegroundColor Green
+}
+
+function Remove-CdpHookTrust {
+    param([string]$ConfigPath, [string]$Name)
+
+    $store = Read-CdpHookTrustStore
+    $configFingerprint = Get-CdpStringFingerprint -Value (Get-CdpNormalizedConfigPath $ConfigPath)
+    $projectFingerprint = $null
+    if ($Name -ne '--all') {
+        $matches = @(Get-CdpProjectMatches -Projects @(Get-CdpHookProjects $ConfigPath) -Query $Name)
+        if ($matches.Count -ne 1) { throw "Hook revoke requires one project match; found $($matches.Count)." }
+        $projectFingerprint = (Get-CdpHookIdentity -ConfigPath $ConfigPath -Project $matches[0]).ProjectFingerprint
+    }
+    $store.Value.entries = @($store.Value.entries | Where-Object {
+        $_.configFingerprint -ne $configFingerprint -or
+        ($projectFingerprint -and $_.projectFingerprint -ne $projectFingerprint)
+    })
+    Save-CdpHookTrustStore -Document $store
+    Write-Host 'Hook trust revoked.' -ForegroundColor Green
+}
+
+function Invoke-CdpHookCommand {
+    param([string]$Action, [string]$Name, [string]$ConfigPath)
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($ConfigPath)) { $ConfigPath = Get-DefaultConfigPath }
+        if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { throw "Configuration file not found." }
+        switch ($Action) {
+            'list' { Show-CdpHookTrustList -ConfigPath $ConfigPath }
+            'trust' { Add-CdpHookTrust -ConfigPath $ConfigPath -Name $Name }
+            'revoke' { Remove-CdpHookTrust -ConfigPath $ConfigPath -Name $Name }
+            default { throw "Unknown hook action." }
+        }
+    } catch {
+        Write-Host "Error: hook trust operation failed ($($_.Exception.GetType().Name))." -ForegroundColor Red
+    }
+}
+
+function Set-CdpOnEnterEnvironment {
+    param([Parameter(Mandatory = $true)][object]$OnEnter)
+
+    if ($OnEnter -is [string] -or -not $OnEnter.PSObject.Properties['env']) { return }
+    $OnEnter.env.PSObject.Properties | ForEach-Object {
+        if ($_.Name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+            Write-Host "  onEnter warning: invalid environment variable name skipped." -ForegroundColor Yellow
+        } else {
+            [System.Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
+        }
+    }
+}
+
+function Get-CdpOnEnterCommand {
+    param([Parameter(Mandatory = $true)][object]$OnEnter)
+
+    if ($OnEnter -is [string]) { return [string]$OnEnter }
+    if ($OnEnter.PSObject.Properties['powershell']) { return [string]$OnEnter.powershell }
+    ''
+}
+
 function Invoke-CdpOnEnter {
     param(
         [Parameter(Mandatory = $true)]
         [object]$Project,
 
         [Parameter(Mandatory = $false)]
-        [switch]$AllowHook
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$AllowHook,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoHook
     )
 
     if (-not $Project.PSObject.Properties['onEnter'] -or $null -eq $Project.onEnter) {
         return
     }
 
+    if ($NoHook) {
+        Write-Host "  onEnter skipped by --no-hook." -ForegroundColor Yellow
+        return
+    }
+
     $onEnter = $Project.onEnter
 
     try {
-        if ($onEnter -isnot [string] -and $onEnter.PSObject.Properties['env']) {
-            $onEnter.env.PSObject.Properties | ForEach-Object {
-                if ($_.Name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
-                    Write-Host "  onEnter warning: invalid environment variable name skipped." -ForegroundColor Yellow
-                } else {
-                    [System.Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
-                }
-            }
-        }
+        Set-CdpOnEnterEnvironment -OnEnter $onEnter
 
-        $hookCommand = if ($onEnter -is [string]) {
-            [string]$onEnter
-        } elseif ($onEnter.PSObject.Properties['powershell']) {
-            [string]$onEnter.powershell
-        } else {
-            ''
-        }
+        $hookCommand = Get-CdpOnEnterCommand -OnEnter $onEnter
 
         if ([string]::IsNullOrWhiteSpace($hookCommand)) {
             return
         }
 
-        if (-not $AllowHook) {
-            Write-Host "  onEnter command skipped: use -AllowHook for this switch." -ForegroundColor Yellow
+        $trusted = -not [string]::IsNullOrWhiteSpace($ConfigPath) -and
+            (Test-CdpHookTrusted -ConfigPath $ConfigPath -Project $Project)
+        if (-not $AllowHook -and -not $trusted) {
+            Write-Host "  onEnter command skipped: trust this project hook or use -AllowHook once." -ForegroundColor Yellow
             return
         }
 
@@ -596,6 +835,9 @@ function Switch-Project {
     .PARAMETER AllowHook
         Execute a project command hook for this switch only. Command hooks are
         skipped by default.
+
+    .PARAMETER NoHook
+        Skip all onEnter environment values and command hooks for this switch.
 
     .EXAMPLE
         Switch-Project
@@ -637,7 +879,10 @@ function Switch-Project {
         [string]$Open,
 
         [Parameter(Mandatory = $false)]
-        [switch]$AllowHook
+        [switch]$AllowHook,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoHook
     )
 
     # Get config path
@@ -800,7 +1045,11 @@ function Switch-Project {
             $newTitle = $selectedProject.name
             Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
 
-            Invoke-CdpOnEnter -Project $selectedProject -AllowHook:$AllowHook
+            Invoke-CdpOnEnter `
+                -Project $selectedProject `
+                -ConfigPath $ConfigPath `
+                -AllowHook:$AllowHook `
+                -NoHook:$NoHook
 
             if (-not [string]::IsNullOrWhiteSpace($Open)) {
                 Invoke-CdpWorkspaceLauncher -Project $selectedProject -Open $Open
@@ -1161,6 +1410,7 @@ function New-CdpInvocation {
         Query = $null
         Open = $null
         AllowHook = $false
+        NoHook = $false
         DirtyOnly = $false
         Fix = $false
         Push = $false
@@ -1175,6 +1425,7 @@ function New-CdpInvocation {
         RootPath = $null
         MaxDepth = 4
         Count = 10
+        HookAction = $null
     }
 }
 
@@ -1195,6 +1446,7 @@ function Split-CdpCommonOptions {
     $resolvedOpen = $Open
     $resolvedConfig = $null
     $allowHook = $false
+    $noHook = $false
     for ($i = 0; $i -lt $Tokens.Count; $i++) {
         $token = $Tokens[$i]
         if ($token -in @('--open', '-open', '-o')) {
@@ -1213,14 +1465,21 @@ function Split-CdpCommonOptions {
             $allowHook = $true
             continue
         }
+        if ($token -in @('--no-hook', '-no-hook')) {
+            $noHook = $true
+            continue
+        }
         $positionals.Add($token)
     }
+
+    if ($allowHook -and $noHook) { throw "The --allow-hook and --no-hook options cannot be used together." }
 
     [PSCustomObject]@{
         Tokens = @($positionals)
         Open = $resolvedOpen
         ConfigPath = $resolvedConfig
         AllowHook = $allowHook
+        NoHook = $noHook
     }
 }
 
@@ -1231,6 +1490,7 @@ function Resolve-CdpCommandKind {
     switch -Regex ($Command.ToLowerInvariant()) {
         '^(status|st)$' { return 'status' }
         '^(workspace|ws)$' { return 'workspace' }
+        '^(hook|hooks)$' { return 'hook' }
         '^(doctor|health|check)$' { return 'doctor' }
         '^(about|version|--version|-v)$' { return 'about' }
         '^(recent|recents|history)$' { return 'recent' }
@@ -1328,6 +1588,16 @@ function ConvertFrom-CdpManagementTokens {
     if ($Kind -eq 'doctor') {
         $items = @($Tokens | Where-Object { if ($_ -in @('--fix', '-fix')) { $result.Fix = $true; $false } else { $true } })
         Set-CdpTrailingConfigPath -Result $result -Arguments $items -RequiredCount 0
+    } elseif ($Kind -eq 'hook') {
+        if ($Tokens.Count -lt 1) { throw "Hook requires list, trust, or revoke." }
+        $result.HookAction = $Tokens[0].ToLowerInvariant()
+        if ($result.HookAction -notin @('list', 'trust', 'revoke')) { throw "Unknown hook action." }
+        if ($result.HookAction -eq 'list') {
+            Set-CdpTrailingConfigPath -Result $result -Arguments @($Tokens | Select-Object -Skip 1) -RequiredCount 0
+        } else {
+            Set-CdpTrailingConfigPath -Result $result -Arguments @($Tokens | Select-Object -Skip 1) -RequiredCount 1
+            $result.Name = $Tokens[1]
+        }
     } elseif ($Kind -in @('about', 'clean')) {
         Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 0
     } elseif ($Kind -eq 'recent') {
@@ -1374,13 +1644,14 @@ function ConvertFrom-CdpScanTokens {
 }
 
 function ConvertFrom-CdpSwitchTokens {
-    param([string[]]$Tokens, [string]$Query, [string]$ConfigPath, [string]$Open, [bool]$AllowHook)
+    param([string[]]$Tokens, [string]$Query, [string]$ConfigPath, [string]$Open, [bool]$AllowHook, [bool]$NoHook)
 
     $result = New-CdpInvocation -Kind 'switch'
     $result.Query = $Query
     $result.ConfigPath = $ConfigPath
     $result.Open = $Open
     $result.AllowHook = $AllowHook
+    $result.NoHook = $NoHook
     $items = @($Tokens)
     if ([string]::IsNullOrWhiteSpace($result.Query) -and $items.Count -gt 0 -and -not (Test-CdpConfigPathArgument $items[0])) {
         $result.Query = $items[0]
@@ -1402,20 +1673,24 @@ function ConvertFrom-CdpInvokeArguments {
     $common = Split-CdpCommonOptions -Tokens $tokens -Open $Open
     $tokens = @($common.Tokens)
     $kind = if ($tokens.Count -gt 0) { Resolve-CdpCommandKind -Command $tokens[0] } else { $null }
+    if ($kind -eq 'hook' -and
+        ($tokens.Count -lt 2 -or $tokens[1].ToLowerInvariant() -notin @('list', 'trust', 'revoke'))) {
+        $kind = $null
+    }
     if ($kind) { $tokens = @($tokens | Select-Object -Skip 1) }
 
     if ($kind -eq 'status') {
         if ($common.Open) { throw "The --open option is not valid for status." }
-        if ($common.AllowHook) { throw "The --allow-hook option is only valid for project switching." }
+        if ($common.AllowHook -or $common.NoHook) { throw "Hook options are only valid for project switching." }
         return ConvertFrom-CdpStatusTokens -Tokens $tokens -ConfigPath $common.ConfigPath
     }
     if ($kind -eq 'workspace') {
-        if ($common.AllowHook) { throw "The --allow-hook option is only valid for project switching." }
+        if ($common.AllowHook -or $common.NoHook) { throw "Hook options are only valid for project switching." }
         return ConvertFrom-CdpWorkspaceTokens -Tokens $tokens -ConfigPath $common.ConfigPath -Open $common.Open
     }
     if ($kind) {
         if ($common.Open) { throw "The --open option is only valid for project and workspace commands." }
-        if ($common.AllowHook) { throw "The --allow-hook option is only valid for project switching." }
+        if ($common.AllowHook -or $common.NoHook) { throw "Hook options are only valid for project switching." }
         return ConvertFrom-CdpManagementTokens -Kind $kind -Tokens $tokens -ConfigPath $common.ConfigPath
     }
     ConvertFrom-CdpSwitchTokens `
@@ -1423,7 +1698,8 @@ function ConvertFrom-CdpInvokeArguments {
         -Query $Query `
         -ConfigPath $common.ConfigPath `
         -Open $common.Open `
-        -AllowHook $common.AllowHook
+        -AllowHook $common.AllowHook `
+        -NoHook $common.NoHook
 }
 
 # Helper function to get stored config choice path
@@ -3754,6 +4030,7 @@ function Invoke-CdpManagementInvocation {
     param([object]$Invocation)
 
     switch ($Invocation.Kind) {
+        'hook' { Invoke-CdpHookCommand -Action $Invocation.HookAction -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
         'doctor' {
             if ($Invocation.Fix) { Repair-ProjectConfig -ConfigPath $Invocation.ConfigPath }
             else { Test-ProjectHealth -ConfigPath $Invocation.ConfigPath }
@@ -3806,6 +4083,9 @@ function Invoke-Cdp {
         Execute a project command hook for this switch only. Command hooks are
         skipped by default.
 
+    .PARAMETER NoHook
+        Skip all onEnter behavior for this switch.
+
     .EXAMPLE
         cdp
         # Opens fzf menu to select a project
@@ -3844,6 +4124,9 @@ function Invoke-Cdp {
         [Parameter(Mandatory = $false)]
         [switch]$AllowHook,
 
+        [Parameter(Mandatory = $false)]
+        [switch]$NoHook,
+
         [Parameter(Mandatory = $false, ValueFromRemainingArguments = $true)]
         [string[]]$RemainingArgs
     )
@@ -3851,6 +4134,7 @@ function Invoke-Cdp {
     try {
         $parserArgs = @($RemainingArgs)
         if ($AllowHook) { $parserArgs = @('--allow-hook') + $parserArgs }
+        if ($NoHook) { $parserArgs = @('--no-hook') + $parserArgs }
         $invocation = ConvertFrom-CdpInvokeArguments `
             -Command $Command `
             -ConfigPath $ConfigPath `
@@ -3871,7 +4155,8 @@ function Invoke-Cdp {
                 -Query $invocation.Query `
                 -WSL:$WSL `
                 -Open $invocation.Open `
-                -AllowHook:$invocation.AllowHook
+                -AllowHook:$invocation.AllowHook `
+                -NoHook:$invocation.NoHook
             return
         }
         default { Invoke-CdpManagementInvocation -Invocation $invocation }
@@ -3903,7 +4188,7 @@ Register-ArgumentCompleter -CommandName Invoke-Cdp -ParameterName Command -Scrip
 
     $subcommands = @(
         'status', 'doctor', 'about', 'recent', 'pin', 'unpin',
-        'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'workspace'
+        'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'workspace', 'hook'
     )
 
     $completions = @($subcommands | Where-Object { $_ -like "$wordToComplete*" } |

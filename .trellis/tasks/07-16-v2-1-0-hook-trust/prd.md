@@ -13,6 +13,20 @@
 
 ## Acceptance Criteria
 
-- [ ] 未信任命令不会执行且提示下一步。
-- [ ] 信任后 PowerShell/bash hook 正常执行，配置变更后需重新信任。
-- [ ] `env` 键名验证、错误隔离、信任存储权限和跨平台测试通过。
+- [x] 未信任命令不会执行且提示下一步。
+- [x] 信任后 PowerShell/bash hook 正常执行，配置变更后需重新信任。
+- [x] `env` 键名验证、错误隔离、信任存储权限和跨平台测试通过。
+
+## Verification
+
+- PowerShell 7.5.2: Pester `75/75` and PSScriptAnalyzer Error severity passed.
+- bash and zsh: shell v2, CLI, persistence, installer, and syntax suites passed;
+  Bash 3.2 Docker passed shell v2, persistence, and syntax.
+- Verified default deny, one-switch authorization, persistent trust, stale
+  command fingerprints, revoke/list redaction, invalid trust store isolation,
+  no-hook precedence, and `hook` project-name compatibility.
+- Release metadata, shell installer digest, deterministic Scoop package hash,
+  ShellCheck Error severity, YAML/JSON, Trellis validation, and `git diff --check`
+  passed.
+- Windows PowerShell 5.1 remains covered by the hosted CI matrix; this Linux
+  environment cannot execute Windows PowerShell locally.

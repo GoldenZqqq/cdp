@@ -189,6 +189,12 @@ Show-CdpProjectStatus -DirtyOnly -PassThru
 cdp workspace --add fullstack api web --open codex
 cdp workspace fullstack
 
+# Review, trust, revoke, or bypass project command hooks
+cdp hook list
+cdp hook trust api
+cdp hook revoke api
+cdp api --no-hook
+
 # Tab completion: press Tab after cdp to auto-complete subcommands and project names
 cdp s<TAB>  # → status, scan, ...
 
@@ -284,6 +290,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
 | `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
 | `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
+| `Invoke-Cdp` | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `Invoke-Cdp -Query api -Open codex` | `cdp api -Open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `Switch-Project` | - | Opens the fzf menu and switches projects |
@@ -315,6 +322,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | `cdp` | Opens the fzf menu and switches projects |
 | `cdp status` / `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
 | `cdp workspace` / `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
+| `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
 | `cdp api --open codex` | Switches to a project and starts Codex, Claude, Gemini, VS Code, Cursor, or another PATH command |
 | `cdp doctor` / `cdp-doctor` | Diagnoses dependencies, config, and project paths |
@@ -395,7 +403,7 @@ Structured environment values are applied when a project is entered. Environment
 }
 ```
 
-Command hooks are skipped by default. Authorize a command hook for one switch only with `cdp api -AllowHook` in PowerShell or `cdp api --allow-hook` in bash/zsh. cdp never persists this one-time authorization; review the active config before using it.
+Command hooks are skipped by default. Authorize one switch with `cdp api -AllowHook` in PowerShell or `cdp api --allow-hook` in bash/zsh. For persistent project-scoped authorization, review the active config and run `cdp hook trust api`; inspect status with `cdp hook list` and remove it with `cdp hook revoke api` or `cdp hook revoke --all`. Trust is bound to the normalized config path, config-content SHA-256, project identity, and command SHA-256, so moving or changing the config requires new trust. `~/.cdp/hook-trust.json` contains fingerprints and timestamps only—never command text, config content, or environment values—and is permission-restricted. `--no-hook` skips both structured environment values and commands for one switch.
 
 Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
 

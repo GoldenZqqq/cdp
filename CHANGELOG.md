@@ -5,11 +5,13 @@
 ### Added
 
 - Added atomic JSON persistence with sibling locks, SHA-256 concurrency checks, bounded backups, and explicit recovery helpers.
+- Added project-scoped command-hook trust with redacted `hook list/trust/revoke` management and `--no-hook` bypass.
 
 ### Changed
 
 - Routed project, recent-state, workspace, repair, scan, metadata, and status-fix writes through the same PowerShell and shell persistence contract.
 - Invalid state files are no longer silently replaced with empty data.
+- Command hook trust automatically becomes stale when the config path, project identity, or command fingerprint changes.
 
 ## 2.0.5
 
