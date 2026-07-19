@@ -442,3 +442,36 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: 完成 v2.1.0 规范与文档刷新
+
+**Date**: 2026-07-19
+**Task**: 完成 v2.1.0 规范与文档刷新
+**Branch**: `main`
+
+### Summary
+
+将 backend/frontend Trellis 模板改为源码支撑规范，新增双语 README/manifest/spec 文档门禁，刷新 README、CONTRIBUTING、AGENTS 与 CLAUDE 的 v2 架构和验证说明。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1f1a284` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
