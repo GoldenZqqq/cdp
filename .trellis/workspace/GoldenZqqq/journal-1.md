@@ -376,3 +376,36 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: 完成 v2.1.0 CI 质量门禁
+
+**Date**: 2026-07-19
+**Task**: 完成 v2.1.0 CI 质量门禁
+**Branch**: `main`
+
+### Summary
+
+集中 PowerShell 测试、覆盖率、PSScriptAnalyzer 与发布元数据门禁，新增确定性 Scoop 包完整性校验和负向 fixtures，并强化跨平台 CI 超时、工具固定与报告上传。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a076ce3` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
