@@ -457,11 +457,13 @@ The project test boundary is:
 ```powershell
 Invoke-Pester -Path .\tests -PassThru
 
+scripts/Invoke-PowerShellQualityGate.ps1 [-CoverageThreshold 60] [-ReportDirectory <path>]
+
 $config = New-PesterConfiguration
 $config.Run.Path = '.\tests'
 $config.Run.PassThru = $true
 $config.CodeCoverage.Enabled = $true
-$config.CodeCoverage.Path = '.\src\cdp.psm1'
+$config.CodeCoverage.Path = @('.\src\cdp.psm1', '.\src\PowerShell\*.ps1')
 Invoke-Pester -Configuration $config
 ```
 
@@ -476,6 +478,10 @@ InModuleScope cdp -Parameters @{ Value = $value } {
 ### 3. Contracts
 
 - PowerShell 5.1 and 7 execute the same `*.Tests.ps1` files and assertions.
+- CI pins Pester `5.7.1` and PSScriptAnalyzer `1.24.0`; the repository quality
+  script owns invocation order and failure messages.
+- Coverage includes the bootstrap and every PowerShell domain file, reports
+  analyzed/executed command counts, and fails below the recorded 60% threshold.
 - New suites remain below 600 lines; add a focused file instead of extending an oversized legacy test file.
 - Configs, state files, repositories, remotes, and missing paths live under `$TestDrive`.
 - Git synchronization tests use local bare remotes only. They prove success through refs and prove failure through an unavailable local path.
@@ -493,7 +499,8 @@ InModuleScope cdp -Parameters @{ Value = $value } {
 - Environment or current location not restored -> isolation failure, even if assertions pass.
 - Push ref changes but output says failure -> product regression; assert both the ref and success text.
 - Hook throws -> caller must not throw; warning output is asserted.
-- Coverage percent does not exceed the recorded task baseline -> acceptance failure.
+- Coverage percent below the quality threshold -> acceptance failure; the pure
+  threshold helper also has a deliberate failing regression test.
 - Parallel default `Invoke-Pester -CI` runs in one checkout -> report collision risk at `testResults.xml`; run sequentially or configure unique result paths.
 
 ### 5. Good / Base / Bad Cases
@@ -528,7 +535,8 @@ copy the completer scriptblock into the test
 - Workspace: persisted add/list JSON, paths containing spaces, missing config entries, and exact mocked launch arguments.
 - onEnter: env values, controlled PowerShell/string hooks, and exception isolation.
 - Completion: subcommand, enabled project, disabled-project exclusion, and launcher prefixes through `TabExpansion2`.
-- Run targeted scenarios first, then full Pester on PS5.1 and PS7, PSScriptAnalyzer, code coverage, shell regressions, syntax, and `git diff --check`.
+- Run `scripts/Invoke-PowerShellQualityGate.ps1` on PS5.1 and PS7, then shell
+  gates, syntax, package integrity, and `git diff --check`.
 - Report executed/analyzed command counts with the percentage so coverage change is auditable.
 
 ### 7. Wrong vs Correct
@@ -691,11 +699,13 @@ The source installer automation boundary is:
 Install.ps1 [-Scope CurrentUser|AllUsers] [-Force] [-SkipFzf]
 ```
 
-The repository release check is:
+The repository release and quality checks are:
 
 ```text
 pwsh -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
 powershell.exe -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
+pwsh -File scripts/Invoke-PowerShellQualityGate.ps1 [-CoverageThreshold 60]
+bash scripts/Test-ScoopPackage.sh [<output.tar.gz>]
 ```
 
 ### 3. Contracts
@@ -708,6 +718,9 @@ powershell.exe -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
 - Scoop owns the `fzf` dependency and calls the root installer. It must not copy module-path selection logic.
 - The metadata validator checks release-notes first version, PowerShell/Bash headers, Bash runtime version, two Pester expectations, Scoop current/template metadata, changelog first heading, and progress release target.
 - `PROGRESS.md` distinguishes latest externally verified public release from the current local target. It never claims publication before channel verification.
+- `scripts/Test-ScoopPackage.sh` checks every tracked `src/PowerShell` and
+  `src/Shell` source file is packaged, rejects repository-only entries, and
+  compares the archive digest with `scoop/cdp.json`.
 - Installer/metadata validators do not accept, read, print, or persist Gallery API keys.
 - In Windows PowerShell 5.1 negative process tests, native stderr redirected with `2>&1` becomes an ErrorRecord. Temporarily use `ErrorActionPreference=Continue` only around the expected failing child and restore it in `finally` before asserting exit code/output.
 
@@ -720,6 +733,9 @@ powershell.exe -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
 - Target module version differs from copied manifest -> exact verification fails with found/expected versions.
 - Any checked metadata version, Scoop URL, extract directory, dependency, or installer command drifts -> validator lists the mismatched key and exits nonzero.
 - Current repository is consistent -> validator reports the canonical version and exits zero under PowerShell 5.1 and 7.
+- Quality gate tool missing or wrong pinned version -> quality job fails before tests.
+- Package content or digest drift -> package gate lists the missing/forbidden
+  entry or expected/actual digest and exits nonzero.
 - Missing metadata file or invalid manifest/JSON -> validator exits nonzero before release work.
 
 ### 5. Good / Base / Bad Cases
@@ -756,7 +772,8 @@ update manifest version but forget Scoop/CHANGELOG/tests/PROGRESS
 - Exact selection: target path/version succeeds; same version elsewhere fails; wrong version at target fails.
 - Metadata positive: current repository passes in PowerShell 5.1 and 7.
 - Metadata negative: copy required files to `$TestDrive`, mutate Scoop version, run the validator in a separate same-edition process, assert nonzero and `scoop.version` output.
-- CI runs full Pester and the validator explicitly in both Windows jobs.
+- CI runs the repository-owned PowerShell quality gate in both Windows jobs and
+  uploads the NUnit/JaCoCo reports from PowerShell 7.
 - Final gate also includes PSScriptAnalyzer on installer/scripts/module, Scoop JSON and workflow YAML parsing, shell regressions/syntax, secret-reference search, Trellis validation, and `git diff --check`.
 
 ### 7. Wrong vs Correct

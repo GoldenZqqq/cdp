@@ -118,6 +118,8 @@ v2.1.0 - Engineering Foundation
 - Improved: status push previews include remote and upstream identity
 - Improved: status collection uses porcelain-v2 batching with bounded concurrency, per-repository timeouts, optional TTL caching, and --refresh/-Refresh controls
 - Added: fixed-size status performance benchmarks and Bash/zsh/Bash 3.2 regression gates
+- Improved: CI uses pinned PowerShell test tools, a 60% coverage gate, report artifacts, deterministic package validation, and explicit job timeouts
+- Added: deliberate failure fixtures for coverage, package hash, release metadata, and shell installer integrity gates
 - Refactored: PowerShell implementation is loaded from bounded domain files with a stable bootstrap/export surface
 - Refactored: bash/zsh domain fragments deterministically generate the verified single-file installer artifact
 

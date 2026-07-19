@@ -10,6 +10,10 @@ jobs:
   powershell-51:
     name: Windows PowerShell 5.1
     runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PESTER_VERSION: 5.7.1
+      PSSCRIPTANALYZER_VERSION: 1.24.0
 
     steps:
       - name: Checkout
@@ -23,32 +27,29 @@ jobs:
         run: |
           Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
-          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          Install-Module Pester -RequiredVersion $env:PESTER_VERSION -Force -SkipPublisherCheck -Scope CurrentUser
+          Install-Module PSScriptAnalyzer -RequiredVersion $env:PSSCRIPTANALYZER_VERSION -Force -Scope CurrentUser
         shell: powershell
 
-      - name: Run Pester tests
-        run: |
-          Import-Module Pester -MinimumVersion 5.5.0 -Force
-          Invoke-Pester -Path ./tests -CI
+      - name: Run PowerShell quality gate
+        run: .\scripts\Invoke-PowerShellQualityGate.ps1 -ReportDirectory .\artifacts\powershell-51
         shell: powershell
 
-      - name: Validate release metadata
-        run: .\scripts\Test-ReleaseMetadata.ps1
-        shell: powershell
-
-      - name: Run PSScriptAnalyzer errors
-        run: |
-          $results = Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Error
-          if ($results) {
-              $results | Format-Table -AutoSize
-              throw "PSScriptAnalyzer found errors."
-          }
-        shell: powershell
+      - name: Upload PowerShell 5.1 reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: powershell-51-quality-reports
+          path: artifacts/powershell-51
+          if-no-files-found: warn
 
   powershell-7:
     name: PowerShell 7.x
     runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PESTER_VERSION: 5.7.1
+      PSSCRIPTANALYZER_VERSION: 1.24.0
 
     steps:
       - name: Checkout
@@ -61,32 +62,26 @@ jobs:
       - name: Install test tools
         run: |
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
-          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          Install-Module Pester -RequiredVersion $env:PESTER_VERSION -Force -SkipPublisherCheck -Scope CurrentUser
+          Install-Module PSScriptAnalyzer -RequiredVersion $env:PSSCRIPTANALYZER_VERSION -Force -Scope CurrentUser
         shell: pwsh
 
-      - name: Run Pester tests
-        run: |
-          Import-Module Pester -MinimumVersion 5.5.0 -Force
-          Invoke-Pester -Path ./tests -CI
+      - name: Run PowerShell quality gate
+        run: .\scripts\Invoke-PowerShellQualityGate.ps1 -ReportDirectory .\artifacts\powershell-7
         shell: pwsh
 
-      - name: Validate release metadata
-        run: .\scripts\Test-ReleaseMetadata.ps1
-        shell: pwsh
-
-      - name: Run PSScriptAnalyzer errors
-        run: |
-          $results = Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Error
-          if ($results) {
-              $results | Format-Table -AutoSize
-              throw "PSScriptAnalyzer found errors."
-          }
-        shell: pwsh
+      - name: Upload PowerShell 7 reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: powershell-7-quality-reports
+          path: artifacts/powershell-7
+          if-no-files-found: warn
 
   bash:
     name: Bash smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -103,12 +98,14 @@ jobs:
           bash -n ./src/Shell/*.sh
           bash -n ./install-wsl.sh
           bash -n ./scripts/Build-ShellScript.sh
+          bash -n ./scripts/Test-ScoopPackage.sh
+          bash -n ./tests/cdp.QualityGates.Tests.sh
 
       - name: Check generated shell artifact
         run: bash ./scripts/Build-ShellScript.sh --check
 
       - name: Run ShellCheck errors
-        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh
 
       - name: Run shell modularization tests
         run: bash ./tests/cdp.Shell.Modularization.Tests.sh
@@ -122,6 +119,9 @@ jobs:
       - name: Run status performance regressions
         run: bash ./tests/cdp.Status.Performance.Tests.sh
 
+      - name: Run quality gate regressions
+        run: bash ./tests/cdp.QualityGates.Tests.sh
+
       - name: Run shell safe mutation tests
         run: bash ./tests/cdp.SafeMutations.Tests.sh
 
@@ -133,7 +133,7 @@ jobs:
 
       - name: Run Bash 3.2 compatibility matrix
         run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work bash:3.2 sh -c '
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work bash@sha256:3a13e5da38baa575985778cd09ce8ac736d4b4dafc91a430e71271f6e5311b89 sh -c '
             apk add --no-cache git jq fzf >/dev/null
             bash ./tests/cdp.Shell.Modularization.Tests.sh
             bash ./tests/cdp.Cli.Tests.sh
@@ -148,16 +148,12 @@ jobs:
 
       - name: Build Scoop package smoke
         run: |
-          bash ./scripts/New-ScoopPackage.sh 2.1.0 "$RUNNER_TEMP/cdp-2.1.0.tar.gz"
-          tar -tzf "$RUNNER_TEMP/cdp-2.1.0.tar.gz" | grep -Fx 'cdp-2.1.0/src/cdp.sh'
-          expected_hash="$(jq -r '.hash' scoop/cdp.json)"
-          test "$expected_hash" != skip
-          test "${#expected_hash}" -eq 64
-          printf '%s' "$expected_hash" | grep -Eq '^[0-9a-f]{64}$'
+          bash ./scripts/Test-ScoopPackage.sh "$RUNNER_TEMP/cdp-package.tar.gz"
 
   macos:
     name: macOS smoke
     runs-on: macos-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -173,12 +169,14 @@ jobs:
           bash -n ./src/Shell/*.sh
           bash -n ./install-wsl.sh
           bash -n ./scripts/Build-ShellScript.sh
+          bash -n ./scripts/Test-ScoopPackage.sh
+          bash -n ./tests/cdp.QualityGates.Tests.sh
 
       - name: Check generated shell artifact
         run: bash ./scripts/Build-ShellScript.sh --check
 
       - name: Run ShellCheck errors
-        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh ./scripts/Test-ScoopPackage.sh ./tests/cdp.QualityGates.Tests.sh
 
       - name: Run shell modularization tests
         run: bash ./tests/cdp.Shell.Modularization.Tests.sh

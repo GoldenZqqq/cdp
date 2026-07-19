@@ -21,6 +21,8 @@
 - Split bash/zsh development sources into bounded domain fragments while retaining a deterministic single-file `cdp.sh` for source, offline, and verified remote installation.
 - Reduced status collection to one porcelain-v2 probe plus an optional log probe per Git repository, with bounded cross-platform concurrency, per-repository timeouts, optional TTL caching, and explicit refresh controls.
 - Added fixed 50-repository benchmark scripts and CI regression coverage for Bash, zsh, and Bash 3.2 status behavior.
+- Centralized PowerShell tests, 60% command-coverage enforcement, PSScriptAnalyzer, release metadata, and report generation in a repository-owned quality script with pinned tool versions.
+- Added deterministic Scoop package content/hash validation, negative gate fixtures, CI report artifacts, immutable Bash 3.2 image selection, and explicit job timeouts.
 
 ## 2.0.5
 
