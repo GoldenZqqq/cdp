@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.5
+
+### Security
+
+- Command `onEnter` hooks are skipped by default and require one-time `-AllowHook` / `--allow-hook` authorization.
+- Structured hook environment variable names are validated before being applied.
+- `status --fix` and `status --push` support dry-run and require explicit confirmation before changing config or remotes.
+- Workspace launchers are passed as direct argv tokens and command-line input is rejected.
+- Remote shell installs pin the release tag and verify the downloaded `cdp.sh` SHA-256 before replacement.
+- Scoop release archives use a real SHA-256 instead of skipping verification.
+
 ## 2.0.4
 
 ### Added

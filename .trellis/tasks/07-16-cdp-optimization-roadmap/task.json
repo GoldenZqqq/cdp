@@ -21,7 +21,8 @@
   "children": [
     "07-16-v2-0-4-stabilization",
     "07-16-v2-1-0-engineering",
-    "07-16-v2-2-0-automation"
+    "07-16-v2-2-0-automation",
+    "07-18-v2-0-5-security-hotfix"
   ],
   "parent": null,
   "relatedFiles": [],

@@ -6,10 +6,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 2.0.4
+# Version: 2.0.5
 # License: MIT
 
-CDP_VERSION="2.0.4"
+CDP_VERSION="2.0.5"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
@@ -39,7 +39,7 @@ cdp_brand_header() {
 }
 
 cdp_upgrade_command() {
-    echo "bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto"
+    echo "bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v$CDP_VERSION/install-wsl.sh) --auto"
 }
 
 cdp_picker_header() {
@@ -661,6 +661,13 @@ cdp-init() {
 resolve_workspace_launcher() {
     local opener="$1"
 
+    case "$opener" in
+        ''|*[!A-Za-z0-9._:/-]*)
+            echo "Error: launcher must be a single executable name or safe path without arguments." >&2
+            return 1
+            ;;
+    esac
+
     local opener_lower
     opener_lower="$(printf '%s' "$opener" | tr '[:upper:]' '[:lower:]')"
     case "$opener_lower" in
@@ -693,6 +700,9 @@ cdp_open_workspace() {
     local command_arg
     local label
 
+    if ! resolve_workspace_launcher "$opener" >/dev/null; then
+        return 1
+    fi
     IFS=$'\034' read -r command_name command_arg label < <(resolve_workspace_launcher "$opener")
 
     if [[ -n "$CDP_OPEN_DRY_RUN" ]]; then
@@ -710,6 +720,49 @@ cdp_open_workspace() {
         "$command_name" "$command_arg"
     else
         "$command_name"
+    fi
+}
+
+cdp_apply_on_enter() {
+    local on_enter="$1"
+    local allow_hook="$2"
+    local hook_command=""
+
+    if printf '%s' "$on_enter" | jq -e 'type == "object"' >/dev/null 2>&1; then
+        local env_key
+        local env_value
+        while IFS= read -r env_key <&3; do
+            [[ -z "$env_key" ]] && continue
+            case "$env_key" in
+                [A-Za-z_]* ) ;;
+                * )
+                    echo -e "${YELLOW}  onEnter warning: invalid environment variable name skipped.${NC}"
+                    continue
+                    ;;
+            esac
+            case "$env_key" in
+                *[!A-Za-z0-9_]* )
+                    echo -e "${YELLOW}  onEnter warning: invalid environment variable name skipped.${NC}"
+                    continue
+                    ;;
+            esac
+            env_value=$(printf '%s' "$on_enter" | jq -r --arg key "$env_key" '.env[$key] | tostring')
+            export "$env_key=$env_value"
+        done 3<<< "$(printf '%s' "$on_enter" | jq -r '.env // {} | keys[]')"
+        hook_command=$(printf '%s' "$on_enter" | jq -r '.bash // empty')
+    else
+        hook_command="$on_enter"
+    fi
+
+    hook_command="${hook_command%$'\r'}"
+    [[ -z "$hook_command" || "$hook_command" == "null" ]] && return 0
+    if [[ "$allow_hook" != true ]]; then
+        echo -e "${YELLOW}  onEnter command skipped: use --allow-hook for this switch.${NC}"
+        return 0
+    fi
+
+    if ! eval "$hook_command" 2>/dev/null; then
+        echo -e "${YELLOW}  onEnter warning: command failed.${NC}"
     fi
 }
 
@@ -781,12 +834,16 @@ cdp-status() {
     local tag_filter=""
     local do_fix=false
     local do_push=false
+    local dry_run=false
+    local assume_yes=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dirty|-d) dirty_only=true ;;
             --fix)      do_fix=true ;;
             --push)     do_push=true ;;
+            --dry-run)  dry_run=true ;;
+            --yes)      assume_yes=true ;;
             --config)
                 [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --config.${NC}"; return 1; }
                 [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
@@ -815,6 +872,14 @@ cdp-status() {
     fi
     if $dirty_only && { $do_fix || $do_push; }; then
         echo -e "${RED}Error: --dirty cannot be combined with status actions.${NC}"
+        return 1
+    fi
+    if $dry_run && $assume_yes; then
+        echo -e "${RED}Error: --dry-run and --yes cannot be used together.${NC}"
+        return 1
+    fi
+    if { $dry_run || $assume_yes; } && ! { $do_fix || $do_push; }; then
+        echo -e "${RED}Error: --dry-run and --yes require --fix or --push.${NC}"
         return 1
     fi
 
@@ -987,6 +1052,14 @@ cdp-status() {
                 echo -e "  ${GRAY}x ${names[$i]}  ${raw_paths[$i]}${NC}"
             fi
         done
+        if $dry_run; then
+            echo -e "\n${GRAY}Dry run: no project entries were removed.${NC}"
+            return 0
+        fi
+        if ! $assume_yes; then
+            echo -e "\n${RED}Action requires explicit confirmation. Re-run with --yes or preview with --dry-run.${NC}"
+            return 1
+        fi
         local missing_raw_paths=()
         for ((i=0; i<total; i++)); do
             [[ "${statuses[$i]}" == "path missing" ]] && missing_raw_paths+=("${raw_paths[$i]}")
@@ -1007,18 +1080,44 @@ cdp-status() {
         local push_count=0
         for ((i=0; i<total; i++)); do
             if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
-                [[ $push_count -eq 0 ]] && echo -e "\n${YELLOW}Pushing repos ahead of remote:${NC}"
+                push_count=$((push_count + 1))
+            fi
+        done
+        if [[ $push_count -eq 0 ]]; then
+            echo -e "${GREEN}No repos ahead of remote.${NC}"
+            return 0
+        fi
+
+        echo -e "\n${YELLOW}Repositories ahead of remote:${NC}"
+        for ((i=0; i<total; i++)); do
+            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
+                echo -e "  ${GRAY}${names[$i]}  ${paths[$i]}${NC}"
+            fi
+        done
+        if $dry_run; then
+            echo -e "\n${GRAY}Dry run: no repositories were pushed.${NC}"
+            return 0
+        fi
+        if ! $assume_yes; then
+            echo -e "\n${RED}Action requires explicit confirmation. Re-run with --yes or preview with --dry-run.${NC}"
+            return 1
+        fi
+
+        local push_failed=false
+        echo -e "\n${YELLOW}Pushing repositories:${NC}"
+        for ((i=0; i<total; i++)); do
+            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
                 printf "  %s... " "${names[$i]}"
                 if git -C "${paths[$i]}" push 2>/dev/null; then
                     echo -e "${GREEN}done${NC}"
                 else
                     echo -e "${RED}failed${NC}"
+                    push_failed=true
                 fi
-                push_count=$((push_count + 1))
             fi
         done
-        [[ $push_count -eq 0 ]] && echo -e "${GREEN}No repos ahead of remote.${NC}"
-        return
+        $push_failed && return 1
+        return 0
     fi
 
     [[ $max_name_len -gt 24 ]] && max_name_len=24
@@ -1120,6 +1219,10 @@ cdp-workspace() {
     action="${1:-}"
     [[ $# -gt 0 ]] && shift
 
+    if [[ -n "$open_override" ]] && ! resolve_workspace_launcher "$open_override" >/dev/null; then
+        return 1
+    fi
+
     if ! command -v jq &>/dev/null; then
         echo -e "${RED}Error: 'jq' command not found.${NC}"
         return 1
@@ -1213,6 +1316,18 @@ cdp-workspace() {
             local ws_open
             ws_open=$(echo "$ws_data" | jq -r '.open // empty')
             [[ -n "$open_override" ]] && ws_open="$open_override"
+            local launcher_command=""
+            local launcher_arg=""
+            local launcher_label=""
+            local -a launcher_args=()
+            if [[ -n "$ws_open" ]]; then
+                if ! resolve_workspace_launcher "$ws_open" >/dev/null; then
+                    return 1
+                fi
+                IFS=$'\034' read -r launcher_command launcher_arg launcher_label < <(resolve_workspace_launcher "$ws_open")
+                launcher_args=("$launcher_command")
+                [[ -n "$launcher_arg" ]] && launcher_args+=("$launcher_arg")
+            fi
             local ws_projects_list
             ws_projects_list=$(echo "$ws_data" | jq -r '.projects[]')
 
@@ -1232,12 +1347,10 @@ cdp-workspace() {
                     [[ -z "$proj_path" || ! -d "$proj_path" ]] && { echo -e "${YELLOW}  Skipping '$proj_name' (not found)${NC}"; continue; }
 
                     if $first; then
-                        tmux new-session -d -s "$session_name" -c "$proj_path" -n "$proj_name"
-                        [[ -n "$ws_open" ]] && tmux send-keys -t "$session_name" "$ws_open" Enter
+                        tmux new-session -d -s "$session_name" -c "$proj_path" -n "$proj_name" "${launcher_args[@]}"
                         first=false
                     else
-                        tmux new-window -t "$session_name" -c "$proj_path" -n "$proj_name"
-                        [[ -n "$ws_open" ]] && tmux send-keys -t "$session_name" "$ws_open" Enter
+                        tmux new-window -t "$session_name" -c "$proj_path" -n "$proj_name" "${launcher_args[@]}"
                     fi
                     echo -e "${GREEN}  Opened window: $proj_name${NC}"
                 done 3<<< "$ws_projects_list"
@@ -1345,6 +1458,7 @@ cdp() {
     local query=""
     local config_path=""
     local opener=""
+    local allow_hook=false
     local -a positional_args=()
 
     while [[ $# -gt 0 ]]; do
@@ -1356,6 +1470,10 @@ cdp() {
                 fi
                 opener="$2"
                 shift 2
+                ;;
+            --allow-hook)
+                allow_hook=true
+                shift
                 ;;
             *)
                 positional_args+=("$1")
@@ -1517,25 +1635,12 @@ cdp() {
             # Update terminal title (works in most terminals)
             echo -ne "\033]0;$selected\007"
 
-            # Execute onEnter hook if defined
+            # Apply safe environment values and run command hooks only on explicit opt-in.
             local on_enter
             on_enter=$(jq -r --arg name "$selected" '.[] | select(.name == $name) | .onEnter // empty' "$config_path" 2>/dev/null)
             on_enter="${on_enter%$'\r'}"
             if [[ -n "$on_enter" && "$on_enter" != "null" ]]; then
-                if echo "$on_enter" | jq -e 'type == "object"' &>/dev/null 2>&1; then
-                    local bash_cmd
-                    bash_cmd=$(echo "$on_enter" | jq -r '.bash // empty' 2>/dev/null)
-                    bash_cmd="${bash_cmd%$'\r'}"
-                    [[ -n "$bash_cmd" ]] && eval "$bash_cmd" 2>/dev/null || echo -e "${YELLOW}  onEnter warning: $bash_cmd${NC}"
-                    local env_keys
-                    env_keys=$(echo "$on_enter" | jq -r '.env // {} | to_entries[] | "\(.key)=\(.value)"' 2>/dev/null)
-                    while IFS= read -r kv; do
-                        kv="${kv%$'\r'}"
-                        [[ -n "$kv" ]] && export "$kv"
-                    done <<< "$env_keys"
-                else
-                    eval "$on_enter" 2>/dev/null || echo -e "${YELLOW}  onEnter warning: command failed${NC}"
-                fi
+                cdp_apply_on_enter "$on_enter" "$allow_hook"
             fi
 
             if [[ -n "$opener" ]]; then

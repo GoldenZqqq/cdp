@@ -10,7 +10,7 @@
 #   ./install-wsl.sh --auto       # Auto-install dependencies without prompts
 #
 # One-liner install (from GitHub):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
+#   bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.0.5/install-wsl.sh) --auto
 #
 
 set -e
@@ -25,10 +25,13 @@ NC='\033[0m' # No Color
 
 # Configuration
 AUTO_INSTALL=false
+CDP_INSTALL_VERSION="2.0.5"
+CDP_INSTALL_REF="${CDP_INSTALL_REF:-v2.0.5}"
 INSTALL_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.cdp"
 SCRIPT_NAME="cdp.sh"
-GITHUB_RAW_URL="https://raw.githubusercontent.com/GoldenZqqq/cdp/main/src/cdp.sh"
+GITHUB_RAW_URL="https://raw.githubusercontent.com/GoldenZqqq/cdp/$CDP_INSTALL_REF/src/cdp.sh"
+CDP_SCRIPT_SHA256="6a06700d02fcdf081cc0f473fd0aa575ae03dc6efb44e50eacce44d725790d8b"
 USE_REMOTE=false
 
 # Parse arguments
@@ -52,6 +55,49 @@ done
 # Function to check if command exists
 command_exists() {
     command -v "$1" &> /dev/null
+}
+
+calculate_sha256() {
+    local input_file="$1"
+    if command_exists sha256sum; then
+        sha256sum "$input_file" | awk '{print $1}'
+    elif command_exists shasum; then
+        shasum -a 256 "$input_file" | awk '{print $1}'
+    elif command_exists openssl; then
+        openssl dgst -sha256 "$input_file" | awk '{print $NF}'
+    else
+        return 1
+    fi
+}
+
+download_verified_script() {
+    local target_path="$1"
+    local temp_path
+    local actual_hash=""
+
+    temp_path=$(mktemp "${target_path}.download.XXXXXX")
+
+    if command_exists curl; then
+        curl -fsSL "$GITHUB_RAW_URL" -o "$temp_path"
+    elif command_exists wget; then
+        wget -q "$GITHUB_RAW_URL" -O "$temp_path"
+    else
+        echo -e "${RED}Error: Neither curl nor wget found. Please install one of them.${NC}"
+        return 1
+    fi
+
+    actual_hash=$(calculate_sha256 "$temp_path") || {
+        echo -e "${RED}Error: No SHA-256 tool found (sha256sum, shasum, or openssl).${NC}"
+        rm -f "$temp_path"
+        return 1
+    }
+    if [[ "$actual_hash" != "$CDP_SCRIPT_SHA256" ]]; then
+        echo -e "${RED}Error: Downloaded cdp.sh failed SHA-256 verification.${NC}"
+        rm -f "$temp_path"
+        return 1
+    fi
+
+    mv "$temp_path" "$target_path"
 }
 
 # Function to detect package manager
@@ -217,14 +263,8 @@ fi
 echo -e "${CYAN}Installing cdp script...${NC}"
 
 if [[ "$USE_REMOTE" == true ]]; then
-    # Download from GitHub
-    echo -e "${CYAN}Downloading cdp.sh from GitHub...${NC}"
-    if command_exists curl; then
-        curl -fsSL "$GITHUB_RAW_URL" -o "$INSTALL_DIR/$SCRIPT_NAME"
-    elif command_exists wget; then
-        wget -q "$GITHUB_RAW_URL" -O "$INSTALL_DIR/$SCRIPT_NAME"
-    else
-        echo -e "${RED}Error: Neither curl nor wget found. Please install one of them.${NC}"
+    echo -e "${CYAN}Downloading cdp.sh from verified release $CDP_INSTALL_REF...${NC}"
+    if ! download_verified_script "$INSTALL_DIR/$SCRIPT_NAME"; then
         exit 1
     fi
 else

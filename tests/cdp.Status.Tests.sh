@@ -100,7 +100,14 @@ printf '[
     "$test_root/shared-missing" \
     "$test_root/shared-missing" > "$fix_config"
 
-cdp-status --fix "$fix_config" >/dev/null
+cdp-status --fix --dry-run "$fix_config" >/dev/null
+jq -e 'map(.name) == ["Existing", "EnabledMissing", "DisabledMissing"]' "$fix_config" >/dev/null
+if cdp-status --fix "$fix_config" >/dev/null 2>&1; then
+    echo "status --fix should require --yes" >&2
+    exit 1
+fi
+jq -e 'map(.name) == ["Existing", "EnabledMissing", "DisabledMissing"]' "$fix_config" >/dev/null
+cdp-status --fix --yes "$fix_config" >/dev/null
 jq -e 'map(.name) == ["Existing", "DisabledMissing"]' "$fix_config" >/dev/null
 
 converted=$(convert_windows_to_wsl 'C:\Work\api')

@@ -121,7 +121,7 @@ For non-interactive automation, use `.\Install.ps1 -Force`. Add `-SkipFzf` only 
 brew install fzf jq
 
 # One-liner install (WSL/Linux/macOS)
-bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/main/install-wsl.sh) --auto
+bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v2.0.5/install-wsl.sh) --auto
 
 source ~/.bashrc  # zsh users: source ~/.zshrc
 cdp doctor
@@ -177,6 +177,11 @@ cdp status --dirty
 # Combine filters and use an explicit config
 cdp status --dirty '@work' E:\Projects\projects.json
 
+# Preview or explicitly approve status actions
+cdp status --fix --dry-run
+cdp status --fix --yes
+cdp status --push --dry-run
+
 # Return the same dirty-only selection as structured PowerShell objects
 Show-CdpProjectStatus -DirtyOnly -PassThru
 
@@ -204,7 +209,7 @@ cdp -WSL
 Type a few letters in the fzf menu:
 
 ```text
-cdp v2.0.4 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
+cdp v2.0.5 | 56 projects | enter to warp | C:\Users\you\.cdp\projects.json
 cdp > api
 
   01  my-api          C:\Work\my-api
@@ -372,6 +377,25 @@ Custom config format:
 ```
 
 `pinned`, `aliases`, and `tags` are optional; old configs without these fields are treated as unpinned and without metadata. Using `/` in JSON paths avoids escaping Windows backslashes.
+
+### Project Environment Hooks
+
+Structured environment values are applied when a project is entered. Environment variable names must use letters, digits, and underscores and cannot start with a digit:
+
+```json
+{
+  "name": "my-api",
+  "rootPath": "E:/Projects/my-api",
+  "enabled": true,
+  "onEnter": {
+    "env": { "NODE_ENV": "development" },
+    "powershell": "$env:API_PROFILE = 'local'",
+    "bash": "export API_PROFILE=local"
+  }
+}
+```
+
+Command hooks are skipped by default. Authorize a command hook for one switch only with `cdp api -AllowHook` in PowerShell or `cdp api --allow-hook` in bash/zsh. cdp never persists this one-time authorization; review the active config before using it.
 
 Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
 

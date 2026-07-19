@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.0.4'
+ModuleVersion = '2.0.5'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,6 +107,14 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
+v2.0.5 - Security and Install Integrity
+- Security: command onEnter hooks are skipped by default and require one-time -AllowHook/--allow-hook authorization
+- Security: structured hook environment keys are validated before being applied
+- Security: status --fix/--push support dry-run and require explicit confirmation
+- Security: workspace launchers use direct argv execution and reject command-line input
+- Security: shell source installs pin a release tag and verify the downloaded cdp.sh SHA-256
+- Improved: Scoop release archives require a real SHA-256 instead of hash skipping
+
 v2.0.4 - Stability Fixes
 - Fixed: CLI options are parsed independently of order for status and workspace commands
 - Fixed: Custom config paths are preserved by short management commands

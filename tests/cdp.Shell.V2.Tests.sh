@@ -115,7 +115,7 @@ MSYS2_ARG_CONV_EXCL='*' jq -n \
             "tags": [],
             "onEnter": {
                 "bash": "export CDP_TEST_HOOK_BASH=ran",
-                "env": {"CDP_TEST_HOOK_ENV": "enabled"}
+                "env": {"CDP_TEST_HOOK_ENV": "enabled", "INVALID-NAME": "blocked"}
             }
         },
         {
@@ -171,14 +171,29 @@ echo "  dependency and config errors: ok"
 
 (
     cd "$test_root"
-    cdp HookProject "$config_path" >/dev/null
+    hook_output_file="$test_root/hook-default.log"
+    cdp HookProject "$config_path" >"$hook_output_file" 2>&1
+    hook_output=$(cat "$hook_output_file")
     assert_equals "$project_path" "$PWD"
+    assert_equals "enabled" "$CDP_TEST_HOOK_ENV"
+    assert_equals "" "${CDP_TEST_HOOK_BASH:-}"
+    assert_contains "$hook_output" "command skipped"
+    assert_contains "$hook_output" "invalid environment variable name skipped"
+    assert_not_contains "$hook_output" "INVALID-NAME"
+)
+
+(
+    cd "$test_root"
+    cdp HookProject "$config_path" --allow-hook >/dev/null
     assert_equals "enabled" "$CDP_TEST_HOOK_ENV"
     assert_equals "ran" "$CDP_TEST_HOOK_BASH"
 )
 
 legacy_output=$(cd "$test_root" && cdp LegacyFailure "$config_path" 2>&1)
-assert_contains "$legacy_output" "onEnter warning: command failed"
+assert_contains "$legacy_output" "onEnter command skipped"
+legacy_allowed_output=$(cd "$test_root" && cdp LegacyFailure "$config_path" --allow-hook 2>&1)
+assert_contains "$legacy_allowed_output" "onEnter warning: command failed"
+assert_not_contains "$legacy_allowed_output" "false"
 
 launcher_output=$(
     cd "$test_root"
@@ -247,8 +262,8 @@ command -v basename >/dev/null 2>&1 || fail "basename missing after workspace; P
 assert_contains "$workspace_launch" "Opened window: HookProject"
 assert_contains "$workspace_launch" "Skipping 'MissingProject'"
 tmux_calls="$(cat "$tmux_log")"
-assert_contains "$tmux_calls" "<new-session><-d><-s><cdp-team><-c><$project_path><-n><HookProject>"
-assert_contains "$tmux_calls" "<send-keys><-t><cdp-team><codex><Enter>"
+assert_contains "$tmux_calls" "<new-session><-d><-s><cdp-team><-c><$project_path><-n><HookProject><codex>"
+assert_not_contains "$tmux_calls" "<send-keys>"
 echo "  workspace isolation: ok"
 
 init_root="$test_root/init-repos"

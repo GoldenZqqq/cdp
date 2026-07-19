@@ -124,7 +124,7 @@ Describe 'cdp v2 status filters and actions' {
             [PSCustomObject]@{ name = 'NoUpstream'; rootPath = $standalonePath; enabled = $true }
         )
 
-        $output = @(& { Show-CdpProjectStatus -ConfigPath $configPath -Push } 6>&1) -join [Environment]::NewLine
+        $output = @(& { Show-CdpProjectStatus -ConfigPath $configPath -Push -Confirm:$false } 6>&1) -join [Environment]::NewLine
 
         $remoteAfter = Invoke-TestGitV2 -Path $aheadFixture.RemotePath -Arguments @('rev-parse', 'refs/heads/main')
         $localHead = Invoke-TestGitV2 -Path $aheadFixture.RepositoryPath -Arguments @('rev-parse', 'HEAD')
@@ -148,10 +148,44 @@ Describe 'cdp v2 status filters and actions' {
             [PSCustomObject]@{ name = 'FailedPush'; rootPath = $fixture.RepositoryPath; enabled = $true }
         )
 
-        $output = @(& { Show-CdpProjectStatus -ConfigPath $configPath -Push } 6>&1) -join [Environment]::NewLine
+        $output = @(& { Show-CdpProjectStatus -ConfigPath $configPath -Push -Confirm:$false } 6>&1) -join [Environment]::NewLine
 
         $output | Should -Match 'failed:'
         $output | Should -Not -Match '\bdone\b'
+    }
+
+    It 'does not mutate status targets during a dry run' {
+        $configPath = Join-Path $TestDrive 'status-dry-run-projects.json'
+        Write-TestConfigV2 -Path $configPath -Projects @(
+            [PSCustomObject]@{
+                name = 'Missing'
+                rootPath = (Join-Path $TestDrive 'missing-dry-run')
+                enabled = $true
+            }
+        )
+        $before = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8
+
+        Show-CdpProjectStatus -ConfigPath $configPath -Fix -WhatIf
+
+        (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8) | Should -BeExactly $before
+    }
+
+    It 'parses explicit status safety options' {
+        InModuleScope cdp {
+            $dryRun = ConvertFrom-CdpInvokeArguments `
+                -Command 'status' `
+                -ConfigPath '--fix' `
+                -RemainingArgs @('--dry-run', 'C:\Temp\projects.json')
+            $confirmed = ConvertFrom-CdpInvokeArguments `
+                -Command 'status' `
+                -ConfigPath '--push' `
+                -RemainingArgs @('--yes', 'C:\Temp\projects.json')
+
+            $dryRun.Fix | Should -BeTrue
+            $dryRun.DryRun | Should -BeTrue
+            $confirmed.Push | Should -BeTrue
+            $confirmed.Yes | Should -BeTrue
+        }
     }
 }
 
@@ -196,15 +230,23 @@ Describe 'cdp v2 workspace behavior' {
 
             Should -Invoke Start-Process -Times 1 -Exactly -ParameterFilter {
                 $FilePath -eq 'wt.exe' -and
-                @($ArgumentList).Count -eq 12 -and
+                @($ArgumentList).Count -eq 9 -and
                 $ArgumentList[4] -eq $ProjectPath -and
                 $ArgumentList[6] -eq 'Api' -and
-                $ArgumentList[11] -match [regex]::Escape($ProjectPath) -and
-                $ArgumentList[11] -match 'codex'
+                $ArgumentList[7] -eq '--' -and
+                $ArgumentList[8] -eq 'codex'
             }
             $output | Should -Match "Path missing for 'Missing'"
             $output | Should -Match "Project 'Unknown' not found"
         }
+    }
+
+    It 'rejects workspace launcher command lines' {
+        $configPath = Join-Path $TestDrive 'unsafe-launcher-projects.json'
+        '[]' | Set-Content -LiteralPath $configPath -Encoding UTF8
+
+        { Invoke-CdpWorkspace -Add 'unsafe' -Projects @('api') -Open 'codex;echo' -ConfigPath $configPath } |
+            Should -Throw '*single executable name*'
     }
 }
 
@@ -221,7 +263,7 @@ Describe 'cdp v2 onEnter isolation' {
 
         try {
             InModuleScope cdp -Parameters @{ Project = $project } {
-                Invoke-CdpOnEnter -Project $Project
+                Invoke-CdpOnEnter -Project $Project -AllowHook
             }
 
             $env:CDP_TEST_ONENTER_ENV | Should -Be 'enabled'
@@ -240,7 +282,7 @@ Describe 'cdp v2 onEnter isolation' {
 
         try {
             InModuleScope cdp -Parameters @{ Project = $project } {
-                Invoke-CdpOnEnter -Project $Project
+                Invoke-CdpOnEnter -Project $Project -AllowHook
             }
             $env:CDP_TEST_ONENTER_LEGACY | Should -Be 'ran'
         } finally {
@@ -254,10 +296,60 @@ Describe 'cdp v2 onEnter isolation' {
         }
 
         $output = InModuleScope cdp -Parameters @{ Project = $project } {
+            @(& { Invoke-CdpOnEnter -Project $Project -AllowHook } 6>&1) -join [Environment]::NewLine
+        }
+
+        $output | Should -Match 'onEnter warning: command failed'
+        $output | Should -Not -Match 'expected hook failure'
+    }
+
+    It 'skips command hooks by default while applying valid env values' {
+        $previousEnv = $env:CDP_TEST_ONENTER_SAFE_ENV
+        $previousCommand = $env:CDP_TEST_ONENTER_BLOCKED
+        $project = [PSCustomObject]@{
+            onEnter = [PSCustomObject]@{
+                env = [PSCustomObject]@{ CDP_TEST_ONENTER_SAFE_ENV = 'enabled' }
+                powershell = '$env:CDP_TEST_ONENTER_BLOCKED = "ran"'
+            }
+        }
+
+        try {
+            $output = InModuleScope cdp -Parameters @{ Project = $project } {
+                @(& { Invoke-CdpOnEnter -Project $Project } 6>&1) -join [Environment]::NewLine
+            }
+            $env:CDP_TEST_ONENTER_SAFE_ENV | Should -Be 'enabled'
+            $env:CDP_TEST_ONENTER_BLOCKED | Should -Be $previousCommand
+            $output | Should -Match 'command skipped'
+            $output | Should -Not -Match 'CDP_TEST_ONENTER_BLOCKED'
+        } finally {
+            $env:CDP_TEST_ONENTER_SAFE_ENV = $previousEnv
+            $env:CDP_TEST_ONENTER_BLOCKED = $previousCommand
+        }
+    }
+
+    It 'rejects invalid environment variable names without echoing them' {
+        $environment = [PSCustomObject]@{}
+        $environment | Add-Member -NotePropertyName 'INVALID-NAME' -NotePropertyValue 'blocked'
+        $project = [PSCustomObject]@{ onEnter = [PSCustomObject]@{ env = $environment } }
+
+        $output = InModuleScope cdp -Parameters @{ Project = $project } {
             @(& { Invoke-CdpOnEnter -Project $Project } 6>&1) -join [Environment]::NewLine
         }
 
-        $output | Should -Match 'onEnter warning: expected hook failure'
+        $output | Should -Match 'invalid environment variable name skipped'
+        $output | Should -Not -Match 'INVALID-NAME'
+    }
+
+    It 'routes one-time hook authorization to project switching' {
+        InModuleScope cdp {
+            Mock Switch-Project {}
+
+            Invoke-Cdp api --allow-hook
+
+            Should -Invoke Switch-Project -Times 1 -Exactly -ParameterFilter {
+                $Query -eq 'api' -and $AllowHook
+            }
+        }
     }
 }
 

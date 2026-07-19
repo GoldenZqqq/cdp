@@ -14,6 +14,7 @@ BeforeAll {
             'cdp.psd1',
             'CHANGELOG.md',
             'PROGRESS.md',
+            'install-wsl.sh',
             'src\cdp.psm1',
             'src\cdp.sh',
             'tests\cdp.Tests.ps1',
@@ -89,28 +90,28 @@ Describe 'cdp installer target verification' {
         $targetPath = Join-Path $TestDrive 'PowerShell\Modules\cdp'
         $available = @(
             [PSCustomObject]@{ ModuleBase = (Join-Path $TestDrive 'old\cdp'); Version = [version]'9.0.0' }
-            [PSCustomObject]@{ ModuleBase = $targetPath; Version = [version]'2.0.4' }
+            [PSCustomObject]@{ ModuleBase = $targetPath; Version = [version]'2.0.5' }
         )
 
         $parameters = @{
             AvailableModules = $available
             ModulePath = $targetPath
-            ExpectedVersion = [version]'2.0.4'
+            ExpectedVersion = [version]'2.0.5'
         }
         $actual = Select-CdpInstalledModule @parameters
 
         $actual.ModuleBase | Should -Be $targetPath
-        $actual.Version | Should -Be ([version]'2.0.4')
+        $actual.Version | Should -Be ([version]'2.0.5')
     }
 
     It 'rejects an old module found outside the target path' {
         $targetPath = Join-Path $TestDrive 'PowerShell\Modules\cdp'
         $parameters = @{
             AvailableModules = @(
-                [PSCustomObject]@{ ModuleBase = (Join-Path $TestDrive 'old\cdp'); Version = [version]'2.0.4' }
+                [PSCustomObject]@{ ModuleBase = (Join-Path $TestDrive 'old\cdp'); Version = [version]'2.0.5' }
             )
             ModulePath = $targetPath
-            ExpectedVersion = [version]'2.0.4'
+                ExpectedVersion = [version]'2.0.5'
         }
 
         { Select-CdpInstalledModule @parameters } | Should -Throw '*not discovered at target path*'
@@ -123,10 +124,10 @@ Describe 'cdp installer target verification' {
                 [PSCustomObject]@{ ModuleBase = $targetPath; Version = [version]'2.0.3' }
             )
             ModulePath = $targetPath
-            ExpectedVersion = [version]'2.0.4'
+                ExpectedVersion = [version]'2.0.5'
         }
 
-        { Select-CdpInstalledModule @parameters } | Should -Throw '*expected ''2.0.4''*'
+        { Select-CdpInstalledModule @parameters } | Should -Throw '*expected ''2.0.5''*'
     }
 }
 

@@ -28,7 +28,10 @@ assert_failure_contains() {
 assert_failure_contains "--fix and --push cannot be used together" cdp-status --fix --push
 assert_failure_contains "--dirty cannot be combined" cdp-status --dirty --fix
 assert_failure_contains "unknown status option" cdp-status --unknown
+assert_failure_contains "require --fix or --push" cdp-status --yes
+assert_failure_contains "cannot be used together" cdp-status --fix --dry-run --yes
 assert_failure_contains "missing value after --open" cdp-workspace --add team api --open
+assert_failure_contains "single executable name" cdp-workspace --add team api --open 'codex;echo'
 
 if ! command -v jq >/dev/null 2>&1; then
     echo "jq is required for the successful workspace parser test." >&2

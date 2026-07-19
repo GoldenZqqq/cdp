@@ -111,6 +111,15 @@ jobs:
       - name: Run bash v2 regression tests
         run: bash ./tests/cdp.Shell.V2.Tests.sh
 
+      - name: Validate shell installer metadata
+        run: bash ./tests/cdp.Installer.Tests.sh
+
+      - name: Build Scoop package smoke
+        run: |
+          bash ./scripts/New-ScoopPackage.sh 2.0.5 "$RUNNER_TEMP/cdp-2.0.5.tar.gz"
+          tar -tzf "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | grep -Fx 'cdp-2.0.5/src/cdp.sh'
+          test "$(sha256sum "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | awk '{print $1}')" = "$(jq -r '.hash' scoop/cdp.json)"
+
   macos:
     name: macOS smoke
     runs-on: macos-latest
@@ -136,3 +145,6 @@ jobs:
 
       - name: Run zsh v2 regression tests
         run: zsh ./tests/cdp.Shell.V2.Tests.sh
+
+      - name: Validate shell installer metadata
+        run: bash ./tests/cdp.Installer.Tests.sh

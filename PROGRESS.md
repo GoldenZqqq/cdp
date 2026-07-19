@@ -20,9 +20,27 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 Latest verified public release: v2.0.4 on GitHub Releases and PowerShell Gallery (verified 2026-07-17).
 
-Current release target: v2.0.4.
+Current release target: v2.0.5.
 
-Release status: v2.0.4 is published and verified. The annotated tag points to the final CI-green release commit; GitHub Release, PowerShell Gallery, tag archive, and saved Gallery package checks all passed.
+Release status: v2.0.5 security and install-integrity work is in progress. v2.0.4 remains the latest externally verified release until all v2.0.5 channels pass post-release verification.
+
+## 2.0.5 Security Checklist
+
+- [x] Skip command hooks by default and require one-time explicit authorization.
+- [x] Validate structured hook environment keys without exposing command contents.
+- [x] Add dry-run and explicit confirmation to status fix/push actions.
+- [x] Launch workspace commands through argv instead of command-string injection paths.
+- [x] Pin remote shell installation to v2.0.5 and verify the downloaded script digest.
+- [x] Replace Scoop hash skipping with the independent release package SHA-256.
+- [ ] Pass the full cross-platform release gate and publish/verify every public channel.
+
+## 2.0.5 Verification Log
+
+- PowerShell 7.5.2: Pester 64/64 passed across core, v2, and installer suites with `USERPROFILE` isolated to `$TestDrive` equivalent.
+- PowerShell 7.5.2: PSScriptAnalyzer Error severity reported no findings for `src/cdp.psm1`.
+- Bash and zsh: CLI parser, status, shell v2, installer negative tests, syntax, and shell installer metadata passed.
+- Scoop package: `scripts/New-ScoopPackage.sh` generated `cdp-2.0.5.tar.gz`; SHA-256 `0b67c9b0d57d904e2a3da5e1d60f6fb453d32e54f83e1b45e06da75451859db7` matches `scoop/cdp.json`.
+- Release metadata, workflow YAML, and `git diff --check` passed locally. Windows PowerShell 5.1 and hosted CI remain release-gate checks.
 
 ## 2.0.4 Stability Checklist
 

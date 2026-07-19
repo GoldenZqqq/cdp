@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 2.0.4
+    Version: 2.0.5
     License: MIT
 #>
 
@@ -333,7 +333,13 @@ function Limit-CdpText {
 }
 
 function Invoke-CdpOnEnter {
-    param([object]$Project)
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$AllowHook
+    )
 
     if (-not $Project.PSObject.Properties['onEnter'] -or $null -eq $Project.onEnter) {
         return
@@ -342,24 +348,36 @@ function Invoke-CdpOnEnter {
     $onEnter = $Project.onEnter
 
     try {
-        if ($onEnter -is [string]) {
-            if (-not [string]::IsNullOrWhiteSpace($onEnter)) {
-                Invoke-Expression $onEnter
-            }
-        } elseif ($onEnter.PSObject.Properties['env']) {
+        if ($onEnter -isnot [string] -and $onEnter.PSObject.Properties['env']) {
             $onEnter.env.PSObject.Properties | ForEach-Object {
-                [System.Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
+                if ($_.Name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+                    Write-Host "  onEnter warning: invalid environment variable name skipped." -ForegroundColor Yellow
+                } else {
+                    [System.Environment]::SetEnvironmentVariable($_.Name, [string]$_.Value, 'Process')
+                }
             }
         }
 
-        if ($onEnter -isnot [string] -and $onEnter.PSObject.Properties['powershell']) {
-            $psCmd = [string]$onEnter.powershell
-            if (-not [string]::IsNullOrWhiteSpace($psCmd)) {
-                Invoke-Expression $psCmd
-            }
+        $hookCommand = if ($onEnter -is [string]) {
+            [string]$onEnter
+        } elseif ($onEnter.PSObject.Properties['powershell']) {
+            [string]$onEnter.powershell
+        } else {
+            ''
         }
+
+        if ([string]::IsNullOrWhiteSpace($hookCommand)) {
+            return
+        }
+
+        if (-not $AllowHook) {
+            Write-Host "  onEnter command skipped: use -AllowHook for this switch." -ForegroundColor Yellow
+            return
+        }
+
+        Invoke-Expression $hookCommand
     } catch {
-        Write-Host "  onEnter warning: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "  onEnter warning: command failed ($($_.Exception.GetType().Name))." -ForegroundColor Yellow
     }
 }
 
@@ -389,6 +407,10 @@ function Switch-Project {
     .PARAMETER Open
         Optional command to start after switching to the selected project. Common
         values include code, cursor, codex, claude, and gemini.
+
+    .PARAMETER AllowHook
+        Execute a project command hook for this switch only. Command hooks are
+        skipped by default.
 
     .EXAMPLE
         Switch-Project
@@ -427,7 +449,10 @@ function Switch-Project {
 
         [Parameter(Mandatory = $false)]
         [Alias('o')]
-        [string]$Open
+        [string]$Open,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$AllowHook
     )
 
     # Get config path
@@ -590,7 +615,7 @@ function Switch-Project {
             $newTitle = $selectedProject.name
             Write-Host -NoNewline "$([char]27)]0;$newTitle$([char]7)"
 
-            Invoke-CdpOnEnter -Project $selectedProject
+            Invoke-CdpOnEnter -Project $selectedProject -AllowHook:$AllowHook
 
             if (-not [string]::IsNullOrWhiteSpace($Open)) {
                 Invoke-CdpWorkspaceLauncher -Project $selectedProject -Open $Open
@@ -857,6 +882,9 @@ function Get-CdpWorkspaceLauncher {
     )
 
     $launcherName = $Open.Trim()
+    if ($launcherName -notmatch '^[A-Za-z0-9._:/\\-]+$') {
+        throw 'Launcher must be a single executable name or safe path without arguments.'
+    }
     $normalizedName = $launcherName.ToLowerInvariant()
     $command = $launcherName
     $arguments = @()
@@ -947,9 +975,12 @@ function New-CdpInvocation {
         ConfigPath = $null
         Query = $null
         Open = $null
+        AllowHook = $false
         DirtyOnly = $false
         Fix = $false
         Push = $false
+        DryRun = $false
+        Yes = $false
         TagFilter = $null
         WorkspaceAction = $null
         WorkspaceName = $null
@@ -978,6 +1009,7 @@ function Split-CdpCommonOptions {
     $positionals = New-Object 'System.Collections.Generic.List[string]'
     $resolvedOpen = $Open
     $resolvedConfig = $null
+    $allowHook = $false
     for ($i = 0; $i -lt $Tokens.Count; $i++) {
         $token = $Tokens[$i]
         if ($token -in @('--open', '-open', '-o')) {
@@ -992,10 +1024,19 @@ function Split-CdpCommonOptions {
             $resolvedConfig = $Tokens[++$i]
             continue
         }
+        if ($token -in @('--allow-hook', '-allow-hook')) {
+            $allowHook = $true
+            continue
+        }
         $positionals.Add($token)
     }
 
-    [PSCustomObject]@{ Tokens = @($positionals); Open = $resolvedOpen; ConfigPath = $resolvedConfig }
+    [PSCustomObject]@{
+        Tokens = @($positionals)
+        Open = $resolvedOpen
+        ConfigPath = $resolvedConfig
+        AllowHook = $allowHook
+    }
 }
 
 function Resolve-CdpCommandKind {
@@ -1030,6 +1071,8 @@ function ConvertFrom-CdpStatusTokens {
         if ($token -in @('--dirty', '-dirty', '-d')) { $result.DirtyOnly = $true; continue }
         if ($token -in @('--fix', '-fix')) { $result.Fix = $true; continue }
         if ($token -in @('--push', '-push')) { $result.Push = $true; continue }
+        if ($token -in @('--dry-run', '-dry-run')) { $result.DryRun = $true; continue }
+        if ($token -in @('--yes', '-yes')) { $result.Yes = $true; continue }
         if ($token.StartsWith('@')) {
             if ($result.TagFilter) { throw "Only one status tag filter can be specified." }
             $result.TagFilter = $token
@@ -1041,6 +1084,10 @@ function ConvertFrom-CdpStatusTokens {
     }
     if ($result.Fix -and $result.Push) { throw "The --fix and --push actions cannot be used together." }
     if ($result.DirtyOnly -and ($result.Fix -or $result.Push)) { throw "The --dirty filter and status actions cannot be used together." }
+    if ($result.DryRun -and $result.Yes) { throw "The --dry-run and --yes options cannot be used together." }
+    if (($result.DryRun -or $result.Yes) -and -not ($result.Fix -or $result.Push)) {
+        throw "The --dry-run and --yes options require --fix or --push."
+    }
     $result
 }
 
@@ -1142,12 +1189,13 @@ function ConvertFrom-CdpScanTokens {
 }
 
 function ConvertFrom-CdpSwitchTokens {
-    param([string[]]$Tokens, [string]$Query, [string]$ConfigPath, [string]$Open)
+    param([string[]]$Tokens, [string]$Query, [string]$ConfigPath, [string]$Open, [bool]$AllowHook)
 
     $result = New-CdpInvocation -Kind 'switch'
     $result.Query = $Query
     $result.ConfigPath = $ConfigPath
     $result.Open = $Open
+    $result.AllowHook = $AllowHook
     $items = @($Tokens)
     if ([string]::IsNullOrWhiteSpace($result.Query) -and $items.Count -gt 0 -and -not (Test-CdpConfigPathArgument $items[0])) {
         $result.Query = $items[0]
@@ -1173,16 +1221,24 @@ function ConvertFrom-CdpInvokeArguments {
 
     if ($kind -eq 'status') {
         if ($common.Open) { throw "The --open option is not valid for status." }
+        if ($common.AllowHook) { throw "The --allow-hook option is only valid for project switching." }
         return ConvertFrom-CdpStatusTokens -Tokens $tokens -ConfigPath $common.ConfigPath
     }
     if ($kind -eq 'workspace') {
+        if ($common.AllowHook) { throw "The --allow-hook option is only valid for project switching." }
         return ConvertFrom-CdpWorkspaceTokens -Tokens $tokens -ConfigPath $common.ConfigPath -Open $common.Open
     }
     if ($kind) {
         if ($common.Open) { throw "The --open option is only valid for project and workspace commands." }
+        if ($common.AllowHook) { throw "The --allow-hook option is only valid for project switching." }
         return ConvertFrom-CdpManagementTokens -Kind $kind -Tokens $tokens -ConfigPath $common.ConfigPath
     }
-    ConvertFrom-CdpSwitchTokens -Tokens $tokens -Query $Query -ConfigPath $common.ConfigPath -Open $common.Open
+    ConvertFrom-CdpSwitchTokens `
+        -Tokens $tokens `
+        -Query $Query `
+        -ConfigPath $common.ConfigPath `
+        -Open $common.Open `
+        -AllowHook $common.AllowHook
 }
 
 # Helper function to get stored config choice path
@@ -2504,6 +2560,9 @@ function Invoke-CdpWorkspace {
             Write-Host "Usage: cdp workspace --add <name> <project1> <project2> ..." -ForegroundColor Yellow
             return
         }
+        if (-not [string]::IsNullOrWhiteSpace($Open)) {
+            [void](Get-CdpWorkspaceLauncher -Open $Open)
+        }
 
         $workspaces = Get-CdpWorkspaces -WorkspacesPath $wsPath
         $existing = $workspaces | Where-Object { $_.name -eq $Add }
@@ -2547,7 +2606,12 @@ function Invoke-CdpWorkspace {
         $ConfigPath = Get-DefaultConfigPath
     }
     $configData = Get-CdpProjectConfig -ConfigPath $ConfigPath
-    $launcher = if (-not [string]::IsNullOrWhiteSpace($Open)) { $Open } elseif ($ws.open) { $ws.open } else { "" }
+    $launcherName = if (-not [string]::IsNullOrWhiteSpace($Open)) { [string]$Open } elseif ($ws.open) { [string]$ws.open } else { "" }
+    $launcher = if (-not [string]::IsNullOrWhiteSpace($launcherName)) {
+        Get-CdpWorkspaceLauncher -Open $launcherName
+    } else {
+        $null
+    }
 
     $hasWt = $null -ne (Get-Command wt.exe -ErrorAction SilentlyContinue)
 
@@ -2569,8 +2633,8 @@ function Invoke-CdpWorkspace {
 
         if ($hasWt) {
             $wtArgs = @('-w', '0', 'new-tab', '-d', $projPath, '--title', $projName)
-            if (-not [string]::IsNullOrWhiteSpace($launcher)) {
-                $wtArgs += @('--', 'pwsh', '-NoExit', '-Command', "& { Set-Location '$projPath'; $launcher }")
+            if ($null -ne $launcher) {
+                $wtArgs += @('--', $launcher.Command) + @($launcher.Arguments)
             }
             Start-Process wt.exe -ArgumentList $wtArgs
             Write-Host "  Opened tab: $projName" -ForegroundColor Green
@@ -2621,7 +2685,7 @@ function Show-CdpProjectStatus {
         # Shows status of projects tagged 'work'
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory = $false)]
         [string]$ConfigPath,
@@ -2706,6 +2770,9 @@ function Show-CdpProjectStatus {
             Write-Host "  $($proj.RootPath)" -ForegroundColor DarkGray
         }
         $resolvedConfig = if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $ConfigPath } else { Get-DefaultConfigPath }
+        if (-not $PSCmdlet.ShouldProcess($resolvedConfig, "Remove $($missingProjects.Count) missing project entries")) {
+            return
+        }
         $allProjects = ConvertFrom-Json -InputObject (Get-Content -Path $resolvedConfig -Raw -Encoding UTF8)
         $missingPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         foreach ($project in $missingProjects) {
@@ -2725,6 +2792,9 @@ function Show-CdpProjectStatus {
         $aheadProjects = @($statusList | Where-Object { $_.AheadCount -gt 0 -and $_.IsGitRepo })
         if ($aheadProjects.Count -eq 0) {
             Write-Host "`nNo repos ahead of remote." -ForegroundColor Green
+            return
+        }
+        if (-not $PSCmdlet.ShouldProcess("$($aheadProjects.Count) repositories", 'Push commits to configured upstreams')) {
             return
         }
         Write-Host "`nPushing $($aheadProjects.Count) repos ahead of remote:" -ForegroundColor Yellow
@@ -3451,12 +3521,16 @@ function Test-ProjectHealth {
 function Invoke-CdpStatusInvocation {
     param([object]$Invocation)
 
-    Show-CdpProjectStatus `
-        -ConfigPath $Invocation.ConfigPath `
-        -DirtyOnly:$Invocation.DirtyOnly `
-        -TagFilter $Invocation.TagFilter `
-        -Fix:$Invocation.Fix `
-        -Push:$Invocation.Push
+    $parameters = @{
+        ConfigPath = $Invocation.ConfigPath
+        DirtyOnly = $Invocation.DirtyOnly
+        TagFilter = $Invocation.TagFilter
+        Fix = $Invocation.Fix
+        Push = $Invocation.Push
+    }
+    if ($Invocation.DryRun) { $parameters.WhatIf = $true }
+    if ($Invocation.Yes) { $parameters.Confirm = $false }
+    Show-CdpProjectStatus @parameters
 }
 
 function Invoke-CdpWorkspaceInvocation {
@@ -3535,6 +3609,10 @@ function Invoke-Cdp {
     .PARAMETER Open
         Optional command to start after switching to the selected project.
 
+    .PARAMETER AllowHook
+        Execute a project command hook for this switch only. Command hooks are
+        skipped by default.
+
     .EXAMPLE
         cdp
         # Opens fzf menu to select a project
@@ -3570,17 +3648,22 @@ function Invoke-Cdp {
         [Alias('o')]
         [string]$Open,
 
+        [Parameter(Mandatory = $false)]
+        [switch]$AllowHook,
+
         [Parameter(Mandatory = $false, ValueFromRemainingArguments = $true)]
         [string[]]$RemainingArgs
     )
 
     try {
+        $parserArgs = @($RemainingArgs)
+        if ($AllowHook) { $parserArgs = @('--allow-hook') + $parserArgs }
         $invocation = ConvertFrom-CdpInvokeArguments `
             -Command $Command `
             -ConfigPath $ConfigPath `
             -Query $Query `
             -Open $Open `
-            -RemainingArgs $RemainingArgs
+            -RemainingArgs $parserArgs
     } catch {
         Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
         return
@@ -3594,7 +3677,8 @@ function Invoke-Cdp {
                 -ConfigPath $invocation.ConfigPath `
                 -Query $invocation.Query `
                 -WSL:$WSL `
-                -Open $invocation.Open
+                -Open $invocation.Open `
+                -AllowHook:$invocation.AllowHook
             return
         }
         default { Invoke-CdpManagementInvocation -Invocation $invocation }
