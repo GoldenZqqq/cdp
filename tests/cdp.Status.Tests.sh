@@ -129,7 +129,15 @@ if [[ $denied_status -eq 0 ]]; then
 fi
 assert_contains "$denied_output" "Action requires explicit confirmation"
 assert_project_names "$fix_config" '["Existing","EnabledMissing","DisabledMissing"]'
-cdp-status --fix --yes "$fix_config" >/dev/null
+set +e
+confirmed_output=$(cdp-status --fix --yes "$fix_config" 2>&1)
+confirmed_status=$?
+set -e
+if [[ $confirmed_status -ne 0 ]]; then
+    echo "status --fix --yes failed with exit code $confirmed_status" >&2
+    echo "$confirmed_output" >&2
+    exit 1
+fi
 assert_project_names "$fix_config" '["Existing","DisabledMissing"]'
 
 converted=$(convert_windows_to_wsl 'C:\Work\api')

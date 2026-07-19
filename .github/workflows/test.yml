@@ -118,7 +118,10 @@ jobs:
         run: |
           bash ./scripts/New-ScoopPackage.sh 2.0.5 "$RUNNER_TEMP/cdp-2.0.5.tar.gz"
           tar -tzf "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | grep -Fx 'cdp-2.0.5/src/cdp.sh'
-          test "$(sha256sum "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | awk '{print $1}')" = "$(jq -r '.hash' scoop/cdp.json)"
+          actual_hash="$(sha256sum "$RUNNER_TEMP/cdp-2.0.5.tar.gz" | awk '{print $1}')"
+          expected_hash="$(jq -r '.hash' scoop/cdp.json)"
+          printf 'Scoop package hash: actual=%s expected=%s\n' "$actual_hash" "$expected_hash"
+          test "$actual_hash" = "$expected_hash"
 
   macos:
     name: macOS smoke
