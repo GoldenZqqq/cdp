@@ -38,7 +38,7 @@
 - [x] Recorded local release evidence and readiness in `PROGRESS.md`.
 - [x] Create release-preparation commit.
 - [x] Obtain external authorization and push the release candidate.
-- [x] Diagnose the first hosted CI run's CRLF-only Scoop fixture failure and add
-  a regression without changing the retained package digest.
+- [x] Diagnose hosted CI fresh-checkout CRLF parsing and runner-umask archive
+  mode drift; add regressions without changing the retained package digest.
 - [ ] Push the repair, pass CI, tag, create the Release, publish Gallery if the
   environment key is available, and verify public channels.

@@ -24,6 +24,9 @@ while IFS= read -r -d '' text_file; do
     mv "$normalized_file" "$text_file"
 done < <(find "$package_root" -type f \( -name '*.ps1' -o -name '*.psd1' -o -name '*.psm1' -o -name '*.sh' \) -print0)
 
+# Keep archive modes deterministic across developer and hosted-runner umasks.
+chmod -R u=rwX,go= "$package_root"
+
 tar --sort=name \
     --mtime='UTC 2000-01-01' \
     --owner=0 --group=0 --numeric-owner \

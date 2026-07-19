@@ -35,6 +35,10 @@ resolves as a commit object.
   required an LF line ending. macOS and the pre-existing local worktree passed.
 - Release scripts now strip the trailing carriage return before extracting
   `ModuleVersion`, and the quality fixture exercises an isolated CRLF checkout.
+- CI run `29702994841` then exposed the underlying archive-mode drift: the
+  normalization temp file inherited runner `umask 0002`, producing mode `664`
+  instead of the retained asset's `600`. Package staging now explicitly applies
+  directory/file modes `700`/`600`, and fixtures run under `umask 0002`.
 - The repaired local package remains byte-identical to the retained asset and
   Scoop manifest: `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`.
 
