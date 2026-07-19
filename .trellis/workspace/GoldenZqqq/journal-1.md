@@ -244,3 +244,36 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: 完成 v2.1.0 安全变更
+
+**Date**: 2026-07-19
+**Task**: 完成 v2.1.0 安全变更
+**Branch**: `main`
+
+### Summary
+
+完成 PowerShell ShouldProcess/WhatIf/Confirm、shell dry-run/yes、批量结果与 workspace/status 安全边界；Pester 80/80、跨 shell 回归、静态检查和元数据门禁通过。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1f9e13d` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
