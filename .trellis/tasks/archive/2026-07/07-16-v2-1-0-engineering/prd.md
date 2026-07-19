@@ -12,7 +12,8 @@
 
 ## Acceptance Criteria
 
-- [ ] 10 个子任务完成并各有一个独立提交。
-- [ ] PowerShell/shell 大文件、非原子写入、无确认变更和无信任 hook 得到治理。
-- [ ] 50 项目 status 性能目标有可重复基准证据。
-- [ ] 全量质量门禁通过后统一发布 v2.1.0。
+- [x] 10 个子任务完成并各有一个独立提交。
+- [x] PowerShell/shell 大文件、非原子写入、无确认变更和无信任 hook 得到治理。
+- [x] 50 项目 status 性能目标有可重复基准证据。
+- [x] 全量质量门禁通过后统一发布 v2.1.0；GitHub/Scoop 已公开验证，
+  PowerShell Gallery 因环境缺少 API key 作为唯一外部阻塞记录。
