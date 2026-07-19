@@ -1,14 +1,14 @@
 # cdp PowerShell domain: Status.ps1
 # Loaded by src/cdp.psm1; do not dot-source peer files.
 
-function Get-CdpGitProjectInfo {
+function New-CdpGitProjectInfo {
     param(
         [Parameter(Mandatory = $true)]
         [object]$Project
     )
-
     $rootPath = [string]$Project.rootPath
-    $info = [PSCustomObject]@{
+
+    [PSCustomObject]@{
         Name = [string]$Project.name
         RootPath = $rootPath
         PathExists = $false
@@ -24,6 +24,66 @@ function Get-CdpGitProjectInfo {
         StatusLabel = ""
         NeedsAttention = $false
     }
+}
+
+function ConvertFrom-CdpGitStatusPorcelainV2 {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][object]$Info
+    )
+
+    $oid = ''
+    $head = ''
+    foreach ($line in $Lines) {
+        if ($line -match '^# branch\.oid (.+)$') { $oid = $matches[1]; continue }
+        if ($line -match '^# branch\.head (.+)$') { $head = $matches[1]; continue }
+        if ($line -match '^# branch\.upstream (.+)$') {
+            $Info.Upstream = $matches[1]
+            $separator = $Info.Upstream.IndexOf('/')
+            if ($separator -gt 0) { $Info.Remote = $Info.Upstream.Substring(0, $separator) }
+            continue
+        }
+        if ($line -match '^# branch\.ab \+(\d+) -(\d+)$') {
+            $Info.AheadCount = [int]$matches[1]
+            $Info.BehindCount = [int]$matches[2]
+            continue
+        }
+        if ($line.StartsWith('? ')) { $Info.UntrackedCount++; continue }
+        if ($line -match '^(1|2|u) ') { $Info.DirtyCount++ }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($head) -and $head -ne '(detached)') {
+        $Info.Branch = $head
+    } elseif ($oid -notin @('', '(initial)')) {
+        $Info.Branch = $oid.Substring(0, [Math]::Min(7, $oid.Length))
+    }
+    $oid
+}
+
+function Set-CdpGitProjectStatusLabel {
+    param([Parameter(Mandatory = $true)][object]$Info)
+
+    if ($Info.DirtyCount -gt 0 -and $Info.UntrackedCount -gt 0) {
+        $Info.StatusLabel = "$($Info.DirtyCount) dirty + $($Info.UntrackedCount) untracked"
+    } elseif ($Info.DirtyCount -gt 0) {
+        $Info.StatusLabel = "$($Info.DirtyCount) dirty"
+    } elseif ($Info.UntrackedCount -gt 0) {
+        $Info.StatusLabel = "$($Info.UntrackedCount) untracked"
+    } else {
+        $Info.StatusLabel = 'clean'
+    }
+    $Info.NeedsAttention = $Info.DirtyCount -gt 0 -or
+        $Info.UntrackedCount -gt 0 -or $Info.BehindCount -gt 0
+}
+
+function Get-CdpGitProjectInfo {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project
+    )
+
+    $rootPath = [string]$Project.rootPath
+    $info = New-CdpGitProjectInfo -Project $Project
 
     if (-not (Test-Path -LiteralPath $rootPath)) {
         $info.StatusLabel = "path missing"
@@ -33,79 +93,27 @@ function Get-CdpGitProjectInfo {
 
     $info.PathExists = $true
 
-    $insideWorkTree = $false
     try {
-        $probe = (& git -C $rootPath rev-parse --is-inside-work-tree 2>$null)
-        $insideWorkTree = $LASTEXITCODE -eq 0 -and $probe -eq 'true'
-    } catch {}
-    if (-not $insideWorkTree) {
+        $porcelain = @(& git -C $rootPath status --porcelain=v2 --branch --untracked-files=all 2>$null)
+        $statusExitCode = $LASTEXITCODE
+    } catch {
+        $statusExitCode = 1
+        $porcelain = @()
+    }
+    if ($statusExitCode -ne 0) {
         $info.StatusLabel = "not a git repo"
         return $info
     }
 
     $info.IsGitRepo = $true
 
-    try {
-        $info.Branch = (& git -C $rootPath branch --show-current 2>$null)
-        if ([string]::IsNullOrWhiteSpace($info.Branch)) {
-            $info.Branch = (& git -C $rootPath rev-parse --short HEAD 2>$null)
-        }
-    } catch {}
+    $oid = ConvertFrom-CdpGitStatusPorcelainV2 -Lines $porcelain -Info $info
 
-    try {
-        $upstream = (& git -C $rootPath rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null)
-        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($upstream)) {
-            $info.Upstream = [string]$upstream
-            $separator = $info.Upstream.IndexOf('/')
-            if ($separator -gt 0) {
-                $info.Remote = $info.Upstream.Substring(0, $separator)
-            }
-        }
-    } catch {}
-
-    try {
-        $porcelain = @(& git -C $rootPath status --porcelain 2>$null)
-        foreach ($line in $porcelain) {
-            if ([string]::IsNullOrWhiteSpace($line)) { continue }
-            if ($line.Length -ge 2 -and $line.Substring(0, 2) -eq "??") {
-                $info.UntrackedCount++
-            } else {
-                $info.DirtyCount++
-            }
-        }
-    } catch {}
-
-    try {
-        $ahead = (& git -C $rootPath rev-list --count "@{u}..HEAD" 2>$null)
-        if ($null -ne $ahead) { $info.AheadCount = [int]$ahead }
-    } catch {}
-
-    try {
-        $behind = (& git -C $rootPath rev-list --count "HEAD..@{u}" 2>$null)
-        if ($null -ne $behind) { $info.BehindCount = [int]$behind }
-    } catch {}
-
-    try {
+    if ($oid -notin @('', '(initial)')) { try {
         $info.LastCommitRelative = (& git -C $rootPath log -1 --format="%cr" 2>$null)
-    } catch {}
+    } catch {} }
 
-    if ($info.DirtyCount -gt 0 -and $info.UntrackedCount -gt 0) {
-        $info.StatusLabel = "$($info.DirtyCount) dirty + $($info.UntrackedCount) untracked"
-        $info.NeedsAttention = $true
-    } elseif ($info.DirtyCount -gt 0) {
-        $info.StatusLabel = "$($info.DirtyCount) dirty"
-        $info.NeedsAttention = $true
-    } elseif ($info.UntrackedCount -gt 0) {
-        $info.StatusLabel = "$($info.UntrackedCount) untracked"
-        $info.NeedsAttention = $true
-    } else {
-        $info.StatusLabel = "clean"
-    }
-
-    if ($info.BehindCount -gt 0) {
-        $info.NeedsAttention = $true
-    }
-
+    Set-CdpGitProjectStatusLabel -Info $info
     return $info
 }
 
@@ -163,7 +171,13 @@ function Show-CdpProjectStatus {
         [switch]$Fix,
 
         [Parameter(Mandatory = $false)]
-        [switch]$Push
+        [switch]$Push,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Refresh,
+
+        [Parameter(Mandatory = $false)]
+        [int]$ThrottleLimit = 0
     )
 
     if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
@@ -206,14 +220,15 @@ function Show-CdpProjectStatus {
         return
     }
 
-    $statusList = @()
     $total = $enabledProjects.Count
-    $scanned = 0
-    foreach ($project in $enabledProjects) {
-        $scanned++
-        Write-Host "`r  Scanning $scanned/$total... " -ForegroundColor DarkGray -NoNewline
-        $statusList += Get-CdpGitProjectInfo -Project $project
-    }
+    $forceRefresh = $Refresh -or $Fix -or $Push
+    $workerCount = Resolve-CdpStatusThrottleLimit -Value $ThrottleLimit
+    Write-Host "`r  Scanning $total projects ($workerCount workers)... " -ForegroundColor DarkGray -NoNewline
+    $statusList = @(Get-CdpGitProjectInfoBatch `
+        -Projects $enabledProjects `
+        -ThrottleLimit $workerCount `
+        -Refresh:$forceRefresh `
+        -CollectorScript { param($Project) Get-CdpGitProjectInfo -Project $Project })
     Write-Host "`r                              `r" -NoNewline
 
     if ($Fix) {
@@ -417,6 +432,8 @@ function Invoke-CdpStatusInvocation {
         TagFilter = $Invocation.TagFilter
         Fix = $Invocation.Fix
         Push = $Invocation.Push
+        Refresh = $Invocation.Refresh
+        ThrottleLimit = $Invocation.ThrottleLimit
     }
     if ($Invocation.DryRun) { $parameters.WhatIf = $true }
     if ($Invocation.Yes) { $parameters.Confirm = $false }

@@ -178,6 +178,10 @@ cdp status --dirty
 # 组合过滤条件并使用显式配置文件
 cdp status --dirty '@work' E:\Projects\projects.json
 
+# 调整 status 并发数，并绕过可选的会话缓存
+cdp status --jobs 8 --refresh
+Show-CdpProjectStatus -ThrottleLimit 8 -Refresh
+
 # 预览或显式确认 status 变更操作
 cdp status --fix --dry-run
 cdp status --fix --yes
@@ -294,7 +298,7 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | 命令 | 别名 | 说明 |
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | 短命令入口，默认打开项目选择器 |
-| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
+| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git 状态仪表盘，支持 `--dirty`、`@tag`、`--jobs` 和 `--refresh` |
 | `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
 | `Invoke-Cdp` | `cdp hook list/trust/revoke` | 查看脱敏后的 Hook 状态，并管理项目级持久信任 |
 | `Invoke-Cdp -Query api` | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
@@ -326,7 +330,7 @@ bash/zsh 内置 launcher 会区分编辑器参数与无需参数的 AI CLI，因
 | 命令 | 说明 |
 | --- | --- |
 | `cdp` | 打开 fzf 菜单并切换项目 |
-| `cdp status` / `cdp-status` | 查看所有项目的 Git 状态仪表盘，支持 `--dirty` 和 `@tag` 过滤 |
+| `cdp status` / `cdp-status` | Git 状态仪表盘，支持 `--dirty`、`@tag`、`--jobs` 和 `--refresh` |
 | `cdp workspace` / `cdp ws` | 添加、列出或启动多项目工作区，支持 `--open` 和 `--config` |
 | `cdp hook list/trust/revoke` | 查看脱敏后的 Hook 状态，并管理项目级持久信任 |
 | `cdp api` | 按名称或路径快速匹配项目，唯一匹配时直接切换 |
@@ -436,6 +440,16 @@ $env:CDP_FZF_PATH = "C:\Users\you\AppData\Local\Microsoft\WinGet\Links\fzf.exe"
 ```
 
 `CDP_FZF_PATH` 应填写 `(Get-Command fzf).Path` 返回的实际路径。`cdp` 也会在同一个 PowerShell 会话中缓存已解析的项目配置，配置文件被 `cdp-add`、`cdp-scan`、`cdp-rm` 修改后会自动失效并重新读取。
+
+`cdp status` 使用有限本地并发；对已有提交的仓库最多执行两次 Git 探测。可通过 `CDP_STATUS_CONCURRENCY`（1-16）或 `--jobs` / `-ThrottleLimit` 调整 worker 数量。`CDP_STATUS_TIMEOUT_SECONDS`（1-60，默认 10）限制单仓库扫描时间，避免一个慢仓库阻塞整个仪表盘。
+
+status 缓存默认关闭。将 `CDP_STATUS_CACHE_TTL` 设置为 1-60 秒可在当前 shell 或 PowerShell 会话中复用结果；需要最新数据时使用 `--refresh` / `-Refresh`。`status --fix` 与 `status --push` 始终绕过缓存。
+
+```powershell
+$env:CDP_STATUS_CONCURRENCY = "4"
+$env:CDP_STATUS_CACHE_TTL = "15"
+$env:CDP_STATUS_TIMEOUT_SECONDS = "10"
+```
 
 ---
 

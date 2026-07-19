@@ -178,6 +178,10 @@ cdp status --dirty
 # Combine filters and use an explicit config
 cdp status --dirty '@work' E:\Projects\projects.json
 
+# Override status concurrency and bypass the optional session cache
+cdp status --jobs 8 --refresh
+Show-CdpProjectStatus -ThrottleLimit 8 -Refresh
+
 # Preview or explicitly approve status actions
 cdp status --fix --dry-run
 cdp status --fix --yes
@@ -294,7 +298,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | Command | Alias | Description |
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
-| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
+| `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, and `--refresh` controls |
 | `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
 | `Invoke-Cdp` | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
@@ -326,7 +330,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | Command | Description |
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
-| `cdp status` / `cdp-status` | Git status dashboard for all projects; supports `--dirty` and `@tag` filters |
+| `cdp status` / `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, and `--refresh` controls |
 | `cdp workspace` / `cdp ws` | Adds, lists, or launches a multi-project workspace; supports `--open` and `--config` |
 | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
@@ -436,6 +440,16 @@ $env:CDP_FZF_PATH = "C:\Users\you\AppData\Local\Microsoft\WinGet\Links\fzf.exe"
 ```
 
 Set `CDP_FZF_PATH` to the actual path returned by `(Get-Command fzf).Path`. `cdp` also caches the parsed project config within the current PowerShell session and automatically invalidates that cache after `cdp-add`, `cdp-scan`, or `cdp-rm` changes the config file.
+
+`cdp status` uses bounded local concurrency and at most two Git probes per committed repository. Use `CDP_STATUS_CONCURRENCY` (1-16) or `--jobs` / `-ThrottleLimit` to tune the worker count. `CDP_STATUS_TIMEOUT_SECONDS` (1-60, default 10) limits a repository scan so one slow repository does not block the full dashboard.
+
+The status cache is disabled by default. Set `CDP_STATUS_CACHE_TTL` to 1-60 seconds to reuse status results within the current shell or PowerShell session, and use `--refresh` / `-Refresh` when fresh data is required. `status --fix` and `status --push` always bypass the cache.
+
+```powershell
+$env:CDP_STATUS_CONCURRENCY = "4"
+$env:CDP_STATUS_CACHE_TTL = "15"
+$env:CDP_STATUS_TIMEOUT_SECONDS = "10"
+```
 
 ---
 

@@ -2,6 +2,164 @@
 # shellcheck shell=bash
 # Generated from the canonical cdp.sh source; do not source peer fragments.
 
+CDP_STATUS_CACHE_KEYS=()
+CDP_STATUS_CACHE_TIMES=()
+CDP_STATUS_CACHE_VALUES=()
+
+cdp_status_setting() {
+    local name="$1"
+    local default_value="$2"
+    local minimum="$3"
+    local maximum="$4"
+    local value="$default_value"
+    case "$name" in
+        CDP_STATUS_CONCURRENCY) value="${CDP_STATUS_CONCURRENCY:-$default_value}" ;;
+        CDP_STATUS_TIMEOUT_SECONDS) value="${CDP_STATUS_TIMEOUT_SECONDS:-$default_value}" ;;
+        CDP_STATUS_CACHE_TTL) value="${CDP_STATUS_CACHE_TTL:-$default_value}" ;;
+    esac
+    [[ "$value" =~ ^[0-9]+$ ]] || value="$default_value"
+    (( value < minimum )) && value="$minimum"
+    (( value > maximum )) && value="$maximum"
+    echo "$value"
+}
+
+cdp_status_cache_get() {
+    local key="$1"
+    local ttl="$2"
+    local refresh="$3"
+    local now
+    local i
+    [[ "$refresh" == true || "$ttl" -le 0 ]] && return 1
+    now=$(date +%s)
+    for ((i=0; i<${#CDP_STATUS_CACHE_KEYS[@]}; i++)); do
+        if [[ "${CDP_STATUS_CACHE_KEYS[$i]}" == "$key" ]]; then
+            if (( now - CDP_STATUS_CACHE_TIMES[$i] < ttl )); then
+                printf '%s' "${CDP_STATUS_CACHE_VALUES[$i]}"
+                return 0
+            fi
+            return 1
+        fi
+    done
+    return 1
+}
+
+cdp_status_cache_set() {
+    local key="$1"
+    local value="$2"
+    local ttl="$3"
+    local now
+    local i
+    [[ "$ttl" -le 0 ]] && return 0
+    now=$(date +%s)
+    for ((i=0; i<${#CDP_STATUS_CACHE_KEYS[@]}; i++)); do
+        if [[ "${CDP_STATUS_CACHE_KEYS[$i]}" == "$key" ]]; then
+            CDP_STATUS_CACHE_TIMES[$i]="$now"
+            CDP_STATUS_CACHE_VALUES[$i]="$value"
+            return 0
+        fi
+    done
+    CDP_STATUS_CACHE_KEYS+=("$key")
+    CDP_STATUS_CACHE_TIMES+=("$now")
+    CDP_STATUS_CACHE_VALUES+=("$value")
+}
+
+cdp_status_git_command() {
+    local timeout_seconds="$1"
+    shift
+    local git_command="${CDP_STATUS_GIT_COMMAND:-git}"
+    local timeout_exit=0
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$timeout_seconds" "$git_command" "$@" || timeout_exit=$?
+        [[ "$timeout_exit" -eq 143 ]] && return 124
+        return "$timeout_exit"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        gtimeout "$timeout_seconds" "$git_command" "$@" || timeout_exit=$?
+        [[ "$timeout_exit" -eq 143 ]] && return 124
+        return "$timeout_exit"
+    else
+        "$git_command" "$@" &
+        local command_pid=$!
+        (sleep "$timeout_seconds"; kill -TERM "$command_pid" 2>/dev/null || true) &
+        local timer_pid=$!
+        local exit_code=0
+        wait "$command_pid" || exit_code=$?
+        if [[ "$exit_code" -eq 143 ]]; then
+            kill -TERM "$timer_pid" 2>/dev/null || true
+            wait "$timer_pid" 2>/dev/null || true
+            return 124
+        fi
+        if kill -TERM "$timer_pid" 2>/dev/null; then
+            wait "$timer_pid" 2>/dev/null || true
+            return "$exit_code"
+        fi
+        wait "$timer_pid" 2>/dev/null || true
+        return 124
+    fi
+}
+
+cdp_status_collect_record() {
+    local repository_path="$1"
+    local timeout_seconds="$2"
+    local porcelain
+    local exit_code
+    local line
+    local oid=""
+    local branch=""
+    local remote=""
+    local upstream=""
+    local dirty=0
+    local untracked=0
+    local ahead=0
+    local behind=0
+    local last_commit=""
+
+    if [[ ! -d "$repository_path" ]]; then
+        printf 'missing\034-\034\034\0340\0340\0340\0340\034\n'
+        return 0
+    fi
+    if porcelain=$(cdp_status_git_command "$timeout_seconds" -C "$repository_path" status --porcelain=v2 --branch --untracked-files=all 2>/dev/null); then
+        exit_code=0
+    else
+        exit_code=$?
+    fi
+    if [[ $exit_code -ne 0 ]]; then
+        if [[ $exit_code -eq 124 ]]; then
+            printf 'timed-out\034-\034\034\0340\0340\0340\0340\034\n'
+        else
+            printf 'not-git\034-\034\034\0340\0340\0340\0340\034\n'
+        fi
+        return 0
+    fi
+
+    while IFS= read -r line; do
+        case "$line" in
+            '# branch.oid '*) oid="${line#\# branch.oid }" ;;
+            '# branch.head '*) branch="${line#\# branch.head }" ;;
+            '# branch.upstream '*)
+                upstream="${line#\# branch.upstream }"
+                [[ "$upstream" == */* ]] && remote="${upstream%%/*}"
+                ;;
+            '# branch.ab '*)
+                ahead="${line#*+}"
+                ahead="${ahead%% *}"
+                behind="${line##*-}"
+                ;;
+            '? '*) untracked=$((untracked + 1)) ;;
+            1\ *|2\ *|u\ *) dirty=$((dirty + 1)) ;;
+        esac
+    done <<< "$porcelain"
+
+    if [[ "$branch" == "(detached)" || -z "$branch" ]]; then
+        branch="${oid:0:7}"
+        [[ "$oid" == "(initial)" ]] && branch=""
+    fi
+    if [[ "$oid" != "" && "$oid" != "(initial)" ]]; then
+        last_commit=$(cdp_status_git_command "$timeout_seconds" -C "$repository_path" log -1 --format='%cr' 2>/dev/null || true)
+    fi
+    printf 'git\034%s\034%s\034%s\034%s\034%s\034%s\034%s\034%s\n' \
+        "$branch" "$remote" "$upstream" "$dirty" "$untracked" "$ahead" "$behind" "$last_commit"
+}
+
 cdp-status() {
     local config_path=""
     local dirty_only=false
@@ -10,6 +168,8 @@ cdp-status() {
     local do_push=false
     local dry_run=false
     local assume_yes=false
+    local refresh=false
+    local jobs=0
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -18,6 +178,13 @@ cdp-status() {
             --push)     do_push=true ;;
             --dry-run)  dry_run=true ;;
             --yes)      assume_yes=true ;;
+            --refresh)  refresh=true ;;
+            --jobs|--concurrency)
+                [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --jobs.${NC}"; return 1; }
+                [[ "$2" =~ ^[0-9]+$ ]] && jobs="$2" || jobs=0
+                (( jobs >= 1 && jobs <= 16 )) || { echo -e "${RED}Error: status jobs must be between 1 and 16.${NC}"; return 1; }
+                shift
+                ;;
             --config)
                 [[ -z "${2:-}" ]] && { echo -e "${RED}Error: missing value after --config.${NC}"; return 1; }
                 [[ -n "$config_path" ]] && { echo -e "${RED}Error: config path specified more than once.${NC}"; return 1; }
@@ -98,136 +265,115 @@ cdp-status() {
     local total=0
     local attention_count=0
     local missing_count=0
-    local output_lines=()
     local max_name_len=14
     local max_branch_len=12
-
-    # First pass: collect data
-    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=() statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
-    local proj_total
-    proj_total=$(line_count "$projects")
-    local proj_scanned=0
+    local -a names=() raw_paths=() paths=() branches=() remotes=() upstreams=()
+    local -a statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
 
     while IFS=$'\t' read -r pname ppath; do
         pname="${pname%$'\r'}"
         ppath="${ppath%$'\r'}"
         [[ -z "$pname" ]] && continue
-        local raw_ppath="$ppath"
-        ppath=$(convert_windows_to_wsl "$raw_ppath")
-        proj_scanned=$((proj_scanned + 1))
-        printf "\r  Scanning %d/%d... " "$proj_scanned" "$proj_total" >&2
-        total=$((total + 1))
-
+        names+=("$pname")
+        raw_paths+=("$ppath")
+        paths+=("$(convert_windows_to_wsl "$ppath")")
         local name_len
         name_len=$(cdp_display_width "$pname")
         [[ $name_len -gt $max_name_len ]] && max_name_len=$name_len
+        total=$((total + 1))
+    done <<< "$projects"
 
-        names+=("$pname")
-        raw_paths+=("$raw_ppath")
-        paths+=("$ppath")
+    [[ $jobs -gt 0 ]] || jobs=$(cdp_status_setting CDP_STATUS_CONCURRENCY 4 1 16)
+    local timeout_seconds
+    timeout_seconds=$(cdp_status_setting CDP_STATUS_TIMEOUT_SECONDS 10 1 60)
+    local cache_ttl
+    cache_ttl=$(cdp_status_setting CDP_STATUS_CACHE_TTL 0 0 60)
+    if $do_fix || $do_push; then refresh=true; fi
 
-        if [[ ! -d "$ppath" ]]; then
-            branches+=("-")
-            remotes+=("")
-            upstreams+=("")
-            statuses+=("path missing")
-            status_colors+=("$RED")
-            syncs+=("")
-            sync_colors+=("$GRAY")
-            last_commits+=("")
-            needs_attention+=(true)
-            missing_count=$((missing_count + 1))
-            continue
-        fi
+    local result_dir
+    result_dir=$(mktemp -d "${TMPDIR:-/tmp}/cdp-status.XXXXXX")
+    local batch_start=0
+    while (( batch_start < total )); do
+        local batch_end=$((batch_start + jobs))
+        (( batch_end > total )) && batch_end=$total
+        local -a pids=()
+        local i
+        for ((i=batch_start; i<batch_end; i++)); do
+            local cached_record=""
+            if cached_record=$(cdp_status_cache_get "${paths[$i]}" "$cache_ttl" "$refresh"); then
+                printf '%s\n' "$cached_record" > "$result_dir/$i.record"
+            else
+                cdp_status_collect_record "${paths[$i]}" "$timeout_seconds" > "$result_dir/$i.record" &
+                pids+=("$!")
+            fi
+        done
+        local pid
+        for pid in "${pids[@]}"; do wait "$pid" || true; done
+        batch_start=$batch_end
+    done
 
-        local inside_work_tree
-        inside_work_tree=$(git -C "$ppath" rev-parse --is-inside-work-tree 2>/dev/null || true)
-        if [[ "$inside_work_tree" != "true" ]]; then
-            branches+=("-")
-            remotes+=("")
-            upstreams+=("")
-            statuses+=("not a git repo")
-            status_colors+=("$GRAY")
-            syncs+=("")
-            sync_colors+=("$GRAY")
-            last_commits+=("")
-            needs_attention+=(false)
-            continue
-        fi
-
-        local branch
-        branch=$(git -C "$ppath" branch --show-current 2>/dev/null)
-        [[ -z "$branch" ]] && branch=$(git -C "$ppath" rev-parse --short HEAD 2>/dev/null)
+    local proj_scanned=0
+    local record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit
+    for ((i=0; i<total; i++)); do
+        local record=""
+        [[ -f "$result_dir/$i.record" ]] && record=$(cat "$result_dir/$i.record")
+        [[ -n "$record" ]] || record=$'failed\034-\034\034\0340\0340\0340\0340\034'
+        cdp_status_cache_set "${paths[$i]}" "$record" "$cache_ttl"
+        IFS=$'\034' read -r record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit <<< "$record"
         branches+=("$branch")
-        local upstream=""
-        local remote=""
-        upstream=$(git -C "$ppath" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
-        [[ "$upstream" == */* ]] && remote="${upstream%%/*}"
         remotes+=("$remote")
         upstreams+=("$upstream")
-        local branch_len
-        branch_len=$(cdp_display_width "$branch")
-        [[ $branch_len -gt $max_branch_len ]] && max_branch_len=$branch_len
-
-        local dirty_count=0
-        local untracked_count=0
-        local porcelain
-        porcelain=$(git -C "$ppath" status --porcelain 2>/dev/null)
-        if [[ -n "$porcelain" ]]; then
-            while IFS= read -r line; do
-                if [[ "${line:0:2}" == "??" ]]; then
-                    untracked_count=$((untracked_count + 1))
-                else
-                    dirty_count=$((dirty_count + 1))
-                fi
-            done <<< "$porcelain"
-        fi
-
-        local ahead=0 behind=0
-        ahead=$(git -C "$ppath" rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)
-        behind=$(git -C "$ppath" rev-list --count "HEAD..@{u}" 2>/dev/null || echo 0)
-
-        local last_commit
-        last_commit=$(git -C "$ppath" log -1 --format="%cr" 2>/dev/null)
         last_commits+=("$last_commit")
-
-        if [[ $dirty_count -gt 0 && $untracked_count -gt 0 ]]; then
-            statuses+=("x $dirty_count dirty + $untracked_count untracked")
-            status_colors+=("$RED")
-            needs_attention+=(true)
-            attention_count=$((attention_count + 1))
-        elif [[ $dirty_count -gt 0 ]]; then
-            statuses+=("x $dirty_count dirty")
-            status_colors+=("$RED")
-            needs_attention+=(true)
-            attention_count=$((attention_count + 1))
-        elif [[ $untracked_count -gt 0 ]]; then
-            statuses+=("! $untracked_count untracked")
-            status_colors+=("$YELLOW")
-            needs_attention+=(true)
-            attention_count=$((attention_count + 1))
-        else
-            statuses+=("+ clean")
-            status_colors+=("$GREEN")
-            needs_attention+=(false)
-        fi
 
         local sync_text=""
         local s_color="$GRAY"
-        [[ $ahead -gt 0 ]] && sync_text="^${ahead}"
-        [[ $behind -gt 0 ]] && { [[ -n "$sync_text" ]] && sync_text="$sync_text "; sync_text="${sync_text}v${behind}"; }
-        [[ $behind -gt 0 ]] && s_color="$YELLOW"
-        [[ $behind -eq 0 && $ahead -gt 0 ]] && s_color="$CYAN"
-        if [[ $behind -gt 0 ]]; then
-            if [[ "${needs_attention[${#needs_attention[@]}-1]}" != "true" ]]; then
+        case "$record_kind" in
+            missing)
+                statuses+=("path missing"); status_colors+=("$RED"); needs_attention+=(true)
+                missing_count=$((missing_count + 1))
+                ;;
+            not-git)
+                statuses+=("not a git repo"); status_colors+=("$GRAY"); needs_attention+=(false)
+                ;;
+            timed-out)
+                statuses+=("status timed out"); status_colors+=("$RED"); needs_attention+=(true)
                 attention_count=$((attention_count + 1))
-            fi
-            needs_attention[${#needs_attention[@]}-1]=true
-        fi
+                ;;
+            git)
+                local branch_len
+                branch_len=$(cdp_display_width "$branch")
+                [[ $branch_len -gt $max_branch_len ]] && max_branch_len=$branch_len
+                if [[ $dirty_count -gt 0 && $untracked_count -gt 0 ]]; then
+                    statuses+=("x $dirty_count dirty + $untracked_count untracked"); status_colors+=("$RED"); needs_attention+=(true)
+                elif [[ $dirty_count -gt 0 ]]; then
+                    statuses+=("x $dirty_count dirty"); status_colors+=("$RED"); needs_attention+=(true)
+                elif [[ $untracked_count -gt 0 ]]; then
+                    statuses+=("! $untracked_count untracked"); status_colors+=("$YELLOW"); needs_attention+=(true)
+                else
+                    statuses+=("+ clean"); status_colors+=("$GREEN"); needs_attention+=(false)
+                fi
+                [[ $ahead -gt 0 ]] && sync_text="^${ahead}"
+                [[ $behind -gt 0 ]] && { [[ -n "$sync_text" ]] && sync_text="$sync_text "; sync_text="${sync_text}v${behind}"; }
+                [[ $behind -gt 0 ]] && s_color="$YELLOW"
+                [[ $behind -eq 0 && $ahead -gt 0 ]] && s_color="$CYAN"
+                if [[ $dirty_count -gt 0 || $untracked_count -gt 0 || $behind -gt 0 ]]; then
+                    attention_count=$((attention_count + 1))
+                    needs_attention[${#needs_attention[@]}-1]=true
+                fi
+                ;;
+            *)
+                statuses+=("status failed"); status_colors+=("$RED"); needs_attention+=(true)
+                attention_count=$((attention_count + 1))
+                ;;
+        esac
         syncs+=("$sync_text")
         sync_colors+=("$s_color")
-    done <<< "$projects"
-    printf "\r                          \r" >&2
+        proj_scanned=$((proj_scanned + 1))
+        printf "\r  Scanning %d/%d (%d workers)... " "$proj_scanned" "$total" "$jobs" >&2
+    done
+    rm -f "$result_dir"/*.record 2>/dev/null || true
+    rmdir "$result_dir" 2>/dev/null || true
+    printf "\r                                      \r" >&2
 
     # --fix: remove path-missing projects (skip table render)
     if $do_fix; then

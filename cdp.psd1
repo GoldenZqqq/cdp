@@ -116,6 +116,8 @@ v2.1.0 - Engineering Foundation
 - Security: shell mutations support dry-run and explicit approval for high-impact operations
 - Improved: batch push/workspace actions continue after item failures and report every target
 - Improved: status push previews include remote and upstream identity
+- Improved: status collection uses porcelain-v2 batching with bounded concurrency, per-repository timeouts, optional TTL caching, and --refresh/-Refresh controls
+- Added: fixed-size status performance benchmarks and Bash/zsh/Bash 3.2 regression gates
 - Refactored: PowerShell implementation is loaded from bounded domain files with a stable bootstrap/export surface
 - Refactored: bash/zsh domain fragments deterministically generate the verified single-file installer artifact
 

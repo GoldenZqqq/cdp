@@ -15,6 +15,8 @@ function New-CdpInvocation {
         DirtyOnly = $false
         Fix = $false
         Push = $false
+        Refresh = $false
+        ThrottleLimit = 0
         DryRun = $false
         Yes = $false
         TagFilter = $null
@@ -131,10 +133,21 @@ function ConvertFrom-CdpStatusTokens {
     $result.ConfigPath = $ConfigPath
     $result.DryRun = $DryRun
     $result.Yes = $Yes
-    foreach ($token in $Tokens) {
+    for ($i = 0; $i -lt $Tokens.Count; $i++) {
+        $token = $Tokens[$i]
         if ($token -in @('--dirty', '-dirty', '-d')) { $result.DirtyOnly = $true; continue }
         if ($token -in @('--fix', '-fix')) { $result.Fix = $true; continue }
         if ($token -in @('--push', '-push')) { $result.Push = $true; continue }
+        if ($token -in @('--refresh', '-refresh')) { $result.Refresh = $true; continue }
+        if ($token -in @('--jobs', '-jobs', '--concurrency')) {
+            if ($i + 1 -ge $Tokens.Count) { throw "Missing value after --jobs." }
+            $jobs = 0
+            if (-not [int]::TryParse($Tokens[++$i], [ref]$jobs) -or $jobs -lt 1 -or $jobs -gt 16) {
+                throw "Status jobs must be an integer between 1 and 16."
+            }
+            $result.ThrottleLimit = $jobs
+            continue
+        }
         if ($token -in @('--dry-run', '-dry-run')) { $result.DryRun = $true; continue }
         if ($token -in @('--yes', '-yes')) { $result.Yes = $true; continue }
         if ($token.StartsWith('@')) {

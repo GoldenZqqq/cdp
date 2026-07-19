@@ -184,6 +184,8 @@ Status fields:
 
 - `DirtyOnly`, `Fix`, `Push`: booleans.
 - `TagFilter`: zero or one `@tag` value.
+- `Refresh`: bypasses the optional status cache.
+- `ThrottleLimit`: bounded worker count from 1 through 16; zero means the configured default.
 
 Workspace fields:
 
@@ -203,6 +205,8 @@ Management fields:
 - Unknown `-`-prefixed option -> parser error; no action.
 - `status --fix --push` -> mutually exclusive action error.
 - `status --dirty` with `--fix` or `--push` -> filter/action conflict error.
+- `status --jobs` without a value or outside 1-16 -> parser error; no scan.
+- `status --refresh` is valid with read-only status and with actions; `--fix` and `--push` always refresh.
 - `workspace --list --open ...` -> invalid combination error.
 - `workspace --add` without a name and at least one project -> required argument error.
 
@@ -211,7 +215,7 @@ Management fields:
 Good:
 
 ```text
-cdp status --dirty @work C:\configs\projects.json
+cdp status --dirty --jobs 8 --refresh @work C:\configs\projects.json
 cdp workspace --add fullstack api web --open codex --config C:\configs\projects.json
 ```
 
@@ -286,12 +290,16 @@ convert_windows_to_wsl <raw-rootPath> -> <resolved-local-path>
 
 - Preserve each JSON `rootPath` as the raw configuration identity.
 - Resolve raw Windows paths before filesystem, Git, tmux, or workspace access in bash/zsh.
-- Detect repositories with `git -C <resolved-path> rev-parse --is-inside-work-tree`; a successful literal `true` includes normal repositories and linked worktrees.
+- Collect repository state with `git -C <resolved-path> status --porcelain=v2 --branch --untracked-files=all`; do not reintroduce separate `rev-parse`, `rev-list`, or branch probes.
+- Use at most one status probe plus one `log -1 --format=%cr` probe per committed repository. Skip the log probe for an unborn or non-Git repository.
 - Report tracked and untracked changes independently. If both exist, the label contains both counts.
 - `NeedsAttention` is true for tracked changes, untracked files, or a positive behind count. A dirty-only header reports the number actually rendered.
 - Derive ahead/behind only from a successful upstream query. Detached and no-upstream repositories remain at zero.
 - `--fix` removes only enabled missing entries selected by the current scan. Disabled entries remain even when they share the same raw path.
 - `--push` targets only scanned Git repositories with a positive upstream-derived ahead count and reports the native push exit code accurately.
+- Preserve input order while using bounded workers. `CDP_STATUS_CONCURRENCY` and `--jobs`/`-ThrottleLimit` are clamped to 1-16; the default is at most four workers.
+- Keep status caching disabled unless `CDP_STATUS_CACHE_TTL` is a positive value from 1-60 seconds. PowerShell keys include normalized path plus project identity; shell records contain only Git-derived fields and key by normalized path. `--refresh` bypasses the entry.
+- Enforce `CDP_STATUS_TIMEOUT_SECONDS` from 1-60 per repository. A timeout is visible as `status timed out`, needs attention, and must not prevent other repositories from completing.
 
 ### 4. Validation & Error Matrix
 
@@ -302,6 +310,8 @@ convert_windows_to_wsl <raw-rootPath> -> <resolved-local-path>
 - Behind-only repository -> needs attention and cannot produce an all-clean summary.
 - `--fix` with no previewed missing entries -> no config write.
 - Native `git push` nonzero exit -> render failure, never `done`.
+- Porcelain/status process failure -> `status failed` or `not a git repo` according to the collector boundary; never hang the full scan.
+- Expired cache entries are replaced in place; sparse array indexing must not drop later cache entries under Bash 3.2 or zsh.
 
 ### 5. Good / Base / Bad Cases
 
@@ -335,6 +345,8 @@ print "done" without checking git push exit status
 - PowerShell and shell: `--fix` preserves a disabled entry that shares the missing enabled entry's raw path.
 - Shell: a stubbed Windows path proves status and workspace consume the resolved path.
 - Shell: dirty-only output asserts the rendered project count, not the scanned total.
+- PowerShell and shell: process-count tests assert no legacy Git probes; batch tests assert order, bounded overlap, timeout visibility, cache TTL, and refresh bypass.
+- Bash, zsh, and Bash 3.2: default status execution must complete for non-Git paths; zsh must not use Bash-only indirect parameter expansion.
 - Git fixtures use local temporary repositories and bare remotes only; tests must not fetch or push over the network.
 - CI runs shell status tests on both Ubuntu and macOS, plus bash/zsh syntax validation.
 

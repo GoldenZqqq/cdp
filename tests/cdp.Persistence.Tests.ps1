@@ -115,7 +115,7 @@ Describe 'cdp atomic JSON persistence' {
                 [PSCustomObject]@{ name = 'Missing'; rootPath = $missingPath; enabled = $true }
             ) | ConvertTo-Json -Depth 4))
 
-            Mock Get-CdpGitProjectInfo {
+            Mock Get-CdpGitProjectInfoBatch {
                 [IO.File]::WriteAllText($path, '[]')
                 [PSCustomObject]@{
                     Name = 'Missing'

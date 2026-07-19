@@ -95,7 +95,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y fzf jq shellcheck
+          sudo apt-get install -y fzf jq shellcheck zsh
 
       - name: Check bash syntax
         run: |
@@ -119,6 +119,9 @@ jobs:
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
 
+      - name: Run status performance regressions
+        run: bash ./tests/cdp.Status.Performance.Tests.sh
+
       - name: Run shell safe mutation tests
         run: bash ./tests/cdp.SafeMutations.Tests.sh
 
@@ -127,6 +130,18 @@ jobs:
 
       - name: Run shell persistence tests
         run: bash ./tests/cdp.Persistence.Tests.sh
+
+      - name: Run Bash 3.2 compatibility matrix
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work bash:3.2 sh -c '
+            apk add --no-cache git jq fzf >/dev/null
+            bash ./tests/cdp.Shell.Modularization.Tests.sh
+            bash ./tests/cdp.Cli.Tests.sh
+            bash ./tests/cdp.Status.Tests.sh
+            bash ./tests/cdp.SafeMutations.Tests.sh
+            bash ./tests/cdp.Shell.V2.Tests.sh
+            bash ./tests/cdp.Persistence.Tests.sh
+          '
 
       - name: Validate shell installer metadata
         run: bash ./tests/cdp.Installer.Tests.sh
@@ -150,7 +165,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install fzf jq shellcheck
+          brew install coreutils fzf jq shellcheck
 
       - name: Check bash syntax
         run: |
@@ -173,6 +188,9 @@ jobs:
 
       - name: Run shell status tests
         run: bash ./tests/cdp.Status.Tests.sh
+
+      - name: Run status performance regressions
+        run: bash ./tests/cdp.Status.Performance.Tests.sh
 
       - name: Run shell safe mutation tests
         run: bash ./tests/cdp.SafeMutations.Tests.sh

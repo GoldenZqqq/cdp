@@ -35,7 +35,10 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - [x] Return or print per-target action results and continue safe batch processing after item failures.
 - [x] Split the PowerShell module into bounded domain files with a stable bootstrap, export surface, and recursive package coverage.
 - [x] Split bash/zsh source into bounded domain fragments with deterministic single-file generation and offline-install verification.
-- [ ] Complete the remaining v2.1.0 engineering, performance, CI, media, and documentation tasks.
+- [x] Replace per-repository status probes with porcelain-v2 collection, bounded concurrency, timeouts, optional TTL cache, refresh controls, and fixed-size benchmarks.
+- [x] Add status performance regressions and Bash/zsh/Bash 3.2 CI coverage.
+- [x] Synchronize status performance behavior, options, and environment settings in both README files and release metadata.
+- [ ] Complete the remaining v2.1.0 engineering, media, and documentation tasks.
 - [ ] Pass the full cross-platform release gate and publish/verify every public channel.
 
 ## 2.1.0 Engineering Verification
@@ -44,8 +47,10 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - PowerShell modularization: all `119/119` function bodies match the pre-split AST text; the largest domain file is 557 lines.
 - Bash, zsh, and Bash 3.2: persistence, stale-fingerprint, invalid JSON, lock,
   flush/replacement failure, backup recovery, doctor diagnostics, and syntax checks passed.
-- Shell installer digest: `50b4c4b416b48c0cbf0b6f22ccc690bfc130e16784d375d6535b3acc1ad6f06c`.
-- Deterministic Scoop package digest: `d5867b220317c81c6606f1de6bb174de0c32392a2afe943751a3f93abd9341d9`.
+- Shell installer digest: `25ab6256178bb1322a32e59b062820cfc87a349ea2c7fc4e679d4630c2775e47`.
+- Deterministic Scoop package digest: `0ee4ea4b0920901fee778f870e2be874f8a25d7154f0b6e860a1a7acc4b06a87`.
+- Status performance work: Bash 50-repository benchmark on this workspace measured jobs=4 in 5 runs at min `2.007s`, median `2.083s`, p95 `2.246s`; jobs=8 measured min `1.912s`, median `2.082s`, p95 `2.198s`. PowerShell 7.5.2 with one worker measured min `1.941s`, median `2.209s`, p95 `2.917s`.
+- Status correctness: Bash status performance tests, Bash/zsh v2 regressions, zsh persistence, and Bash 3.2 container smoke passed after the zsh default-concurrency compatibility fix. An isolated official PowerShell 7.5.2 arm64 runtime passed Pester `95/95` and PSScriptAnalyzer Error severity; Windows PowerShell 5.1 remains a hosted-CI-only gate on this Linux environment.
 
 ## 2.0.5 Security Checklist
 

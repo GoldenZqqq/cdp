@@ -155,7 +155,7 @@ cdp_display_width() {
     local len=${#text}
     while [[ $i -lt $len ]]; do
         ch="${text:$i:1}"
-        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
+        LC_ALL=C printf -v code '%d' "'$ch" 2>/dev/null || code=0
         if [[ $code -ge 128 ]]; then
             width=$((width + 2))
         else
@@ -195,7 +195,7 @@ cdp_limit_text() {
     while [[ $i -lt $len ]]; do
         local ch="${text:$i:1}"
         local code
-        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
+        LC_ALL=C printf -v code '%d' "'$ch" 2>/dev/null || code=0
         local cw=1
         [[ $code -ge 128 ]] && cw=2
         if [[ $((current + cw)) -gt $((max_len - 3)) ]]; then

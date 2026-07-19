@@ -17,6 +17,7 @@ $script:CdpProjectConfigCache = @{}
 $script:CdpFzfCommand = $null
 $script:CdpStateFingerprint = 'missing'
 $script:CdpStateWritable = $true
+$script:CdpStatusCache = @{}
 
 $domainRoot = Join-Path $PSScriptRoot 'PowerShell'
 $domainFiles = @(
@@ -30,6 +31,7 @@ $domainFiles = @(
     'Projects.ps1',
     'Scan.ps1',
     'Status.ps1',
+    'StatusBatch.ps1',
     'Workspace.ps1',
     'Health.ps1',
     'Commands.ps1',

@@ -16,7 +16,7 @@ CDP_VERSION="2.1.0"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then
-    setopt KSH_ARRAYS BASH_REMATCH 2>/dev/null
+    setopt KSH_ARRAYS BASH_REMATCH TYPESET_SILENT 2>/dev/null
 fi
 
 # Colors
