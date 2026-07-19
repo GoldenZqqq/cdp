@@ -1,0 +1,14 @@
+{
+  "name": "cdp-web-quality",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "test": "pnpm run test:assets && pnpm run test:browser",
+    "test:assets": "node --test ../cdp.WebAssets.Tests.mjs && node ../../scripts/Test-WebAssets.mjs && node --check ../../docs/script.js",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}

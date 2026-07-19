@@ -706,6 +706,8 @@ pwsh -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
 powershell.exe -File scripts/Test-ReleaseMetadata.ps1 [-RepositoryRoot <path>]
 pwsh -File scripts/Invoke-PowerShellQualityGate.ps1 [-CoverageThreshold 60]
 bash scripts/Test-ScoopPackage.sh [<output.tar.gz>]
+node scripts/Test-WebAssets.mjs
+pnpm --dir tests/web test
 ```
 
 ### 3. Contracts
@@ -721,6 +723,8 @@ bash scripts/Test-ScoopPackage.sh [<output.tar.gz>]
 - `scripts/Test-ScoopPackage.sh` checks every tracked `src/PowerShell` and
   `src/Shell` source file is packaged, rejects repository-only entries, and
   compares the archive digest with `scoop/cdp.json`.
+- Browser tooling stays isolated under `tests/web`; the dedicated CI job calls
+  repository-owned asset and Playwright entries and uploads its report.
 - Installer/metadata validators do not accept, read, print, or persist Gallery API keys.
 - In Windows PowerShell 5.1 negative process tests, native stderr redirected with `2>&1` becomes an ErrorRecord. Temporarily use `ErrorActionPreference=Continue` only around the expected failing child and restore it in `finally` before asserting exit code/output.
 
@@ -774,6 +778,8 @@ update manifest version but forget Scoop/CHANGELOG/tests/PROGRESS
 - Metadata negative: copy required files to `$TestDrive`, mutate Scoop version, run the validator in a separate same-edition process, assert nonzero and `scoop.version` output.
 - CI runs the repository-owned PowerShell quality gate in both Windows jobs and
   uploads the NUnit/JaCoCo reports from PowerShell 7.
+- CI runs the static/media gate before provisioning Chromium, then executes the
+  pinned Playwright smoke and uploads its HTML report even on failure.
 - Final gate also includes PSScriptAnalyzer on installer/scripts/module, Scoop JSON and workflow YAML parsing, shell regressions/syntax, secret-reference search, Trellis validation, and `git diff --check`.
 
 ### 7. Wrong vs Correct

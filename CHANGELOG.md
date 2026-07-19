@@ -23,6 +23,8 @@
 - Added fixed 50-repository benchmark scripts and CI regression coverage for Bash, zsh, and Bash 3.2 status behavior.
 - Centralized PowerShell tests, 60% command-coverage enforcement, PSScriptAnalyzer, release metadata, and report generation in a repository-owned quality script with pinned tool versions.
 - Added deterministic Scoop package content/hash validation, negative gate fixtures, CI report artifacts, immutable Bash 3.2 image selection, and explicit job timeouts.
+- Added pinned Chromium smoke for website language, tabs, copy, mobile navigation, keyboard focus, accessibility semantics, and reduced motion.
+- Added executable local-resource and media budgets with negative fixtures, exact legacy baselines, and a non-destructive migration policy.
 
 ## 2.0.5
 

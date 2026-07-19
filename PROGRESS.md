@@ -40,6 +40,8 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - [x] Synchronize status performance behavior, options, and environment settings in both README files and release metadata.
 - [x] Centralize PowerShell coverage/analyzer/metadata and Scoop package integrity gates in repository scripts with deliberate failure fixtures.
 - [x] Pin CI test-tool versions and Bash 3.2 image digest; add per-job timeouts and PowerShell report artifacts.
+- [x] Add pinned Chromium smoke for website interaction, keyboard, accessibility semantics, and reduced motion.
+- [x] Enforce local-resource integrity and exact media-growth budgets without deleting legacy assets.
 - [ ] Complete the remaining v2.1.0 engineering, media, and documentation tasks.
 - [ ] Pass the full cross-platform release gate and publish/verify every public channel.
 
@@ -50,10 +52,11 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - Bash, zsh, and Bash 3.2: persistence, stale-fingerprint, invalid JSON, lock,
   flush/replacement failure, backup recovery, doctor diagnostics, and syntax checks passed.
 - Shell installer digest: `25ab6256178bb1322a32e59b062820cfc87a349ea2c7fc4e679d4630c2775e47`.
-- Deterministic Scoop package digest: `b776dd0d45feea8e3987d4be6afb6ef9f5dbcfcaa795ad90c69e5e5260cb68f6`.
+- Deterministic Scoop package digest: `715777a30af8acd5d3981e0c0f52c8ee2bf7feda27aa4a2f916a95750213b04c`.
 - Status performance work: Bash 50-repository benchmark on this workspace measured jobs=4 in 5 runs at min `2.007s`, median `2.083s`, p95 `2.246s`; jobs=8 measured min `1.912s`, median `2.082s`, p95 `2.198s`. PowerShell 7.5.2 with one worker measured min `1.941s`, median `2.209s`, p95 `2.917s`.
 - Status correctness: Bash status performance tests, Bash/zsh v2 regressions, zsh persistence, and Bash 3.2 container smoke passed after the zsh default-concurrency compatibility fix. An isolated official PowerShell 7.5.2 arm64 runtime passed Pester `95/95` and PSScriptAnalyzer Error severity; Windows PowerShell 5.1 remains a hosted-CI-only gate on this Linux environment.
 - CI quality gate baseline: PowerShell 7.5.2 with Pester 5.7.1 passed `98/98`; command coverage is `67.54%` (`2097/3105`) against a 60% threshold. Coverage, package hash, release metadata, and shell installer deliberate-drift fixtures all fail with layer-specific diagnostics.
+- Website quality: Playwright 1.61.1 Chromium smoke passed `6/6`; Node media fixtures passed `6/6`. The current gate records 12 published and 13 repository media files at `67,433,719` / `69,115,162` bytes and rejects missing resources, new over-budget or unreferenced media, total growth, and unregistered duplicates.
 
 ## 2.0.5 Security Checklist
 

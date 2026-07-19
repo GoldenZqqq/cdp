@@ -31,6 +31,8 @@ junit*.xml
 *.trx
 TestResults/
 coverage/
+tests/web/playwright-report/
+tests/web/test-results/
 
 # IDE
 .vscode/

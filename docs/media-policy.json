@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "publishedRoots": [
+    "docs/assets"
+  ],
+  "sourceRoots": [
+    "videos"
+  ],
+  "referenceFiles": [
+    "README.md",
+    "README_ZH.md",
+    "docs/index.html",
+    "docs/styles.css",
+    "docs/styles-sections.css",
+    "docs/styles-responsive.css"
+  ],
+  "mediaExtensions": [
+    ".avif",
+    ".gif",
+    ".jpeg",
+    ".jpg",
+    ".mp4",
+    ".png",
+    ".svg",
+    ".webm",
+    ".webp"
+  ],
+  "defaultMaxBytes": {
+    ".avif": 1048576,
+    ".gif": 2097152,
+    ".jpeg": 1048576,
+    ".jpg": 1048576,
+    ".mp4": 4194304,
+    ".png": 1048576,
+    ".svg": 262144,
+    ".webm": 4194304,
+    ".webp": 1048576
+  },
+  "legacyFileMaxBytes": {
+    "docs/assets/cdp-demo-short-en.gif": 15790745,
+    "docs/assets/cdp-demo-short-en.mp4": 15981086,
+    "docs/assets/cdp-demo-short-zh.gif": 15819849,
+    "docs/assets/cdp-demo-short-zh.mp4": 15801273
+  },
+  "maxPublishedBytes": 67433719,
+  "maxRepositoryMediaBytes": 69115162,
+  "allowedUnreferencedPublished": [
+    "docs/assets/cdp-demo-short-en.gif",
+    "docs/assets/cdp-demo-short-en.mp4",
+    "docs/assets/cdp-demo-short-zh.gif",
+    "docs/assets/cdp-demo-short-zh.mp4",
+    "docs/assets/cdp-logo-source.png"
+  ],
+  "allowedDuplicateGroups": [
+    [
+      "docs/assets/cdp-v2-promo.mp4",
+      "videos/cdp-v2-promo/renders/cdp-v2-promo.mp4"
+    ]
+  ]
+}
