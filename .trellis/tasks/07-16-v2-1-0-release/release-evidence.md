@@ -76,9 +76,28 @@ Each benchmark used 50 committed repositories, five runs, and cache TTL 0.
   Shell domains, and generated `src/cdp.sh`; repository-only files are absent.
 - Release notes: `artifacts/release/v2.1.0-notes.md`.
 
-## External Steps Pending
+## Published Release
 
-1. Commit and push the hosted CI repair, then watch its exact main CI run.
-2. Create/push annotated `v2.1.0`, then GitHub Release and upload retained asset.
-3. Set `PS_GALLERY_API_KEY`, publish Gallery, and verify exact v2.1.0.
-4. Verify public GitHub/Scoop asset SHA and installation channels.
+- Final release commit: `f000538f995804adba785f8a3d68413dd90e9431`.
+- Annotated tag: `v2.1.0`; local and remote peeled tag SHA both equal the final
+  release commit.
+- Hosted CI: run `29703151619` succeeded for Windows PowerShell 5.1,
+  PowerShell 7, Ubuntu Bash/Bash 3.2, macOS bash/zsh, Web Chromium, package, and
+  installer gates.
+- Pages deployment run `29703151069` also succeeded for the same release SHA.
+- GitHub Release: https://github.com/GoldenZqqq/cdp/releases/tag/v2.1.0,
+  public/latest, non-draft, and non-prerelease.
+- Uploaded asset: `cdp-2.1.0.tar.gz`, 91,067 bytes. A fresh public download and
+  the Scoop URL both returned SHA-256
+  `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`.
+- Scoop URL returned HTTP 200:
+  https://github.com/GoldenZqqq/cdp/releases/download/v2.1.0/cdp-2.1.0.tar.gz.
+
+## Only External Blocker
+
+- `PS_GALLERY_API_KEY` is absent from the environment and was never printed or
+  persisted. The official Gallery feed still lists `2.0.4` as the newest cdp
+  version and contains no `2.1.0` entry.
+- Publishing and verifying PowerShell Gallery v2.1.0 requires the owner to set
+  the environment key. All repository-controlled and GitHub/Scoop release work
+  is complete; no weaker credential path was used.

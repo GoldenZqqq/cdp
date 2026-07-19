@@ -18,11 +18,11 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Latest verified GitHub release: v2.0.5 (verified 2026-07-19). Latest verified PowerShell Gallery release: v2.0.4.
+Latest verified GitHub release: v2.1.0 (verified 2026-07-19). Latest verified PowerShell Gallery release: v2.0.4.
 
-Current release target: v2.1.0.
+Current release target: v2.2.0.
 
-Release status: v2.0.5 passed local and hosted CI and is published on GitHub. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally. v2.1.0 engineering work and the full local release matrix are complete; remote push, hosted CI, tag, GitHub Release, Gallery, and public-channel verification are pending explicit authorization/credentials.
+Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. Development now advances to v2.2.0 automation and multi-repository capabilities.
 
 ## 2.1.0 Engineering Foundation Checklist
 
@@ -44,8 +44,9 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - [x] Enforce local-resource integrity and exact media-growth budgets without deleting legacy assets.
 - [x] Replace placeholder Trellis specs and refresh bilingual README, architecture, contribution, and agent guidance.
 - [x] Add automated bilingual structure, manifest command coverage, placeholder, and stale-guidance documentation checks.
-- [ ] Complete the remaining v2.1.0 release task.
-- [ ] Pass the full cross-platform release gate and publish/verify every public channel.
+- [x] Complete the remaining v2.1.0 release task with the Gallery credential blocker recorded.
+- [x] Pass the full cross-platform release gate and publish/verify GitHub and Scoop.
+- [ ] Publish and verify PowerShell Gallery v2.1.0 when an API key is available.
 
 ## 2.1.0 Engineering Verification
 
@@ -62,6 +63,11 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - Documentation quality: Node fixtures passed `5/5`; the current gate validates 39 exported PowerShell functions/aliases across both maintained READMEs and 13 source-backed backend/frontend specs with no template placeholders or stale architecture/commit guidance.
 - Release candidate: all nine engineering child tasks are archived and their work commits resolve. The retained `cdp-2.1.0.tar.gz` is `91,067` bytes with SHA-256 `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`, matching Scoop.
 - Release benchmark rerun: Bash jobs=4 measured min `1.401s`, median `1.443s`, p95 `1.575s`; jobs=8 measured min `1.324s`, median `1.370s`, p95 `1.505s`. PowerShell 7.5.2 workers=4 measured min `0.630s`, median `0.732s`, p95 `1.012s`.
+- Hosted release CI: run `29703151619` passed all five jobs after adding fresh-checkout CRLF parsing and caller-umask package determinism regressions.
+- Pages deployment run `29703151069` passed for the same release commit.
+- Published release: annotated tag `v2.1.0` points to `f000538f995804adba785f8a3d68413dd90e9431`; https://github.com/GoldenZqqq/cdp/releases/tag/v2.1.0 is public/latest.
+- Public asset verification: GitHub Release and Scoop downloads both returned SHA-256 `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`.
+- Gallery blocker: `PS_GALLERY_API_KEY` is missing and the official Gallery feed still ends at v2.0.4; v2.1.0 was not falsely reported as published there.
 
 ## 2.0.5 Security Checklist
 

@@ -24,9 +24,9 @@
 
 - [x] 九个前置子任务各有工作提交、归档和验收证据。
 - [x] 本地 release candidate 的全量门禁、资产内容和 manifest hash 全部通过。
-- [ ] 发布 commit SHA、annotated tag、main CI、GitHub Release URL/资产 hash 证据完整。
-- [ ] PowerShell Gallery 显示精确 v2.1.0，或明确记录因缺少外部 API key 而无法完成的唯一阻塞。
-- [ ] PowerShell 5.1/7、bash/zsh/Bash 3.2、Scoop 与源码安装升级路径不回归。
+- [x] 发布 commit SHA、annotated tag、main CI、GitHub Release URL/资产 hash 证据完整。
+- [x] PowerShell Gallery 显示精确 v2.1.0，或明确记录因缺少外部 API key 而无法完成的唯一阻塞。
+- [x] PowerShell 5.1/7、bash/zsh/Bash 3.2、Scoop 与源码安装升级路径不回归。
 
 ## Local Preparation Notes
 
@@ -34,7 +34,8 @@
 - Retained asset: `artifacts/release/cdp-2.1.0.tar.gz`, 91,067 bytes,
   SHA-256 `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`.
 - Remote main is not divergent and `v2.1.0` does not exist.
-- External write authorization and `PS_GALLERY_API_KEY` remain pending.
+- Remote publication was authorized and completed. `PS_GALLERY_API_KEY` remains
+  unavailable, so Gallery publication is the only external blocker.
 
 ## External Authorization Boundary
 

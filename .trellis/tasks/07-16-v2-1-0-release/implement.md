@@ -40,5 +40,5 @@
 - [x] Obtain external authorization and push the release candidate.
 - [x] Diagnose hosted CI fresh-checkout CRLF parsing and runner-umask archive
   mode drift; add regressions without changing the retained package digest.
-- [ ] Push the repair, pass CI, tag, create the Release, publish Gallery if the
-  environment key is available, and verify public channels.
+- [x] Push the repair, pass CI, tag, create the Release, verify GitHub/Scoop, and
+  record the missing Gallery API key as the only external blocker.
