@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# shellcheck shell=bash
+# cdp shell domain: Runtime.sh
+# Generated from the canonical cdp.sh source; do not source peer fragments.
 #
 # cdp - Fast project directory switcher for bash/zsh (WSL version)
 #
@@ -28,6 +31,10 @@ NC='\033[0m' # No Color
 CDP_SAFETY_DRY_RUN=false
 CDP_SAFETY_YES=false
 CDP_SAFETY_ARGS=()
+
+# cdp shell domain: Core.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
 
 cdp_parse_safety_options() {
     CDP_SAFETY_DRY_RUN=false
@@ -73,148 +80,6 @@ cdp_action_result() {
     fi
 }
 
-cdp_brand_header() {
-    echo ""
-    echo -e "${CYAN}         _${NC}"
-    echo -e "${CYAN}  ___ __| |_ __${NC}"
-    echo -e "${CYAN} / __/ _\` | \"_ \\\\${NC}"
-    echo -e "${CYAN}| (_| (_| | |_) |${NC}"
-    echo -e "${CYAN} \\___\\__,_| .__/${NC}"
-    echo -e "${CYAN}          |_|${NC}"
-    echo -e "${GREEN}cdp v$CDP_VERSION${NC}"
-    echo -e "${GRAY}fast project switching for PowerShell and WSL${NC}"
-    echo ""
-}
-
-cdp_upgrade_command() {
-    echo "bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v$CDP_VERSION/install-wsl.sh) --auto"
-}
-
-cdp_picker_header() {
-    local shown_count="$1"
-    local total_count="$2"
-    local config_path="$3"
-    local project_text
-
-    if [[ "$shown_count" == "$total_count" ]]; then
-        project_text="$total_count projects"
-    else
-        project_text="$shown_count shown / $total_count projects"
-    fi
-
-    echo "cdp v$CDP_VERSION | $project_text | enter to warp | $config_path"
-}
-
-truncate_text() {
-    local value="$1"
-    local max_length="$2"
-
-    if (( ${#value} <= max_length )); then
-        echo "$value"
-        return
-    fi
-
-    echo "${value:0:$((max_length - 3))}..."
-}
-
-sanitize_picker_field() {
-    local value="$1"
-    value="${value//$'\t'/ }"
-    value="${value//$'\r'/ }"
-    value="${value//$'\n'/ }"
-    echo "$value"
-}
-
-cdp_picker_preview() {
-    local name="$1"
-    local raw_path="$2"
-    local target_path="$3"
-    local preview_file="$4"
-    local path_state="path missing"
-    local git_state="git repo not detected"
-
-    if [[ -d "$target_path" ]]; then
-        path_state="path exists"
-    fi
-
-    if [[ -e "$target_path/.git" ]]; then
-        git_state="git repo detected"
-    fi
-
-    {
-        echo "cdp project"
-        echo "-----------"
-        echo "name   $name"
-        echo "path   $raw_path"
-        echo ""
-        echo "state  $path_state"
-        echo "git    $git_state"
-        echo ""
-        echo "Enter  switch to this project"
-        echo "Esc    cancel"
-    } > "$preview_file"
-}
-
-cdp_picker_rows() {
-    local projects="$1"
-    local config_path="$2"
-    local preview_dir="$3"
-    local index=1
-    local name
-
-    while IFS= read -r name; do
-        [[ -z "$name" ]] && continue
-
-        local raw_path
-        local display_path
-        local pinned
-        local name_label
-        local safe_name
-        local safe_path
-        raw_path=$(jq -r --arg name "$name" \
-            '.[] | select(.name == $name and .enabled == true) | .rootPath' \
-            "$config_path" 2>/dev/null | head -n1)
-        pinned=$(jq -r --arg name "$name" \
-            '.[] | select(.name == $name and .enabled == true) | (.pinned == true)' \
-            "$config_path" 2>/dev/null | head -n1)
-        display_path=$(convert_windows_to_wsl "$raw_path")
-        safe_name=$(sanitize_picker_field "$name")
-        safe_path=$(sanitize_picker_field "$display_path")
-        name_label="$safe_name"
-        if [[ "$pinned" == "true" ]]; then
-            name_label="[pin] $safe_name"
-        fi
-
-        cdp_picker_preview "$safe_name" "$safe_path" "$display_path" "$preview_dir/$index.txt"
-        printf "%s\t%s\t%s\t%b%3d%b\t%b%s%b\t%b%s%b\n" \
-            "$index" "$safe_name" "$raw_path" \
-            "$GRAY" "$index" "$NC" \
-            "$BOLD_CYAN" "$name_label" "$NC" \
-            "$GRAY" "$safe_path" "$NC"
-        ((index++))
-    done <<< "$projects"
-}
-
-# Function to convert Windows path to WSL path
-convert_windows_to_wsl() {
-    local input_path="$1"
-
-    case "$input_path" in
-    [A-Za-z]:/*|[A-Za-z]:\\*)
-        local drive
-        drive="$(printf '%s' "${input_path%%:*}" | tr '[:upper:]' '[:lower:]')"
-        local remainder="${input_path#?:}"
-        remainder="${remainder#?}"
-
-        remainder="${remainder//\\//}"
-
-        echo "/mnt/$drive/$remainder"
-        ;;
-    *)
-        echo "$input_path"
-        ;;
-    esac
-}
 
 cdp_sha256_file() {
     local input_file="$1"
@@ -398,6 +263,737 @@ cdp_sha256_text() {
         openssl dgst -sha256 | awk '{print $NF}'
     fi
 }
+
+# cdp shell domain: Config.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+get_stored_config_choice() {
+    local config_choice_file="$HOME/.cdp/config"
+    if [[ -f "$config_choice_file" ]]; then
+        local stored_path=$(cat "$config_choice_file" 2>/dev/null | tr -d '\n\r')
+        if [[ -n "$stored_path" ]]; then
+            echo "$stored_path"
+        fi
+    fi
+}
+
+# Function to save config choice
+save_config_choice() {
+    local config_path="$1"
+    local config_choice_file="$HOME/.cdp/config"
+    local config_dir=$(dirname "$config_choice_file")
+
+    mkdir -p "$config_dir"
+    echo -n "$config_path" > "$config_choice_file"
+}
+
+
+get_all_available_configs() {
+    local configs=()
+    local sources=()
+
+    # Try to find Windows user directory
+    local winuser=""
+
+    # Method 1: Try to get from WSLENV or existing Windows env vars
+    if [[ -n "${WSLENV:-}" ]] && [[ -n "${USERNAME:-}" ]]; then
+        winuser="$USERNAME"
+    fi
+
+    # Method 2: Try PowerShell (if available)
+    if [[ -z "$winuser" ]] && command -v powershell.exe &> /dev/null; then
+        winuser=$(powershell.exe -NoProfile -Command 'Write-Host $env:USERNAME' 2>/dev/null | tr -d '\r\n')
+    fi
+
+    # Method 3: Try to detect from current WSL user's Windows home
+    if [[ -z "$winuser" ]] && [[ -d "/mnt/c/Users" ]]; then
+        local current_user=$(whoami)
+        if [[ -d "/mnt/c/Users/$current_user" ]]; then
+            winuser="$current_user"
+        else
+            for userdir in /mnt/c/Users/*/; do
+                local dirname=$(basename "$userdir")
+                if [[ "$dirname" != "Public" ]] && [[ "$dirname" != "Default" ]] && [[ "$dirname" != "All Users" ]] && [[ "$dirname" != "Default User" ]]; then
+                    if [[ -d "$userdir/AppData" ]] || [[ -d "$userdir/Documents" ]]; then
+                        winuser="$dirname"
+                        break
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    # Check all possible config locations
+    if [[ -n "$winuser" ]]; then
+        local appdata="/mnt/c/Users/$winuser/AppData/Roaming"
+
+        local cursor_config="$appdata/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
+        if [[ -f "$cursor_config" ]]; then
+            configs+=("$cursor_config")
+            sources+=("Cursor Project Manager")
+        fi
+
+        local vscode_config="$appdata/Code/User/globalStorage/alefragnani.project-manager/projects.json"
+        if [[ -f "$vscode_config" ]]; then
+            configs+=("$vscode_config")
+            sources+=("VS Code Project Manager")
+        fi
+
+        local win_user_config="/mnt/c/Users/$winuser/.cdp/projects.json"
+        if [[ -f "$win_user_config" ]]; then
+            configs+=("$win_user_config")
+            sources+=("Windows User Config (~/.cdp)")
+        fi
+    fi
+
+    # Check macOS Application Support paths
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        local mac_cursor_config="$HOME/Library/Application Support/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
+        if [[ -f "$mac_cursor_config" ]]; then
+            configs+=("$mac_cursor_config")
+            sources+=("Cursor Project Manager")
+        fi
+
+        local mac_vscode_config="$HOME/Library/Application Support/Code/User/globalStorage/alefragnani.project-manager/projects.json"
+        if [[ -f "$mac_vscode_config" ]]; then
+            configs+=("$mac_vscode_config")
+            sources+=("VS Code Project Manager")
+        fi
+    fi
+
+    # Check WSL local config
+    local wsl_config="$HOME/.cdp/projects.json"
+    if [[ -f "$wsl_config" ]]; then
+        configs+=("$wsl_config")
+        sources+=("WSL Local Config (~/.cdp)")
+    fi
+
+    # Return results as newline-separated strings
+    # Format: path|source
+    for i in "${!configs[@]}"; do
+        echo "${configs[$i]}|${sources[$i]}"
+    done
+}
+
+# Function to get default config path
+get_default_config() {
+    # Priority order:
+    # 1. CDP_CONFIG environment variable (highest priority, skip selection)
+    # 2. Stored user choice from previous selection (~/.cdp/config)
+    # 3. If multiple configs exist, let user choose and save choice
+    # 4. Otherwise return the first available or default path
+
+    if [[ -n "$CDP_CONFIG" ]]; then
+        echo "$CDP_CONFIG"
+        return
+    fi
+
+    # Check for stored config choice
+    local stored_choice=$(get_stored_config_choice)
+    if [[ -n "$stored_choice" ]] && [[ -f "$stored_choice" ]]; then
+        echo "$stored_choice"
+        return
+    fi
+
+    # Find all available configs
+    local available_configs=$(get_all_available_configs)
+
+    # If no configs found, return default (will be created)
+    if [[ -z "$available_configs" ]]; then
+        echo "$HOME/.cdp/projects.json"
+        return
+    fi
+
+    # Count configs
+    local config_count=$(line_count "$available_configs")
+
+    # If only one config, use it without mutating the active-choice file.
+    if [[ $config_count -eq 1 ]]; then
+        local selected_path=$(echo "$available_configs" | cut -d'|' -f1)
+        echo "$selected_path"
+        return
+    fi
+
+    # Multiple configs resolve deterministically. Persisted selection is an
+    # explicit high-impact action through cdp-config.
+    local selected_path
+    selected_path=$(echo "$available_configs" | head -n 1 | cut -d'|' -f1)
+    echo "Warning: multiple configs found; using $selected_path. Use cdp-config to choose explicitly." >&2
+    echo "$selected_path"
+}
+
+# Function to initialize config file
+initialize_config() {
+    local config_path="$1"
+
+    if [[ ! -f "$config_path" ]]; then
+        cdp_write_json_text "$config_path" '[]' missing || return 1
+        echo -e "${GREEN}Created new config file at: $config_path${NC}"
+    fi
+}
+
+
+is_config_path_arg() {
+    local arg="$1"
+
+    if [[ -z "$arg" ]]; then
+        return 1
+    fi
+
+    [[ -f "$arg" ||
+        "$arg" == *.json ||
+        "$arg" == *"/"* ||
+        "$arg" == *"\\"* ||
+        "$arg" == "~/"* ||
+        "$arg" =~ ^[A-Za-z]: ]]
+}
+
+line_count() {
+    local value="$1"
+
+    if [[ -z "$value" ]]; then
+        echo 0
+        return
+    fi
+
+    local count=0
+    while IFS= read -r _; do
+        count=$((count + 1))
+    done <<< "$value"
+    echo "$count"
+}
+
+find_project_matches() {
+    local config_path="$1"
+    local query="$2"
+    local exact_matches
+
+    if [[ "$query" == @* ]]; then
+        local tag_query="${query#@}"
+        jq -r --arg query "$tag_query" '
+            ($query | ascii_downcase) as $needle |
+            .[] |
+            select(.enabled == true) |
+            select(((.tags // []) | map(ascii_downcase) | index($needle)) != null) |
+            .name
+        ' "$config_path" 2>/dev/null
+        return
+    fi
+
+    exact_matches=$(jq -r --arg query "$query" '
+        ($query | ascii_downcase) as $needle |
+        .[] |
+        select(.enabled == true) |
+        select(
+            ((.name // "") | ascii_downcase) == $needle or
+            (((.aliases // []) | map(ascii_downcase) | index($needle)) != null)
+        ) |
+        .name
+    ' "$config_path" 2>/dev/null)
+
+    if [[ -n "$exact_matches" ]]; then
+        printf '%s\n' "$exact_matches"
+        return
+    fi
+
+    jq -r --arg query "$query" '
+        ($query | ascii_downcase) as $needle |
+        .[] |
+        select(.enabled == true) |
+        select(
+            ((.name // "") | ascii_downcase | contains($needle)) or
+            ((.rootPath // "") | ascii_downcase | contains($needle)) or
+            (((.aliases // []) | map(ascii_downcase) | map(contains($needle)) | any)) or
+            (((.tags // []) | map(ascii_downcase) | map(contains($needle)) | any))
+        ) |
+        .name
+    ' "$config_path" 2>/dev/null
+}
+
+sorted_enabled_project_names() {
+    local config_path="$1"
+
+    jq -r '
+        to_entries
+        | map(select(.value.enabled == true))
+        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
+        | .[].value.name
+    ' "$config_path" 2>/dev/null
+}
+
+sorted_enabled_project_rows() {
+    local config_path="$1"
+
+    jq -r '
+        to_entries
+        | map(select(.value.enabled == true))
+        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
+        | .[]
+        | [.value.name, ((.value.pinned == true) | tostring), .value.rootPath]
+        | @tsv
+    ' "$config_path" 2>/dev/null
+}
+
+
+cdp-config() {
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local selected_index="${1:-}"
+    [[ $# -le 1 ]] || { echo -e "${RED}Error: cdp-config accepts an optional selection number.${NC}"; return 1; }
+    echo -e "\n========================================"
+    echo -e "  ${CYAN}Change Configuration File${NC}"
+    echo -e "========================================"
+    echo ""
+
+    # Find all available configs
+    local available_configs=$(get_all_available_configs)
+
+    if [[ -z "$available_configs" ]]; then
+        echo -e "${YELLOW}No configuration files found.${NC}"
+        echo ""
+        echo -e "${CYAN}Available options:${NC}"
+        echo -e "  ${GRAY}1. Create a custom config with:${NC} ${CYAN}cdp-add${NC}"
+        echo -e "  ${GRAY}2. Install Project Manager extension in VS Code/Cursor${NC}"
+        return 0
+    fi
+
+    # Show current config
+    local current_config=$(get_stored_config_choice)
+    if [[ -n "$current_config" ]]; then
+        echo -e "${CYAN}Current configuration:${NC}"
+        local current_source=$(echo "$available_configs" | grep -F "$current_config" | cut -d'|' -f2)
+        if [[ -n "$current_source" ]]; then
+            echo -e "  ${GREEN}$current_source${NC}"
+        fi
+        echo -e "  ${GRAY}$current_config${NC}"
+        echo ""
+    fi
+
+    # Show all available configs
+    echo -e "${CYAN}Available configuration files:${NC}"
+    echo -e "${GRAY}$(printf '=%.0s' {1..80})${NC}"
+    echo ""
+
+    local index=1
+    local -a config_paths=()
+    local -a config_sources=()
+    while IFS='|' read -r config_entry_path source; do
+        config_paths+=("$config_entry_path")
+        config_sources+=("$source")
+
+        local is_current=""
+        if [[ "$config_entry_path" == "$current_config" ]]; then
+            is_current=" ${CYAN}(current)${NC}"
+        fi
+
+        echo -e "  ${YELLOW}[$index]${NC} ${GREEN}$source${NC}$is_current"
+        echo -e "      ${GRAY}$config_entry_path${NC}"
+        ((index++))
+    done <<< "$available_configs"
+
+    echo ""
+
+    # Get user selection
+    local config_count=${#config_paths[@]}
+    while true; do
+        local selection="$selected_index"
+        if [[ -z "$selection" ]]; then
+            echo -e "${RED}Configuration selection requires a number plus --yes, or a number plus --dry-run.${NC}"
+            return 1
+        fi
+
+        if [[ "$selection" == "0" ]]; then
+            echo -e "\n${GRAY}Operation cancelled.${NC}"
+            return 0
+        fi
+
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le $config_count ]]; then
+            local selected_path="${config_paths[$((selection-1))]}"
+            local selected_source="${config_sources[$((selection-1))]}"
+
+            echo -e "${YELLOW}Configuration selection plan:${NC} $selected_source -> $selected_path"
+            local approval_status=0
+            cdp_require_high_risk_approval "active configuration selection" || approval_status=$?
+            if [[ $approval_status -eq 2 ]]; then
+                cdp_action_result select-config "$selected_path" preview false
+                return 0
+            fi
+            [[ $approval_status -eq 0 ]] || return 1
+
+            # Save the choice
+            save_config_choice "$selected_path"
+
+            echo -e "\n========================================"
+            echo -e "  ${GREEN}Configuration Updated!${NC}"
+            echo -e "========================================"
+            echo ""
+            echo -e "${GRAY}Now using:${NC} ${GREEN}$selected_source${NC}"
+            echo -e "${GRAY}Path:${NC} ${CYAN}$selected_path${NC}"
+            echo -e "${GRAY}Saved to:${NC} ${CYAN}~/.cdp/config${NC}"
+            echo ""
+            cdp_action_result select-config "$selected_path" succeeded true
+            return 0
+        else
+            echo -e "${RED}Invalid selection. Please enter a number between 0 and $config_count.${NC}"
+            return 1
+        fi
+    done
+}
+
+# cdp shell domain: State.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+cdp_state_path() {
+    if [[ -n "$CDP_STATE_PATH" ]]; then
+        echo "$CDP_STATE_PATH"
+    else
+        echo "$HOME/.cdp/state.json"
+    fi
+}
+
+initialize_state() {
+    local state_path="$1"
+    local state_dir
+    state_dir=$(dirname "$state_path")
+    mkdir -p "$state_dir"
+
+    if [[ ! -f "$state_path" ]]; then
+        cdp_write_json_text "$state_path" '{"recentProjects":[]}' missing
+    elif ! jq -e 'type == "object"' "$state_path" >/dev/null 2>&1; then
+        echo "Error: refusing to overwrite invalid cdp state: $state_path" >&2
+        return 1
+    fi
+}
+
+cdp_record_recent() {
+    local name="$1"
+    local root_path="$2"
+
+    [[ -z "$name" || -z "$root_path" ]] && return 0
+    command -v jq >/dev/null 2>&1 || return 0
+
+    local state_path
+    local temp_file
+    local expected_fingerprint
+    local now
+    state_path=$(cdp_state_path)
+    initialize_state "$state_path" || return 0
+    expected_fingerprint=$(cdp_json_fingerprint "$state_path")
+    temp_file=$(cdp_json_temp_file "$state_path") || return 0
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    if jq --arg name "$name" --arg path "$root_path" --arg now "$now" '
+        .recentProjects as $recent |
+        .recentProjects = (
+            (($recent // []) | map(select(.rootPath != $path))) +
+            [{
+                "name": $name,
+                "rootPath": $path,
+                "lastVisitedAt": $now,
+                "visitCount": (((($recent // []) | map(select(.rootPath == $path)) | .[0].visitCount) // 0) + 1)
+            }]
+            | sort_by(.lastVisitedAt)
+            | reverse
+            | .[:20]
+        )
+    ' "$state_path" > "$temp_file" 2>/dev/null &&
+        cdp_commit_json_file "$state_path" "$temp_file" "$expected_fingerprint"; then
+        rm -f -- "$temp_file"
+    else
+        rm -f -- "$temp_file"
+    fi
+}
+
+# Function to find all available config files
+
+cdp-recent() {
+    local count="${1:-10}"
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if ! [[ "$count" =~ ^[0-9]+$ ]] || [[ "$count" -le 0 ]]; then
+        count=10
+    fi
+
+    local state_path
+    state_path=$(cdp_state_path)
+
+    if [[ ! -f "$state_path" ]]; then
+        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
+        return 0
+    fi
+
+    local recent_projects
+    recent_projects=$(jq -r --argjson count "$count" '
+        (.recentProjects // [])
+        | sort_by(.lastVisitedAt)
+        | reverse
+        | .[:$count]
+        | .[]
+        | [.name, .lastVisitedAt, ((.visitCount // 1) | tostring), .rootPath]
+        | @tsv
+    ' "$state_path" 2>/dev/null)
+
+    if [[ -z "$recent_projects" ]]; then
+        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
+        return 0
+    fi
+
+    local name_width=14
+    local name
+    local last_used
+    local visits
+    local project_path
+    while IFS=$'\t' read -r name last_used visits project_path; do
+        if (( ${#name} > name_width )); then
+            name_width=${#name}
+        fi
+    done <<< "$recent_projects"
+    if (( name_width > 30 )); then
+        name_width=30
+    fi
+
+    echo -e "\n${CYAN}cdp recent${NC} ${GRAY}($(line_count "$recent_projects") shown)${NC}"
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
+    printf "  ${GRAY}%-4s${NC} ${CYAN}%-*s${NC} ${GRAY}%-24s %-7s %s${NC}\n" "#" "$name_width" "Project" "Last used" "Visits" "Path"
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
+
+    local index=1
+    while IFS=$'\t' read -r name last_used visits project_path; do
+        local display_name
+        local display_last
+        local display_path
+        display_name=$(truncate_text "$name" "$name_width")
+        display_last=$(truncate_text "$last_used" 24)
+        display_path=$(convert_windows_to_wsl "$project_path")
+        printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%-24s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_last" "$visits" "$display_path"
+        ((index++))
+    done <<< "$recent_projects"
+
+    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
+    echo -e "${GRAY}state: $state_path${NC}"
+}
+
+# Function to add current directory as a project
+
+# cdp shell domain: Picker.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+cdp_brand_header() {
+    echo ""
+    echo -e "${CYAN}         _${NC}"
+    echo -e "${CYAN}  ___ __| |_ __${NC}"
+    echo -e "${CYAN} / __/ _\` | \"_ \\\\${NC}"
+    echo -e "${CYAN}| (_| (_| | |_) |${NC}"
+    echo -e "${CYAN} \\___\\__,_| .__/${NC}"
+    echo -e "${CYAN}          |_|${NC}"
+    echo -e "${GREEN}cdp v$CDP_VERSION${NC}"
+    echo -e "${GRAY}fast project switching for PowerShell and WSL${NC}"
+    echo ""
+}
+
+cdp_upgrade_command() {
+    echo "bash <(curl -fsSL https://raw.githubusercontent.com/GoldenZqqq/cdp/v$CDP_VERSION/install-wsl.sh) --auto"
+}
+
+cdp_picker_header() {
+    local shown_count="$1"
+    local total_count="$2"
+    local config_path="$3"
+    local project_text
+
+    if [[ "$shown_count" == "$total_count" ]]; then
+        project_text="$total_count projects"
+    else
+        project_text="$shown_count shown / $total_count projects"
+    fi
+
+    echo "cdp v$CDP_VERSION | $project_text | enter to warp | $config_path"
+}
+
+truncate_text() {
+    local value="$1"
+    local max_length="$2"
+
+    if (( ${#value} <= max_length )); then
+        echo "$value"
+        return
+    fi
+
+    echo "${value:0:$((max_length - 3))}..."
+}
+
+sanitize_picker_field() {
+    local value="$1"
+    value="${value//$'\t'/ }"
+    value="${value//$'\r'/ }"
+    value="${value//$'\n'/ }"
+    echo "$value"
+}
+
+cdp_picker_preview() {
+    local name="$1"
+    local raw_path="$2"
+    local target_path="$3"
+    local preview_file="$4"
+    local path_state="path missing"
+    local git_state="git repo not detected"
+
+    if [[ -d "$target_path" ]]; then
+        path_state="path exists"
+    fi
+
+    if [[ -e "$target_path/.git" ]]; then
+        git_state="git repo detected"
+    fi
+
+    {
+        echo "cdp project"
+        echo "-----------"
+        echo "name   $name"
+        echo "path   $raw_path"
+        echo ""
+        echo "state  $path_state"
+        echo "git    $git_state"
+        echo ""
+        echo "Enter  switch to this project"
+        echo "Esc    cancel"
+    } > "$preview_file"
+}
+
+cdp_picker_rows() {
+    local projects="$1"
+    local config_path="$2"
+    local preview_dir="$3"
+    local index=1
+    local name
+
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+
+        local raw_path
+        local display_path
+        local pinned
+        local name_label
+        local safe_name
+        local safe_path
+        raw_path=$(jq -r --arg name "$name" \
+            '.[] | select(.name == $name and .enabled == true) | .rootPath' \
+            "$config_path" 2>/dev/null | head -n1)
+        pinned=$(jq -r --arg name "$name" \
+            '.[] | select(.name == $name and .enabled == true) | (.pinned == true)' \
+            "$config_path" 2>/dev/null | head -n1)
+        display_path=$(convert_windows_to_wsl "$raw_path")
+        safe_name=$(sanitize_picker_field "$name")
+        safe_path=$(sanitize_picker_field "$display_path")
+        name_label="$safe_name"
+        if [[ "$pinned" == "true" ]]; then
+            name_label="[pin] $safe_name"
+        fi
+
+        cdp_picker_preview "$safe_name" "$safe_path" "$display_path" "$preview_dir/$index.txt"
+        printf "%s\t%s\t%s\t%b%3d%b\t%b%s%b\t%b%s%b\n" \
+            "$index" "$safe_name" "$raw_path" \
+            "$GRAY" "$index" "$NC" \
+            "$BOLD_CYAN" "$name_label" "$NC" \
+            "$GRAY" "$safe_path" "$NC"
+        ((index++))
+    done <<< "$projects"
+}
+
+# Function to convert Windows path to WSL path
+convert_windows_to_wsl() {
+    local input_path="$1"
+
+    case "$input_path" in
+    [A-Za-z]:/*|[A-Za-z]:\\*)
+        local drive
+        drive="$(printf '%s' "${input_path%%:*}" | tr '[:upper:]' '[:lower:]')"
+        local remainder="${input_path#?:}"
+        remainder="${remainder#?}"
+
+        remainder="${remainder//\\//}"
+
+        echo "/mnt/$drive/$remainder"
+        ;;
+    *)
+        echo "$input_path"
+        ;;
+    esac
+}
+
+
+cdp_display_width() {
+    local text="$1"
+    if [[ -z "$text" ]]; then echo 0; return; fi
+    local width=0
+    local ch code
+    local i=0
+    local len=${#text}
+    while [[ $i -lt $len ]]; do
+        ch="${text:$i:1}"
+        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
+        if [[ $code -ge 128 ]]; then
+            width=$((width + 2))
+        else
+            width=$((width + 1))
+        fi
+        i=$((i + 1))
+    done
+    echo "$width"
+}
+
+cdp_pad_text() {
+    local text="$1"
+    local target_width="$2"
+    local actual_width
+    actual_width=$(cdp_display_width "$text")
+    local padding=$((target_width - actual_width))
+    if [[ $padding -gt 0 ]]; then
+        printf '%s%*s' "$text" "$padding" ""
+    else
+        printf '%s' "$text"
+    fi
+}
+
+cdp_limit_text() {
+    local text="$1"
+    local max_len="$2"
+    local actual
+    actual=$(cdp_display_width "$text")
+    if [[ $actual -le $max_len ]]; then
+        printf '%s' "$text"
+        return
+    fi
+    local result=""
+    local current=0
+    local i=0
+    local len=${#text}
+    while [[ $i -lt $len ]]; do
+        local ch="${text:$i:1}"
+        local code
+        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
+        local cw=1
+        [[ $code -ge 128 ]] && cw=2
+        if [[ $((current + cw)) -gt $((max_len - 3)) ]]; then
+            break
+        fi
+        result+="$ch"
+        current=$((current + cw))
+        i=$((i + 1))
+    done
+    printf '%s...' "$result"
+}
+
+# cdp shell domain: Hooks.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
 
 cdp_hook_trust_path() {
     if [[ -n "${CDP_HOOK_TRUST_PATH:-}" ]]; then
@@ -623,542 +1219,6 @@ cdp-hook() {
 }
 
 # Function to get stored config choice path
-get_stored_config_choice() {
-    local config_choice_file="$HOME/.cdp/config"
-    if [[ -f "$config_choice_file" ]]; then
-        local stored_path=$(cat "$config_choice_file" 2>/dev/null | tr -d '\n\r')
-        if [[ -n "$stored_path" ]]; then
-            echo "$stored_path"
-        fi
-    fi
-}
-
-# Function to save config choice
-save_config_choice() {
-    local config_path="$1"
-    local config_choice_file="$HOME/.cdp/config"
-    local config_dir=$(dirname "$config_choice_file")
-
-    mkdir -p "$config_dir"
-    echo -n "$config_path" > "$config_choice_file"
-}
-
-cdp_state_path() {
-    if [[ -n "$CDP_STATE_PATH" ]]; then
-        echo "$CDP_STATE_PATH"
-    else
-        echo "$HOME/.cdp/state.json"
-    fi
-}
-
-initialize_state() {
-    local state_path="$1"
-    local state_dir
-    state_dir=$(dirname "$state_path")
-    mkdir -p "$state_dir"
-
-    if [[ ! -f "$state_path" ]]; then
-        cdp_write_json_text "$state_path" '{"recentProjects":[]}' missing
-    elif ! jq -e 'type == "object"' "$state_path" >/dev/null 2>&1; then
-        echo "Error: refusing to overwrite invalid cdp state: $state_path" >&2
-        return 1
-    fi
-}
-
-cdp_record_recent() {
-    local name="$1"
-    local root_path="$2"
-
-    [[ -z "$name" || -z "$root_path" ]] && return 0
-    command -v jq >/dev/null 2>&1 || return 0
-
-    local state_path
-    local temp_file
-    local expected_fingerprint
-    local now
-    state_path=$(cdp_state_path)
-    initialize_state "$state_path" || return 0
-    expected_fingerprint=$(cdp_json_fingerprint "$state_path")
-    temp_file=$(cdp_json_temp_file "$state_path") || return 0
-    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-    if jq --arg name "$name" --arg path "$root_path" --arg now "$now" '
-        .recentProjects as $recent |
-        .recentProjects = (
-            (($recent // []) | map(select(.rootPath != $path))) +
-            [{
-                "name": $name,
-                "rootPath": $path,
-                "lastVisitedAt": $now,
-                "visitCount": (((($recent // []) | map(select(.rootPath == $path)) | .[0].visitCount) // 0) + 1)
-            }]
-            | sort_by(.lastVisitedAt)
-            | reverse
-            | .[:20]
-        )
-    ' "$state_path" > "$temp_file" 2>/dev/null &&
-        cdp_commit_json_file "$state_path" "$temp_file" "$expected_fingerprint"; then
-        rm -f -- "$temp_file"
-    else
-        rm -f -- "$temp_file"
-    fi
-}
-
-# Function to find all available config files
-get_all_available_configs() {
-    local configs=()
-    local sources=()
-
-    # Try to find Windows user directory
-    local winuser=""
-
-    # Method 1: Try to get from WSLENV or existing Windows env vars
-    if [[ -n "${WSLENV:-}" ]] && [[ -n "${USERNAME:-}" ]]; then
-        winuser="$USERNAME"
-    fi
-
-    # Method 2: Try PowerShell (if available)
-    if [[ -z "$winuser" ]] && command -v powershell.exe &> /dev/null; then
-        winuser=$(powershell.exe -NoProfile -Command 'Write-Host $env:USERNAME' 2>/dev/null | tr -d '\r\n')
-    fi
-
-    # Method 3: Try to detect from current WSL user's Windows home
-    if [[ -z "$winuser" ]] && [[ -d "/mnt/c/Users" ]]; then
-        local current_user=$(whoami)
-        if [[ -d "/mnt/c/Users/$current_user" ]]; then
-            winuser="$current_user"
-        else
-            for userdir in /mnt/c/Users/*/; do
-                local dirname=$(basename "$userdir")
-                if [[ "$dirname" != "Public" ]] && [[ "$dirname" != "Default" ]] && [[ "$dirname" != "All Users" ]] && [[ "$dirname" != "Default User" ]]; then
-                    if [[ -d "$userdir/AppData" ]] || [[ -d "$userdir/Documents" ]]; then
-                        winuser="$dirname"
-                        break
-                    fi
-                fi
-            done
-        fi
-    fi
-
-    # Check all possible config locations
-    if [[ -n "$winuser" ]]; then
-        local appdata="/mnt/c/Users/$winuser/AppData/Roaming"
-
-        local cursor_config="$appdata/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
-        if [[ -f "$cursor_config" ]]; then
-            configs+=("$cursor_config")
-            sources+=("Cursor Project Manager")
-        fi
-
-        local vscode_config="$appdata/Code/User/globalStorage/alefragnani.project-manager/projects.json"
-        if [[ -f "$vscode_config" ]]; then
-            configs+=("$vscode_config")
-            sources+=("VS Code Project Manager")
-        fi
-
-        local win_user_config="/mnt/c/Users/$winuser/.cdp/projects.json"
-        if [[ -f "$win_user_config" ]]; then
-            configs+=("$win_user_config")
-            sources+=("Windows User Config (~/.cdp)")
-        fi
-    fi
-
-    # Check macOS Application Support paths
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        local mac_cursor_config="$HOME/Library/Application Support/Cursor/User/globalStorage/alefragnani.project-manager/projects.json"
-        if [[ -f "$mac_cursor_config" ]]; then
-            configs+=("$mac_cursor_config")
-            sources+=("Cursor Project Manager")
-        fi
-
-        local mac_vscode_config="$HOME/Library/Application Support/Code/User/globalStorage/alefragnani.project-manager/projects.json"
-        if [[ -f "$mac_vscode_config" ]]; then
-            configs+=("$mac_vscode_config")
-            sources+=("VS Code Project Manager")
-        fi
-    fi
-
-    # Check WSL local config
-    local wsl_config="$HOME/.cdp/projects.json"
-    if [[ -f "$wsl_config" ]]; then
-        configs+=("$wsl_config")
-        sources+=("WSL Local Config (~/.cdp)")
-    fi
-
-    # Return results as newline-separated strings
-    # Format: path|source
-    for i in "${!configs[@]}"; do
-        echo "${configs[$i]}|${sources[$i]}"
-    done
-}
-
-# Function to get default config path
-get_default_config() {
-    # Priority order:
-    # 1. CDP_CONFIG environment variable (highest priority, skip selection)
-    # 2. Stored user choice from previous selection (~/.cdp/config)
-    # 3. If multiple configs exist, let user choose and save choice
-    # 4. Otherwise return the first available or default path
-
-    if [[ -n "$CDP_CONFIG" ]]; then
-        echo "$CDP_CONFIG"
-        return
-    fi
-
-    # Check for stored config choice
-    local stored_choice=$(get_stored_config_choice)
-    if [[ -n "$stored_choice" ]] && [[ -f "$stored_choice" ]]; then
-        echo "$stored_choice"
-        return
-    fi
-
-    # Find all available configs
-    local available_configs=$(get_all_available_configs)
-
-    # If no configs found, return default (will be created)
-    if [[ -z "$available_configs" ]]; then
-        echo "$HOME/.cdp/projects.json"
-        return
-    fi
-
-    # Count configs
-    local config_count=$(line_count "$available_configs")
-
-    # If only one config, use it without mutating the active-choice file.
-    if [[ $config_count -eq 1 ]]; then
-        local selected_path=$(echo "$available_configs" | cut -d'|' -f1)
-        echo "$selected_path"
-        return
-    fi
-
-    # Multiple configs resolve deterministically. Persisted selection is an
-    # explicit high-impact action through cdp-config.
-    local selected_path
-    selected_path=$(echo "$available_configs" | head -n 1 | cut -d'|' -f1)
-    echo "Warning: multiple configs found; using $selected_path. Use cdp-config to choose explicitly." >&2
-    echo "$selected_path"
-}
-
-# Function to initialize config file
-initialize_config() {
-    local config_path="$1"
-
-    if [[ ! -f "$config_path" ]]; then
-        cdp_write_json_text "$config_path" '[]' missing || return 1
-        echo -e "${GREEN}Created new config file at: $config_path${NC}"
-    fi
-}
-
-cdp_print_check() {
-    local check_status="$1"
-    local name="$2"
-    local message="$3"
-
-    case "$check_status" in
-        ok)
-            echo -e "${GREEN}[OK]   ${NC}${name}: ${GRAY}${message}${NC}"
-            ;;
-        warn)
-            echo -e "${YELLOW}[WARN] ${NC}${name}: ${GRAY}${message}${NC}"
-            ;;
-        *)
-            echo -e "${RED}[FAIL] ${NC}${name}: ${GRAY}${message}${NC}"
-            ;;
-    esac
-}
-
-is_config_path_arg() {
-    local arg="$1"
-
-    if [[ -z "$arg" ]]; then
-        return 1
-    fi
-
-    [[ -f "$arg" ||
-        "$arg" == *.json ||
-        "$arg" == *"/"* ||
-        "$arg" == *"\\"* ||
-        "$arg" == "~/"* ||
-        "$arg" =~ ^[A-Za-z]: ]]
-}
-
-line_count() {
-    local value="$1"
-
-    if [[ -z "$value" ]]; then
-        echo 0
-        return
-    fi
-
-    local count=0
-    while IFS= read -r _; do
-        count=$((count + 1))
-    done <<< "$value"
-    echo "$count"
-}
-
-find_project_matches() {
-    local config_path="$1"
-    local query="$2"
-    local exact_matches
-
-    if [[ "$query" == @* ]]; then
-        local tag_query="${query#@}"
-        jq -r --arg query "$tag_query" '
-            ($query | ascii_downcase) as $needle |
-            .[] |
-            select(.enabled == true) |
-            select(((.tags // []) | map(ascii_downcase) | index($needle)) != null) |
-            .name
-        ' "$config_path" 2>/dev/null
-        return
-    fi
-
-    exact_matches=$(jq -r --arg query "$query" '
-        ($query | ascii_downcase) as $needle |
-        .[] |
-        select(.enabled == true) |
-        select(
-            ((.name // "") | ascii_downcase) == $needle or
-            (((.aliases // []) | map(ascii_downcase) | index($needle)) != null)
-        ) |
-        .name
-    ' "$config_path" 2>/dev/null)
-
-    if [[ -n "$exact_matches" ]]; then
-        printf '%s\n' "$exact_matches"
-        return
-    fi
-
-    jq -r --arg query "$query" '
-        ($query | ascii_downcase) as $needle |
-        .[] |
-        select(.enabled == true) |
-        select(
-            ((.name // "") | ascii_downcase | contains($needle)) or
-            ((.rootPath // "") | ascii_downcase | contains($needle)) or
-            (((.aliases // []) | map(ascii_downcase) | map(contains($needle)) | any)) or
-            (((.tags // []) | map(ascii_downcase) | map(contains($needle)) | any))
-        ) |
-        .name
-    ' "$config_path" 2>/dev/null
-}
-
-sorted_enabled_project_names() {
-    local config_path="$1"
-
-    jq -r '
-        to_entries
-        | map(select(.value.enabled == true))
-        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
-        | .[].value.name
-    ' "$config_path" 2>/dev/null
-}
-
-sorted_enabled_project_rows() {
-    local config_path="$1"
-
-    jq -r '
-        to_entries
-        | map(select(.value.enabled == true))
-        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
-        | .[]
-        | [.value.name, ((.value.pinned == true) | tostring), .value.rootPath]
-        | @tsv
-    ' "$config_path" 2>/dev/null
-}
-
-find_git_repos() {
-    local root="$1"
-    local depth="${2:-4}"
-
-    if [[ -e "$root/.git" ]]; then
-        (cd "$root" && pwd -P)
-        return
-    fi
-
-    if [[ "$depth" -le 0 ]]; then
-        return
-    fi
-
-    local child
-    while IFS= read -r -d $'\0' child; do
-        [[ "$(basename "$child")" == ".git" ]] && continue
-        find_git_repos "$child" $((depth - 1))
-    done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
-}
-
-project_name_exists() {
-    local name="$1"
-    local config_path="$2"
-
-    jq -e --arg name "$name" '.[] | select(.name == $name)' "$config_path" >/dev/null 2>&1
-}
-
-unique_project_name() {
-    local project_path="$1"
-    local config_path="$2"
-    local base_name
-    local parent_name
-    local candidate
-    local index=2
-
-    base_name=$(basename "$project_path")
-    if ! project_name_exists "$base_name" "$config_path"; then
-        echo "$base_name"
-        return
-    fi
-
-    parent_name=$(basename "$(dirname "$project_path")")
-    if [[ -n "$parent_name" ]]; then
-        candidate="${parent_name}-${base_name}"
-    else
-        candidate="$base_name"
-    fi
-
-    local candidate_root="$candidate"
-    while project_name_exists "$candidate" "$config_path"; do
-        candidate="${candidate_root}-${index}"
-        ((index++))
-    done
-
-    echo "$candidate"
-}
-
-cdp_about() {
-    local config_path="$1"
-    local project_count="unknown"
-    local enabled_count="unknown"
-
-    if [[ -z "$config_path" ]]; then
-        config_path=$(get_default_config)
-    fi
-
-    if [[ -f "$config_path" ]] && command -v jq &> /dev/null; then
-        project_count=$(jq 'length' "$config_path" 2>/dev/null || echo 0)
-        enabled_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path" 2>/dev/null || echo 0)
-    fi
-
-    cdp_brand_header
-    echo -e "${GRAY}Module:${NC} ${CYAN}${BASH_SOURCE[0]:-${(%):-%x}}${NC}"
-    echo -e "${GRAY}Config:${NC} ${CYAN}$config_path${NC}"
-    echo -e "${GRAY}Projects:${NC} ${GREEN}$enabled_count enabled / $project_count total${NC}"
-    echo -e "${GRAY}Upgrade:${NC} ${CYAN}$(cdp_upgrade_command)${NC}"
-}
-
-cdp-init() {
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local root_path="${1:-}"
-    local config_path="${2:-}"
-    local max_depth="${3:-4}"
-    [[ $# -le 3 ]] || { echo -e "${RED}Error: init accepts root path, config path, and max depth.${NC}"; return 1; }
-
-    if [[ -z "$config_path" ]]; then
-        config_path="$HOME/.cdp/projects.json"
-    fi
-
-    echo -e "${YELLOW}Initialization plan:${NC} create/select $config_path"
-    local approval_status=0
-    cdp_require_high_risk_approval "cdp initialization" || approval_status=$?
-    if [[ $approval_status -eq 2 ]]; then
-        cdp_action_result initialize-cdp "$config_path" preview false
-        if [[ -n "$root_path" ]]; then
-            cdp-scan "$root_path" "$config_path" "$max_depth" --dry-run
-        fi
-        return 0
-    fi
-    [[ $approval_status -eq 0 ]] || return 1
-
-    initialize_config "$config_path"
-    save_config_choice "$config_path"
-
-    cdp_brand_header
-    echo -e "${GRAY}Config:${NC} ${CYAN}$config_path${NC}"
-    echo -e "${GREEN}Saved active config choice.${NC}"
-
-    if command -v fzf &> /dev/null; then
-        echo -e "${GREEN}fzf: found${NC}"
-    else
-        echo -e "${YELLOW}fzf: not found. Install it with your package manager.${NC}"
-    fi
-
-    if command -v jq &> /dev/null; then
-        echo -e "${GREEN}jq: found${NC}"
-    else
-        echo -e "${YELLOW}jq: not found. Install jq before using the bash/zsh version.${NC}"
-    fi
-
-    if [[ -n "$root_path" ]]; then
-        cdp-scan "$root_path" "$config_path" "$max_depth" --yes
-    fi
-    cdp_action_result initialize-cdp "$config_path" succeeded true
-}
-
-resolve_workspace_launcher() {
-    local opener="$1"
-
-    case "$opener" in
-        ''|*[!A-Za-z0-9._:/-]*)
-            echo "Error: launcher must be a single executable name or safe path without arguments." >&2
-            return 1
-            ;;
-    esac
-
-    local opener_lower
-    opener_lower="$(printf '%s' "$opener" | tr '[:upper:]' '[:lower:]')"
-    case "$opener_lower" in
-        code|vscode)
-            printf 'code\034.\034VS Code\n'
-            ;;
-        cursor)
-            printf 'cursor\034.\034Cursor\n'
-            ;;
-        codex)
-            printf 'codex\034\034Codex\n'
-            ;;
-        claude)
-            printf 'claude\034\034Claude\n'
-            ;;
-        gemini)
-            printf 'gemini\034\034Gemini\n'
-            ;;
-        *)
-            printf '%s\034\034%s\n' "$opener" "$opener"
-            ;;
-    esac
-}
-
-cdp_open_workspace() {
-    local opener="$1"
-    local project_name="$2"
-    local project_path="$3"
-    local command_name
-    local command_arg
-    local label
-
-    if ! resolve_workspace_launcher "$opener" >/dev/null; then
-        return 1
-    fi
-    IFS=$'\034' read -r command_name command_arg label < <(resolve_workspace_launcher "$opener")
-
-    if [[ -n "$CDP_OPEN_DRY_RUN" ]]; then
-        echo -e "${GRAY}Would open $project_name with $label.${NC}"
-        return 0
-    fi
-
-    if ! command -v "$command_name" &> /dev/null; then
-        echo -e "${RED}Error: '$command_name' command not found.${NC}"
-        return 1
-    fi
-
-    echo -e "${CYAN}Opening with $label...${NC}"
-    if [[ -n "$command_arg" ]]; then
-        "$command_name" "$command_arg"
-    else
-        "$command_name"
-    fi
-}
 
 cdp_apply_on_enter_env() {
     local on_enter="$1"
@@ -1220,67 +1280,407 @@ cdp_apply_on_enter() {
     fi
 }
 
-cdp_display_width() {
-    local text="$1"
-    if [[ -z "$text" ]]; then echo 0; return; fi
-    local width=0
-    local ch code
-    local i=0
-    local len=${#text}
-    while [[ $i -lt $len ]]; do
-        ch="${text:$i:1}"
-        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
-        if [[ $code -ge 128 ]]; then
-            width=$((width + 2))
-        else
-            width=$((width + 1))
-        fi
-        i=$((i + 1))
-    done
-    echo "$width"
+# cdp shell domain: Health.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+cdp_print_check() {
+    local check_status="$1"
+    local name="$2"
+    local message="$3"
+
+    case "$check_status" in
+        ok)
+            echo -e "${GREEN}[OK]   ${NC}${name}: ${GRAY}${message}${NC}"
+            ;;
+        warn)
+            echo -e "${YELLOW}[WARN] ${NC}${name}: ${GRAY}${message}${NC}"
+            ;;
+        *)
+            echo -e "${RED}[FAIL] ${NC}${name}: ${GRAY}${message}${NC}"
+            ;;
+    esac
 }
 
-cdp_pad_text() {
-    local text="$1"
-    local target_width="$2"
-    local actual_width
-    actual_width=$(cdp_display_width "$text")
-    local padding=$((target_width - actual_width))
-    if [[ $padding -gt 0 ]]; then
-        printf '%s%*s' "$text" "$padding" ""
-    else
-        printf '%s' "$text"
+
+cdp_about() {
+    local config_path="$1"
+    local project_count="unknown"
+    local enabled_count="unknown"
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
     fi
+
+    if [[ -f "$config_path" ]] && command -v jq &> /dev/null; then
+        project_count=$(jq 'length' "$config_path" 2>/dev/null || echo 0)
+        enabled_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path" 2>/dev/null || echo 0)
+    fi
+
+    cdp_brand_header
+    echo -e "${GRAY}Module:${NC} ${CYAN}${BASH_SOURCE[0]:-${(%):-%x}}${NC}"
+    echo -e "${GRAY}Config:${NC} ${CYAN}$config_path${NC}"
+    echo -e "${GRAY}Projects:${NC} ${GREEN}$enabled_count enabled / $project_count total${NC}"
+    echo -e "${GRAY}Upgrade:${NC} ${CYAN}$(cdp_upgrade_command)${NC}"
 }
 
-cdp_limit_text() {
-    local text="$1"
-    local max_len="$2"
-    local actual
-    actual=$(cdp_display_width "$text")
-    if [[ $actual -le $max_len ]]; then
-        printf '%s' "$text"
+
+cdp-doctor() {
+    local config_path="$1"
+    local config_source="argument"
+    local error_count=0
+    local warning_count=0
+
+    cdp_brand_header
+    echo -e "${CYAN}cdp doctor${NC}"
+    echo -e "${GRAY}$(printf '=%.0s' {1..80})${NC}"
+
+    if command -v fzf &> /dev/null; then
+        cdp_print_check ok "fzf" "found at $(command -v fzf)"
+    else
+        cdp_print_check fail "fzf" "not found in PATH"
+        ((error_count++))
+    fi
+
+    if command -v jq &> /dev/null; then
+        cdp_print_check ok "jq" "found at $(command -v jq)"
+    else
+        cdp_print_check fail "jq" "not found in PATH"
+        ((error_count++))
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        if [[ -n "$CDP_CONFIG" ]]; then
+            config_path="$CDP_CONFIG"
+            config_source="CDP_CONFIG"
+        else
+            local stored_choice
+            stored_choice=$(get_stored_config_choice)
+            if [[ -n "$stored_choice" && -f "$stored_choice" ]]; then
+                config_path="$stored_choice"
+                config_source="saved choice"
+            else
+                local available_configs
+                available_configs=$(get_all_available_configs)
+
+                if [[ -n "$available_configs" ]]; then
+                    local config_count
+                    config_count=$(line_count "$available_configs")
+                    config_path=$(echo "$available_configs" | head -n1 | cut -d'|' -f1)
+                    config_source=$(echo "$available_configs" | head -n1 | cut -d'|' -f2)
+
+                    if [[ "$config_count" -gt 1 ]]; then
+                        cdp_print_check warn "config selection" "multiple configs found; run cdp-config to choose one"
+                        ((warning_count++))
+                    fi
+                else
+                    config_path="$HOME/.cdp/projects.json"
+                    config_source="default custom config"
+                fi
+            fi
+        fi
+    fi
+
+    if [[ -f "$config_path" ]]; then
+        cdp_print_check ok "config file" "$config_source -> $config_path"
+    else
+        cdp_print_check fail "config file" "not found at $config_path"
+        ((error_count++))
+        echo ""
+        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
+        return 1
+    fi
+
+    if ! command -v jq &> /dev/null; then
+        echo ""
+        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
+        return 1
+    fi
+
+    if jq -e 'type == "array"' "$config_path" >/dev/null 2>&1; then
+        cdp_print_check ok "JSON" "parsed successfully"
+    else
+        local backup_count
+        backup_count=$(cdp_valid_json_backups "$config_path" | wc -l | tr -d ' ')
+        if [[ "$backup_count" -gt 0 ]]; then
+            cdp_print_check fail "JSON" "expected a top-level project array; $backup_count valid cdp backup(s) available"
+        else
+            cdp_print_check fail "JSON" "expected a top-level project array"
+        fi
+        ((error_count++))
+        echo ""
+        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
+        return 1
+    fi
+
+    local project_count
+    local enabled_count
+    local invalid_count
+    local duplicate_count
+    local missing_path_count=0
+
+    project_count=$(jq 'length' "$config_path")
+    enabled_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path")
+    invalid_count=$(jq '[.[] | select((.name | type != "string") or (.rootPath | type != "string") or (.enabled | type != "boolean"))] | length' "$config_path")
+    duplicate_count=$(jq '[group_by(.name)[] | select(length > 1)] | length' "$config_path")
+
+    while IFS='|' read -r name raw_project_path; do
+        [[ -z "$name" && -z "$raw_project_path" ]] && continue
+        local resolved_path
+        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
+        if [[ ! -d "$resolved_path" ]]; then
+            ((missing_path_count++))
+        fi
+    done < <(jq -r '.[] | select(.enabled == true) | "\(.name)|\(.rootPath)"' "$config_path")
+
+    if [[ "$invalid_count" -eq 0 ]]; then
+        cdp_print_check ok "project schema" "0 invalid project entries"
+    else
+        cdp_print_check fail "project schema" "$invalid_count invalid project entries"
+        ((error_count++))
+    fi
+
+    if [[ "$enabled_count" -gt 0 ]]; then
+        cdp_print_check ok "enabled projects" "$enabled_count enabled of $project_count total"
+    else
+        cdp_print_check warn "enabled projects" "0 enabled of $project_count total"
+        ((warning_count++))
+    fi
+
+    if [[ "$duplicate_count" -eq 0 ]]; then
+        cdp_print_check ok "duplicate names" "0 duplicate project names"
+    else
+        cdp_print_check warn "duplicate names" "$duplicate_count duplicate project names"
+        ((warning_count++))
+    fi
+
+    if [[ "$missing_path_count" -eq 0 ]]; then
+        cdp_print_check ok "project paths" "0 enabled project paths missing"
+    else
+        cdp_print_check warn "project paths" "$missing_path_count enabled project paths missing"
+        ((warning_count++))
+    fi
+
+    echo ""
+    if [[ "$error_count" -eq 0 && "$warning_count" -eq 0 ]]; then
+        echo -e "${GREEN}All checks passed.${NC}"
+    else
+        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
+    fi
+
+    [[ "$error_count" -eq 0 ]]
+}
+
+# Function to change configuration file
+
+# cdp shell domain: Scan.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+find_git_repos() {
+    local root="$1"
+    local depth="${2:-4}"
+
+    if [[ -e "$root/.git" ]]; then
+        (cd "$root" && pwd -P)
         return
     fi
-    local result=""
-    local current=0
-    local i=0
-    local len=${#text}
-    while [[ $i -lt $len ]]; do
-        local ch="${text:$i:1}"
-        local code
-        code=$(LC_ALL=C printf '%d' "'$ch" 2>/dev/null || echo 0)
-        local cw=1
-        [[ $code -ge 128 ]] && cw=2
-        if [[ $((current + cw)) -gt $((max_len - 3)) ]]; then
-            break
-        fi
-        result+="$ch"
-        current=$((current + cw))
-        i=$((i + 1))
-    done
-    printf '%s...' "$result"
+
+    if [[ "$depth" -le 0 ]]; then
+        return
+    fi
+
+    local child
+    while IFS= read -r -d $'\0' child; do
+        [[ "$(basename "$child")" == ".git" ]] && continue
+        find_git_repos "$child" $((depth - 1))
+    done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
 }
+
+project_name_exists() {
+    local name="$1"
+    local config_path="$2"
+
+    jq -e --arg name "$name" '.[] | select(.name == $name)' "$config_path" >/dev/null 2>&1
+}
+
+unique_project_name() {
+    local project_path="$1"
+    local config_path="$2"
+    local base_name
+    local parent_name
+    local candidate
+    local index=2
+
+    base_name=$(basename "$project_path")
+    if ! project_name_exists "$base_name" "$config_path"; then
+        echo "$base_name"
+        return
+    fi
+
+    parent_name=$(basename "$(dirname "$project_path")")
+    if [[ -n "$parent_name" ]]; then
+        candidate="${parent_name}-${base_name}"
+    else
+        candidate="$base_name"
+    fi
+
+    local candidate_root="$candidate"
+    while project_name_exists "$candidate" "$config_path"; do
+        candidate="${candidate_root}-${index}"
+        ((index++))
+    done
+
+    echo "$candidate"
+}
+
+
+cdp-init() {
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local root_path="${1:-}"
+    local config_path="${2:-}"
+    local max_depth="${3:-4}"
+    [[ $# -le 3 ]] || { echo -e "${RED}Error: init accepts root path, config path, and max depth.${NC}"; return 1; }
+
+    if [[ -z "$config_path" ]]; then
+        config_path="$HOME/.cdp/projects.json"
+    fi
+
+    echo -e "${YELLOW}Initialization plan:${NC} create/select $config_path"
+    local approval_status=0
+    cdp_require_high_risk_approval "cdp initialization" || approval_status=$?
+    if [[ $approval_status -eq 2 ]]; then
+        cdp_action_result initialize-cdp "$config_path" preview false
+        if [[ -n "$root_path" ]]; then
+            cdp-scan "$root_path" "$config_path" "$max_depth" --dry-run
+        fi
+        return 0
+    fi
+    [[ $approval_status -eq 0 ]] || return 1
+
+    initialize_config "$config_path"
+    save_config_choice "$config_path"
+
+    cdp_brand_header
+    echo -e "${GRAY}Config:${NC} ${CYAN}$config_path${NC}"
+    echo -e "${GREEN}Saved active config choice.${NC}"
+
+    if command -v fzf &> /dev/null; then
+        echo -e "${GREEN}fzf: found${NC}"
+    else
+        echo -e "${YELLOW}fzf: not found. Install it with your package manager.${NC}"
+    fi
+
+    if command -v jq &> /dev/null; then
+        echo -e "${GREEN}jq: found${NC}"
+    else
+        echo -e "${YELLOW}jq: not found. Install jq before using the bash/zsh version.${NC}"
+    fi
+
+    if [[ -n "$root_path" ]]; then
+        cdp-scan "$root_path" "$config_path" "$max_depth" --yes
+    fi
+    cdp_action_result initialize-cdp "$config_path" succeeded true
+}
+
+
+cdp-scan() {
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local root_path="${1:-}"
+    local config_path="${2:-}"
+    local max_depth="${3:-4}"
+    [[ $# -le 3 ]] || { echo -e "${RED}Error: scan accepts root path, config path, and max depth.${NC}"; return 1; }
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$root_path" ]]; then
+        root_path="$PWD"
+    fi
+
+    root_path=$(cd "$root_path" 2>/dev/null && pwd -P)
+    if [[ -z "$root_path" || ! -d "$root_path" ]]; then
+        echo -e "${RED}Error: Invalid scan path.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    local repos
+    repos=$(find_git_repos "$root_path" "$max_depth" | sort -u)
+
+    local found_count=0
+    local added_count=0
+    local skipped_count=0
+    local repo
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    local config_json='[]'
+    if [[ -f "$config_path" ]]; then
+        config_json=$(cat "$config_path") || return 1
+    fi
+
+    if [[ -n "$repos" ]]; then
+        while IFS= read -r repo <&3; do
+            [[ -z "$repo" ]] && continue
+            ((found_count += 1))
+
+            if jq -e --arg path "$repo" '.[] | select(.rootPath == $path)' <<< "$config_json" >/dev/null 2>&1; then
+                ((skipped_count += 1))
+                continue
+            fi
+
+            local name
+            local base_name
+            base_name=$(basename "$repo")
+            name="$base_name"
+            local suffix=2
+            while jq -e --arg name "$name" '.[] | select((.name | ascii_downcase) == ($name | ascii_downcase))' <<< "$config_json" >/dev/null 2>&1; do
+                name="$base_name-$suffix"
+                suffix=$((suffix + 1))
+            done
+            config_json=$(jq --arg name "$name" --arg path "$repo" \
+                '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
+                <<< "$config_json") || return 1
+            ((added_count += 1))
+        done 3<<< "$repos"
+    fi
+
+    echo -e "${CYAN}Git repositories found:${NC} $found_count"
+    echo -e "${GREEN}Projects added:${NC} $added_count"
+    echo -e "${YELLOW}Projects skipped:${NC} $skipped_count"
+    echo -e "${GRAY}Config:${NC} $config_path"
+
+    if [[ $added_count -eq 0 ]]; then
+        cdp_action_result scan-import "$root_path" skipped false
+        return 0
+    fi
+    local approval_status=0
+    cdp_require_high_risk_approval "import of $added_count repositories" || approval_status=$?
+    if [[ $approval_status -eq 2 ]]; then
+        cdp_action_result scan-import "$root_path" preview false
+        return 0
+    fi
+    [[ $approval_status -eq 0 ]] || return 1
+
+    if ! cdp_write_json_text "$config_path" "$config_json" "$expected_fingerprint"; then
+        cdp_action_result scan-import "$root_path" failed false write-failed
+        return 1
+    fi
+    cdp_action_result scan-import "$root_path" succeeded true
+}
+
+# Function to diagnose cdp setup
+
+# cdp shell domain: Status.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
 
 cdp-status() {
     local config_path=""
@@ -1681,6 +2081,76 @@ cdp-status() {
     return 0
 }
 
+# cdp shell domain: Workspace.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+resolve_workspace_launcher() {
+    local opener="$1"
+
+    case "$opener" in
+        ''|*[!A-Za-z0-9._:/-]*)
+            echo "Error: launcher must be a single executable name or safe path without arguments." >&2
+            return 1
+            ;;
+    esac
+
+    local opener_lower
+    opener_lower="$(printf '%s' "$opener" | tr '[:upper:]' '[:lower:]')"
+    case "$opener_lower" in
+        code|vscode)
+            printf 'code\034.\034VS Code\n'
+            ;;
+        cursor)
+            printf 'cursor\034.\034Cursor\n'
+            ;;
+        codex)
+            printf 'codex\034\034Codex\n'
+            ;;
+        claude)
+            printf 'claude\034\034Claude\n'
+            ;;
+        gemini)
+            printf 'gemini\034\034Gemini\n'
+            ;;
+        *)
+            printf '%s\034\034%s\n' "$opener" "$opener"
+            ;;
+    esac
+}
+
+cdp_open_workspace() {
+    local opener="$1"
+    local project_name="$2"
+    local project_path="$3"
+    local command_name
+    local command_arg
+    local label
+
+    if ! resolve_workspace_launcher "$opener" >/dev/null; then
+        return 1
+    fi
+    IFS=$'\034' read -r command_name command_arg label < <(resolve_workspace_launcher "$opener")
+
+    if [[ -n "$CDP_OPEN_DRY_RUN" ]]; then
+        echo -e "${GRAY}Would open $project_name with $label.${NC}"
+        return 0
+    fi
+
+    if ! command -v "$command_name" &> /dev/null; then
+        echo -e "${RED}Error: '$command_name' command not found.${NC}"
+        return 1
+    fi
+
+    echo -e "${CYAN}Opening with $label...${NC}"
+    if [[ -n "$command_arg" ]]; then
+        "$command_name" "$command_arg"
+    else
+        "$command_name"
+    fi
+}
+
+
 cdp-workspace() {
     cdp_parse_safety_options "$@" || return 1
     set -- "${CDP_SAFETY_ARGS[@]}"
@@ -1942,6 +2412,407 @@ cdp-workspace() {
 }
 
 # Main cdp function
+
+# cdp shell domain: Projects.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+cdp-add() {
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local name="${1:-}"
+    local project_path="${2:-}"
+    local config_path="${3:-}"
+    [[ $# -le 3 ]] || { echo -e "${RED}Error: cdp-add accepts name, path, and config path.${NC}"; return 1; }
+    [[ "$name" != -* && "$project_path" != -* && "$config_path" != -* ]] || {
+        echo -e "${RED}Error: unknown cdp-add option.${NC}"; return 1;
+    }
+
+    # Check if jq is installed
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    # Determine path to add
+    if [[ -z "$project_path" ]]; then
+        project_path="$PWD"
+    fi
+
+    # Resolve to absolute path
+    project_path=$(cd "$project_path" 2>/dev/null && pwd -P || echo "$project_path")
+
+    # Determine project name
+    if [[ -z "$name" ]]; then
+        name=$(basename "$project_path")
+    fi
+
+    # Get config path
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    # Check if project already exists
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    local config_json='[]'
+    if [[ -f "$config_path" ]]; then
+        config_json=$(cat "$config_path") || return 1
+    fi
+    local existing=$(jq -r --arg path "$project_path" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
+
+    if [[ -n "$existing" ]]; then
+        echo -e "${YELLOW}Project already exists: $existing${NC}"
+        echo -e "${GRAY}Path: $project_path${NC}"
+        cdp_action_result add-project "$name" skipped false
+        return 0
+    fi
+
+    # Add new project
+    local new_json
+    new_json=$(jq --arg name "$name" --arg path "$project_path" \
+        '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
+        <<< "$config_json") || return 1
+    if $CDP_SAFETY_DRY_RUN; then
+        echo -e "${GRAY}Dry run: no project entry was added.${NC}"
+        cdp_action_result add-project "$name" preview false
+        return 0
+    fi
+    local temp_file
+    temp_file=$(cdp_json_temp_file "$config_path") || return 1
+    printf '%s\n' "$new_json" > "$temp_file"
+
+    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+    rm -f -- "$temp_file"
+
+    echo -e "${GREEN}Project added successfully!${NC}"
+    echo -e "  ${CYAN}Name:${NC} $name"
+    echo -e "  ${GRAY}Path:${NC} $project_path"
+    echo -e "  ${GRAY}Config:${NC} $config_path"
+    cdp_action_result add-project "$name" succeeded true
+}
+
+cdp-rm() {
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local name="${1:-}"
+    local config_path="${2:-}"
+    [[ $# -le 2 ]] || { echo -e "${RED}Error: remove accepts a project and config path.${NC}"; return 1; }
+    [[ -n "$name" ]] || { echo -e "${RED}Error: remove requires a project name.${NC}"; return 1; }
+    [[ -z "$config_path" ]] && config_path=$(get_default_config)
+    [[ -f "$config_path" ]] || { echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"; return 1; }
+
+    local matches
+    matches=$(find_project_matches "$config_path" "$name")
+    local match_count
+    match_count=$(line_count "$matches")
+    if [[ "$match_count" -ne 1 ]]; then
+        echo -e "${RED}Error: remove requires one project match; found $match_count.${NC}"
+        return 1
+    fi
+
+    local target="$matches"
+    local target_path
+    target_path=$(jq -r --arg name "$target" '.[] | select(.name == $name) | .rootPath' "$config_path" | head -n1)
+    echo -e "${YELLOW}Project removal plan:${NC} $target -> $target_path"
+    local approval_status=0
+    cdp_require_high_risk_approval "project removal" || approval_status=$?
+    if [[ $approval_status -eq 2 ]]; then
+        cdp_action_result remove-project "$target" preview false
+        return 0
+    fi
+    if [[ $approval_status -ne 0 ]]; then
+        cdp_action_result remove-project "$target" canceled false
+        return 1
+    fi
+
+    local expected_fingerprint
+    local new_json
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    new_json=$(jq --arg name "$target" '[.[] | select(.name != $name)]' "$config_path") || return 1
+    if ! cdp_write_json_text "$config_path" "$new_json" "$expected_fingerprint"; then
+        cdp_action_result remove-project "$target" failed false write-failed
+        return 1
+    fi
+    echo -e "${GREEN}Project removed successfully: $target${NC}"
+    cdp_action_result remove-project "$target" succeeded true
+}
+
+
+cdp-clean() {
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local config_path="${1:-}"
+    [[ $# -le 1 ]] || { echo -e "${RED}Error: clean accepts one config path.${NC}"; return 1; }
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    if [[ ! -f "$config_path" ]]; then
+        echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"
+        return 1
+    fi
+
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    local repaired_json
+    repaired_json=$(jq '
+        def valid_project:
+            (.name | type == "string") and
+            (.rootPath | type == "string") and
+            ((.name | length) > 0) and
+            ((.rootPath | length) > 0);
+        reduce .[] as $project (
+            {projects: [], paths: {}, names: {}};
+            if (($project | valid_project) | not) then
+                .
+            elif .paths[$project.rootPath] then
+                .
+            else
+                (.names[$project.name] // 0) as $seen |
+                ($project + {
+                    "name": (if $seen == 0 then $project.name else "\($project.name)-\($seen + 1)" end),
+                    "enabled": (if ($project.enabled | type) == "boolean" then $project.enabled else false end),
+                    "pinned": (if ($project.pinned | type) == "boolean" then $project.pinned else false end),
+                    "aliases": (if ($project.aliases | type) == "array" then $project.aliases else [] end),
+                    "tags": (if ($project.tags | type) == "array" then $project.tags else [] end)
+                }) as $cleanProject |
+                .projects += [$cleanProject] |
+                .paths[$project.rootPath] = true |
+                .names[$project.name] = ($seen + 1)
+            end
+        ) | .projects
+    ' "$config_path") || return 1
+
+    local missing_count=0
+    while IFS=$'\t' read -r name raw_project_path; do
+        [[ -z "$name" && -z "$raw_project_path" ]] && continue
+        local resolved_path
+        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
+        if [[ ! -d "$resolved_path" ]]; then
+            repaired_json=$(printf '%s\n' "$repaired_json" | jq --arg path "$raw_project_path" 'map(if .rootPath == $path then .enabled = false else . end)')
+            ((missing_count += 1))
+        fi
+    done < <(printf '%s\n' "$repaired_json" | jq -r '.[] | select(.enabled == true) | [.name, .rootPath] | @tsv')
+
+    if jq -e --argjson repaired "$repaired_json" '. == $repaired' "$config_path" >/dev/null 2>&1; then
+        echo -e "${GREEN}No project configuration repairs are needed.${NC}"
+        cdp_action_result repair-config "$config_path" skipped false
+        return 0
+    fi
+
+    echo -e "${YELLOW}Repair plan:${NC} $config_path"
+    echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
+    local approval_status=0
+    cdp_require_high_risk_approval "project configuration repair" || approval_status=$?
+    if [[ $approval_status -eq 2 ]]; then
+        cdp_action_result repair-config "$config_path" preview false
+        return 0
+    fi
+    [[ $approval_status -eq 0 ]] || return 1
+
+    if ! cdp_write_json_text "$config_path" "$repaired_json" "$expected_fingerprint"; then
+        cdp_action_result repair-config "$config_path" failed false write-failed
+        return 1
+    fi
+
+    echo -e "${GREEN}cdp config repaired:${NC} $config_path"
+    echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
+    cdp_action_result repair-config "$config_path" succeeded true
+}
+
+# cdp shell domain: ProjectMetadata.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+set_project_pin() {
+    local pinned="$1"
+    shift
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local name="${1:-}"
+    local config_path="${2:-}"
+    [[ $# -le 2 ]] || { echo -e "${RED}Error: pin accepts a project and config path.${NC}"; return 1; }
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    local matches
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    local config_json='[]'
+    if [[ -f "$config_path" ]]; then
+        config_json=$(cat "$config_path") || return 1
+        if [[ -z "$name" ]]; then
+            matches=$(jq -r --arg path "$PWD" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
+        else
+            matches=$(find_project_matches "$config_path" "$name")
+        fi
+    else
+        matches=""
+    fi
+
+    local match_count
+    match_count=$(line_count "$matches")
+    if [[ "$match_count" -eq 0 ]]; then
+        echo -e "${YELLOW}No project matched for pin update.${NC}"
+        return 1
+    fi
+
+    if [[ "$match_count" -gt 1 ]]; then
+        echo -e "${YELLOW}Multiple projects matched. Please use a more specific name.${NC}"
+        printf '%s\n' "$matches" | sed 's/^/  /'
+        return 1
+    fi
+
+    local target
+    local state_text="Pinned"
+    target="$matches"
+    if [[ "$pinned" != "true" ]]; then
+        state_text="Unpinned"
+    fi
+
+    local current_pinned
+    current_pinned=$(jq -r --arg name "$target" '.[] | select(.name == $name) | (.pinned == true)' <<< "$config_json" | head -n1)
+    if [[ "$current_pinned" == "$pinned" ]]; then
+        echo -e "${YELLOW}Project already has the requested pin state: $target${NC}"
+        cdp_action_result "$(echo "$state_text" | tr '[:upper:]' '[:lower:]')" "$target" skipped false
+        return 0
+    fi
+    local new_json
+    new_json=$(jq --arg name "$target" --argjson pinned "$pinned" '
+        map(if .name == $name then . + {"pinned": $pinned} else . end)
+    ' <<< "$config_json") || return 1
+    if $CDP_SAFETY_DRY_RUN; then
+        echo -e "${GRAY}Dry run: no pin state was changed.${NC}"
+        cdp_action_result "$(echo "$state_text" | tr '[:upper:]' '[:lower:]')" "$target" preview false
+        return 0
+    fi
+    local temp_file
+    temp_file=$(cdp_json_temp_file "$config_path") || return 1
+    printf '%s\n' "$new_json" > "$temp_file"
+    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+    rm -f -- "$temp_file"
+
+    echo -e "${GREEN}$state_text project: $target${NC}"
+    cdp_action_result "$(echo "$state_text" | tr '[:upper:]' '[:lower:]')" "$target" succeeded true
+}
+
+cdp-pin() {
+    set_project_pin true "$@"
+}
+
+cdp-unpin() {
+    set_project_pin false "$@"
+}
+
+
+update_project_list_value() {
+    local property="$1"
+    local remove="$2"
+    shift 2
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    local name="${1:-}"
+    local value="${2:-}"
+    local config_path="${3:-}"
+    [[ $# -le 3 ]] || { echo -e "${RED}Error: metadata update accepts project, value, and config path.${NC}"; return 1; }
+
+    if [[ -z "$name" || -z "$value" ]]; then
+        echo -e "${YELLOW}Project name and metadata value are required.${NC}"
+        return 1
+    fi
+
+    if [[ -z "$config_path" ]]; then
+        config_path=$(get_default_config)
+    fi
+
+    [[ -f "$config_path" ]] || { echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"; return 1; }
+
+    local matches
+    local match_count
+    local expected_fingerprint
+    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
+    matches=$(find_project_matches "$config_path" "$name")
+    match_count=$(line_count "$matches")
+    if [[ "$match_count" -ne 1 ]]; then
+        echo -e "${YELLOW}Expected one project match, found $match_count.${NC}"
+        return 1
+    fi
+
+    local target
+    target="$matches"
+    local current_value
+    current_value=$(jq -r --arg name "$target" --arg value "$value" --arg property "$property" '
+        .[] | select(.name == $name) | (((.[$property] // []) | map(tostring) | map(ascii_downcase) | index($value | ascii_downcase)) != null)
+    ' "$config_path")
+    if { [[ "$remove" == true && "$current_value" != true ]] || [[ "$remove" != true && "$current_value" == true ]]; }; then
+        echo -e "${YELLOW}Project metadata already has the requested state.${NC}"
+        cdp_action_result metadata-update "$target" skipped false
+        return 0
+    fi
+    local new_json
+    new_json=$(jq --arg name "$target" --arg value "$value" --arg property "$property" --argjson remove "$remove" '
+        map(if .name == $name then
+            .[$property] = (
+                ((.[$property] // []) | map(tostring)) as $values |
+                if $remove then
+                    ($values | map(select((ascii_downcase) != ($value | ascii_downcase))))
+                elif (($values | map(ascii_downcase) | index($value | ascii_downcase)) == null) then
+                    $values + [$value]
+                else
+                    $values
+                end
+            )
+        else . end)
+    ' "$config_path") || return 1
+    if $CDP_SAFETY_DRY_RUN; then
+        echo -e "${GRAY}Dry run: no project metadata was changed.${NC}"
+        cdp_action_result metadata-update "$target" preview false
+        return 0
+    fi
+    local temp_file
+    temp_file=$(cdp_json_temp_file "$config_path") || return 1
+    printf '%s\n' "$new_json" > "$temp_file"
+    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
+    rm -f -- "$temp_file"
+
+    echo -e "${GREEN}Updated $property for project: $target${NC}"
+    cdp_action_result metadata-update "$target" succeeded true
+}
+
+cdp-alias() {
+    update_project_list_value aliases false "$@"
+}
+
+cdp-unalias() {
+    update_project_list_value aliases true "$@"
+}
+
+cdp-tag() {
+    update_project_list_value tags false "$@"
+}
+
+cdp-untag() {
+    update_project_list_value tags true "$@"
+}
+
+# cdp shell domain: Commands.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
 cdp() {
     if [[ "${1:-}" =~ ^(hook|hooks)$ && "${2:-}" =~ ^(list|trust|revoke)$ ]]; then
         shift
@@ -2339,807 +3210,9 @@ cdp-ls() {
     echo -e "${GRAY}config: $config_path${NC}"
 }
 
-cdp-recent() {
-    local count="${1:-10}"
-
-    if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
-        return 1
-    fi
-
-    if ! [[ "$count" =~ ^[0-9]+$ ]] || [[ "$count" -le 0 ]]; then
-        count=10
-    fi
-
-    local state_path
-    state_path=$(cdp_state_path)
-
-    if [[ ! -f "$state_path" ]]; then
-        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
-        return 0
-    fi
-
-    local recent_projects
-    recent_projects=$(jq -r --argjson count "$count" '
-        (.recentProjects // [])
-        | sort_by(.lastVisitedAt)
-        | reverse
-        | .[:$count]
-        | .[]
-        | [.name, .lastVisitedAt, ((.visitCount // 1) | tostring), .rootPath]
-        | @tsv
-    ' "$state_path" 2>/dev/null)
-
-    if [[ -z "$recent_projects" ]]; then
-        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
-        return 0
-    fi
-
-    local name_width=14
-    local name
-    local last_used
-    local visits
-    local project_path
-    while IFS=$'\t' read -r name last_used visits project_path; do
-        if (( ${#name} > name_width )); then
-            name_width=${#name}
-        fi
-    done <<< "$recent_projects"
-    if (( name_width > 30 )); then
-        name_width=30
-    fi
-
-    echo -e "\n${CYAN}cdp recent${NC} ${GRAY}($(line_count "$recent_projects") shown)${NC}"
-    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
-    printf "  ${GRAY}%-4s${NC} ${CYAN}%-*s${NC} ${GRAY}%-24s %-7s %s${NC}\n" "#" "$name_width" "Project" "Last used" "Visits" "Path"
-    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
-
-    local index=1
-    while IFS=$'\t' read -r name last_used visits project_path; do
-        local display_name
-        local display_last
-        local display_path
-        display_name=$(truncate_text "$name" "$name_width")
-        display_last=$(truncate_text "$last_used" 24)
-        display_path=$(convert_windows_to_wsl "$project_path")
-        printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%-24s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_last" "$visits" "$display_path"
-        ((index++))
-    done <<< "$recent_projects"
-
-    echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
-    echo -e "${GRAY}state: $state_path${NC}"
-}
-
-# Function to add current directory as a project
-cdp-add() {
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local name="${1:-}"
-    local project_path="${2:-}"
-    local config_path="${3:-}"
-    [[ $# -le 3 ]] || { echo -e "${RED}Error: cdp-add accepts name, path, and config path.${NC}"; return 1; }
-    [[ "$name" != -* && "$project_path" != -* && "$config_path" != -* ]] || {
-        echo -e "${RED}Error: unknown cdp-add option.${NC}"; return 1;
-    }
-
-    # Check if jq is installed
-    if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
-        return 1
-    fi
-
-    # Determine path to add
-    if [[ -z "$project_path" ]]; then
-        project_path="$PWD"
-    fi
-
-    # Resolve to absolute path
-    project_path=$(cd "$project_path" 2>/dev/null && pwd -P || echo "$project_path")
-
-    # Determine project name
-    if [[ -z "$name" ]]; then
-        name=$(basename "$project_path")
-    fi
-
-    # Get config path
-    if [[ -z "$config_path" ]]; then
-        config_path=$(get_default_config)
-    fi
-
-    # Check if project already exists
-    local expected_fingerprint
-    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
-    local config_json='[]'
-    if [[ -f "$config_path" ]]; then
-        config_json=$(cat "$config_path") || return 1
-    fi
-    local existing=$(jq -r --arg path "$project_path" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
-
-    if [[ -n "$existing" ]]; then
-        echo -e "${YELLOW}Project already exists: $existing${NC}"
-        echo -e "${GRAY}Path: $project_path${NC}"
-        cdp_action_result add-project "$name" skipped false
-        return 0
-    fi
-
-    # Add new project
-    local new_json
-    new_json=$(jq --arg name "$name" --arg path "$project_path" \
-        '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
-        <<< "$config_json") || return 1
-    if $CDP_SAFETY_DRY_RUN; then
-        echo -e "${GRAY}Dry run: no project entry was added.${NC}"
-        cdp_action_result add-project "$name" preview false
-        return 0
-    fi
-    local temp_file
-    temp_file=$(cdp_json_temp_file "$config_path") || return 1
-    printf '%s\n' "$new_json" > "$temp_file"
-
-    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
-    rm -f -- "$temp_file"
-
-    echo -e "${GREEN}Project added successfully!${NC}"
-    echo -e "  ${CYAN}Name:${NC} $name"
-    echo -e "  ${GRAY}Path:${NC} $project_path"
-    echo -e "  ${GRAY}Config:${NC} $config_path"
-    cdp_action_result add-project "$name" succeeded true
-}
-
-cdp-rm() {
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local name="${1:-}"
-    local config_path="${2:-}"
-    [[ $# -le 2 ]] || { echo -e "${RED}Error: remove accepts a project and config path.${NC}"; return 1; }
-    [[ -n "$name" ]] || { echo -e "${RED}Error: remove requires a project name.${NC}"; return 1; }
-    [[ -z "$config_path" ]] && config_path=$(get_default_config)
-    [[ -f "$config_path" ]] || { echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"; return 1; }
-
-    local matches
-    matches=$(find_project_matches "$config_path" "$name")
-    local match_count
-    match_count=$(line_count "$matches")
-    if [[ "$match_count" -ne 1 ]]; then
-        echo -e "${RED}Error: remove requires one project match; found $match_count.${NC}"
-        return 1
-    fi
-
-    local target="$matches"
-    local target_path
-    target_path=$(jq -r --arg name "$target" '.[] | select(.name == $name) | .rootPath' "$config_path" | head -n1)
-    echo -e "${YELLOW}Project removal plan:${NC} $target -> $target_path"
-    local approval_status=0
-    cdp_require_high_risk_approval "project removal" || approval_status=$?
-    if [[ $approval_status -eq 2 ]]; then
-        cdp_action_result remove-project "$target" preview false
-        return 0
-    fi
-    if [[ $approval_status -ne 0 ]]; then
-        cdp_action_result remove-project "$target" canceled false
-        return 1
-    fi
-
-    local expected_fingerprint
-    local new_json
-    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
-    new_json=$(jq --arg name "$target" '[.[] | select(.name != $name)]' "$config_path") || return 1
-    if ! cdp_write_json_text "$config_path" "$new_json" "$expected_fingerprint"; then
-        cdp_action_result remove-project "$target" failed false write-failed
-        return 1
-    fi
-    echo -e "${GREEN}Project removed successfully: $target${NC}"
-    cdp_action_result remove-project "$target" succeeded true
-}
-
-set_project_pin() {
-    local pinned="$1"
-    shift
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local name="${1:-}"
-    local config_path="${2:-}"
-    [[ $# -le 2 ]] || { echo -e "${RED}Error: pin accepts a project and config path.${NC}"; return 1; }
-
-    if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
-        return 1
-    fi
-
-    if [[ -z "$config_path" ]]; then
-        config_path=$(get_default_config)
-    fi
-
-    local matches
-    local expected_fingerprint
-    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
-    local config_json='[]'
-    if [[ -f "$config_path" ]]; then
-        config_json=$(cat "$config_path") || return 1
-        if [[ -z "$name" ]]; then
-            matches=$(jq -r --arg path "$PWD" '.[] | select(.rootPath == $path) | .name' <<< "$config_json" 2>/dev/null)
-        else
-            matches=$(find_project_matches "$config_path" "$name")
-        fi
-    else
-        matches=""
-    fi
-
-    local match_count
-    match_count=$(line_count "$matches")
-    if [[ "$match_count" -eq 0 ]]; then
-        echo -e "${YELLOW}No project matched for pin update.${NC}"
-        return 1
-    fi
-
-    if [[ "$match_count" -gt 1 ]]; then
-        echo -e "${YELLOW}Multiple projects matched. Please use a more specific name.${NC}"
-        printf '%s\n' "$matches" | sed 's/^/  /'
-        return 1
-    fi
-
-    local target
-    local state_text="Pinned"
-    target="$matches"
-    if [[ "$pinned" != "true" ]]; then
-        state_text="Unpinned"
-    fi
-
-    local current_pinned
-    current_pinned=$(jq -r --arg name "$target" '.[] | select(.name == $name) | (.pinned == true)' <<< "$config_json" | head -n1)
-    if [[ "$current_pinned" == "$pinned" ]]; then
-        echo -e "${YELLOW}Project already has the requested pin state: $target${NC}"
-        cdp_action_result "$(echo "$state_text" | tr '[:upper:]' '[:lower:]')" "$target" skipped false
-        return 0
-    fi
-    local new_json
-    new_json=$(jq --arg name "$target" --argjson pinned "$pinned" '
-        map(if .name == $name then . + {"pinned": $pinned} else . end)
-    ' <<< "$config_json") || return 1
-    if $CDP_SAFETY_DRY_RUN; then
-        echo -e "${GRAY}Dry run: no pin state was changed.${NC}"
-        cdp_action_result "$(echo "$state_text" | tr '[:upper:]' '[:lower:]')" "$target" preview false
-        return 0
-    fi
-    local temp_file
-    temp_file=$(cdp_json_temp_file "$config_path") || return 1
-    printf '%s\n' "$new_json" > "$temp_file"
-    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
-    rm -f -- "$temp_file"
-
-    echo -e "${GREEN}$state_text project: $target${NC}"
-    cdp_action_result "$(echo "$state_text" | tr '[:upper:]' '[:lower:]')" "$target" succeeded true
-}
-
-cdp-pin() {
-    set_project_pin true "$@"
-}
-
-cdp-unpin() {
-    set_project_pin false "$@"
-}
-
-cdp-clean() {
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local config_path="${1:-}"
-    [[ $# -le 1 ]] || { echo -e "${RED}Error: clean accepts one config path.${NC}"; return 1; }
-
-    if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
-        return 1
-    fi
-
-    if [[ -z "$config_path" ]]; then
-        config_path=$(get_default_config)
-    fi
-
-    if [[ ! -f "$config_path" ]]; then
-        echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"
-        return 1
-    fi
-
-    local expected_fingerprint
-    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
-    local repaired_json
-    repaired_json=$(jq '
-        def valid_project:
-            (.name | type == "string") and
-            (.rootPath | type == "string") and
-            ((.name | length) > 0) and
-            ((.rootPath | length) > 0);
-        reduce .[] as $project (
-            {projects: [], paths: {}, names: {}};
-            if (($project | valid_project) | not) then
-                .
-            elif .paths[$project.rootPath] then
-                .
-            else
-                (.names[$project.name] // 0) as $seen |
-                ($project + {
-                    "name": (if $seen == 0 then $project.name else "\($project.name)-\($seen + 1)" end),
-                    "enabled": (if ($project.enabled | type) == "boolean" then $project.enabled else false end),
-                    "pinned": (if ($project.pinned | type) == "boolean" then $project.pinned else false end),
-                    "aliases": (if ($project.aliases | type) == "array" then $project.aliases else [] end),
-                    "tags": (if ($project.tags | type) == "array" then $project.tags else [] end)
-                }) as $cleanProject |
-                .projects += [$cleanProject] |
-                .paths[$project.rootPath] = true |
-                .names[$project.name] = ($seen + 1)
-            end
-        ) | .projects
-    ' "$config_path") || return 1
-
-    local missing_count=0
-    while IFS=$'\t' read -r name raw_project_path; do
-        [[ -z "$name" && -z "$raw_project_path" ]] && continue
-        local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
-        if [[ ! -d "$resolved_path" ]]; then
-            repaired_json=$(printf '%s\n' "$repaired_json" | jq --arg path "$raw_project_path" 'map(if .rootPath == $path then .enabled = false else . end)')
-            ((missing_count += 1))
-        fi
-    done < <(printf '%s\n' "$repaired_json" | jq -r '.[] | select(.enabled == true) | [.name, .rootPath] | @tsv')
-
-    if jq -e --argjson repaired "$repaired_json" '. == $repaired' "$config_path" >/dev/null 2>&1; then
-        echo -e "${GREEN}No project configuration repairs are needed.${NC}"
-        cdp_action_result repair-config "$config_path" skipped false
-        return 0
-    fi
-
-    echo -e "${YELLOW}Repair plan:${NC} $config_path"
-    echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
-    local approval_status=0
-    cdp_require_high_risk_approval "project configuration repair" || approval_status=$?
-    if [[ $approval_status -eq 2 ]]; then
-        cdp_action_result repair-config "$config_path" preview false
-        return 0
-    fi
-    [[ $approval_status -eq 0 ]] || return 1
-
-    if ! cdp_write_json_text "$config_path" "$repaired_json" "$expected_fingerprint"; then
-        cdp_action_result repair-config "$config_path" failed false write-failed
-        return 1
-    fi
-
-    echo -e "${GREEN}cdp config repaired:${NC} $config_path"
-    echo -e "${GRAY}  DisabledMissingPaths: $missing_count${NC}"
-    cdp_action_result repair-config "$config_path" succeeded true
-}
-
-update_project_list_value() {
-    local property="$1"
-    local remove="$2"
-    shift 2
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local name="${1:-}"
-    local value="${2:-}"
-    local config_path="${3:-}"
-    [[ $# -le 3 ]] || { echo -e "${RED}Error: metadata update accepts project, value, and config path.${NC}"; return 1; }
-
-    if [[ -z "$name" || -z "$value" ]]; then
-        echo -e "${YELLOW}Project name and metadata value are required.${NC}"
-        return 1
-    fi
-
-    if [[ -z "$config_path" ]]; then
-        config_path=$(get_default_config)
-    fi
-
-    [[ -f "$config_path" ]] || { echo -e "${RED}Error: Configuration file not found at: $config_path${NC}"; return 1; }
-
-    local matches
-    local match_count
-    local expected_fingerprint
-    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
-    matches=$(find_project_matches "$config_path" "$name")
-    match_count=$(line_count "$matches")
-    if [[ "$match_count" -ne 1 ]]; then
-        echo -e "${YELLOW}Expected one project match, found $match_count.${NC}"
-        return 1
-    fi
-
-    local target
-    target="$matches"
-    local current_value
-    current_value=$(jq -r --arg name "$target" --arg value "$value" --arg property "$property" '
-        .[] | select(.name == $name) | (((.[$property] // []) | map(tostring) | map(ascii_downcase) | index($value | ascii_downcase)) != null)
-    ' "$config_path")
-    if { [[ "$remove" == true && "$current_value" != true ]] || [[ "$remove" != true && "$current_value" == true ]]; }; then
-        echo -e "${YELLOW}Project metadata already has the requested state.${NC}"
-        cdp_action_result metadata-update "$target" skipped false
-        return 0
-    fi
-    local new_json
-    new_json=$(jq --arg name "$target" --arg value "$value" --arg property "$property" --argjson remove "$remove" '
-        map(if .name == $name then
-            .[$property] = (
-                ((.[$property] // []) | map(tostring)) as $values |
-                if $remove then
-                    ($values | map(select((ascii_downcase) != ($value | ascii_downcase))))
-                elif (($values | map(ascii_downcase) | index($value | ascii_downcase)) == null) then
-                    $values + [$value]
-                else
-                    $values
-                end
-            )
-        else . end)
-    ' "$config_path") || return 1
-    if $CDP_SAFETY_DRY_RUN; then
-        echo -e "${GRAY}Dry run: no project metadata was changed.${NC}"
-        cdp_action_result metadata-update "$target" preview false
-        return 0
-    fi
-    local temp_file
-    temp_file=$(cdp_json_temp_file "$config_path") || return 1
-    printf '%s\n' "$new_json" > "$temp_file"
-    cdp_commit_json_file "$config_path" "$temp_file" "$expected_fingerprint" || { rm -f -- "$temp_file"; return 1; }
-    rm -f -- "$temp_file"
-
-    echo -e "${GREEN}Updated $property for project: $target${NC}"
-    cdp_action_result metadata-update "$target" succeeded true
-}
-
-cdp-alias() {
-    update_project_list_value aliases false "$@"
-}
-
-cdp-unalias() {
-    update_project_list_value aliases true "$@"
-}
-
-cdp-tag() {
-    update_project_list_value tags false "$@"
-}
-
-cdp-untag() {
-    update_project_list_value tags true "$@"
-}
-
-cdp-scan() {
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local root_path="${1:-}"
-    local config_path="${2:-}"
-    local max_depth="${3:-4}"
-    [[ $# -le 3 ]] || { echo -e "${RED}Error: scan accepts root path, config path, and max depth.${NC}"; return 1; }
-
-    if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
-        return 1
-    fi
-
-    if [[ -z "$root_path" ]]; then
-        root_path="$PWD"
-    fi
-
-    root_path=$(cd "$root_path" 2>/dev/null && pwd -P)
-    if [[ -z "$root_path" || ! -d "$root_path" ]]; then
-        echo -e "${RED}Error: Invalid scan path.${NC}"
-        return 1
-    fi
-
-    if [[ -z "$config_path" ]]; then
-        config_path=$(get_default_config)
-    fi
-
-    local repos
-    repos=$(find_git_repos "$root_path" "$max_depth" | sort -u)
-
-    local found_count=0
-    local added_count=0
-    local skipped_count=0
-    local repo
-    local expected_fingerprint
-    expected_fingerprint=$(cdp_json_fingerprint "$config_path")
-    local config_json='[]'
-    if [[ -f "$config_path" ]]; then
-        config_json=$(cat "$config_path") || return 1
-    fi
-
-    if [[ -n "$repos" ]]; then
-        while IFS= read -r repo <&3; do
-            [[ -z "$repo" ]] && continue
-            ((found_count += 1))
-
-            if jq -e --arg path "$repo" '.[] | select(.rootPath == $path)' <<< "$config_json" >/dev/null 2>&1; then
-                ((skipped_count += 1))
-                continue
-            fi
-
-            local name
-            local base_name
-            base_name=$(basename "$repo")
-            name="$base_name"
-            local suffix=2
-            while jq -e --arg name "$name" '.[] | select((.name | ascii_downcase) == ($name | ascii_downcase))' <<< "$config_json" >/dev/null 2>&1; do
-                name="$base_name-$suffix"
-                suffix=$((suffix + 1))
-            done
-            config_json=$(jq --arg name "$name" --arg path "$repo" \
-                '. += [{"name": $name, "rootPath": $path, "enabled": true, "pinned": false, "aliases": [], "tags": []}]' \
-                <<< "$config_json") || return 1
-            ((added_count += 1))
-        done 3<<< "$repos"
-    fi
-
-    echo -e "${CYAN}Git repositories found:${NC} $found_count"
-    echo -e "${GREEN}Projects added:${NC} $added_count"
-    echo -e "${YELLOW}Projects skipped:${NC} $skipped_count"
-    echo -e "${GRAY}Config:${NC} $config_path"
-
-    if [[ $added_count -eq 0 ]]; then
-        cdp_action_result scan-import "$root_path" skipped false
-        return 0
-    fi
-    local approval_status=0
-    cdp_require_high_risk_approval "import of $added_count repositories" || approval_status=$?
-    if [[ $approval_status -eq 2 ]]; then
-        cdp_action_result scan-import "$root_path" preview false
-        return 0
-    fi
-    [[ $approval_status -eq 0 ]] || return 1
-
-    if ! cdp_write_json_text "$config_path" "$config_json" "$expected_fingerprint"; then
-        cdp_action_result scan-import "$root_path" failed false write-failed
-        return 1
-    fi
-    cdp_action_result scan-import "$root_path" succeeded true
-}
-
-# Function to diagnose cdp setup
-cdp-doctor() {
-    local config_path="$1"
-    local config_source="argument"
-    local error_count=0
-    local warning_count=0
-
-    cdp_brand_header
-    echo -e "${CYAN}cdp doctor${NC}"
-    echo -e "${GRAY}$(printf '=%.0s' {1..80})${NC}"
-
-    if command -v fzf &> /dev/null; then
-        cdp_print_check ok "fzf" "found at $(command -v fzf)"
-    else
-        cdp_print_check fail "fzf" "not found in PATH"
-        ((error_count++))
-    fi
-
-    if command -v jq &> /dev/null; then
-        cdp_print_check ok "jq" "found at $(command -v jq)"
-    else
-        cdp_print_check fail "jq" "not found in PATH"
-        ((error_count++))
-    fi
-
-    if [[ -z "$config_path" ]]; then
-        if [[ -n "$CDP_CONFIG" ]]; then
-            config_path="$CDP_CONFIG"
-            config_source="CDP_CONFIG"
-        else
-            local stored_choice
-            stored_choice=$(get_stored_config_choice)
-            if [[ -n "$stored_choice" && -f "$stored_choice" ]]; then
-                config_path="$stored_choice"
-                config_source="saved choice"
-            else
-                local available_configs
-                available_configs=$(get_all_available_configs)
-
-                if [[ -n "$available_configs" ]]; then
-                    local config_count
-                    config_count=$(line_count "$available_configs")
-                    config_path=$(echo "$available_configs" | head -n1 | cut -d'|' -f1)
-                    config_source=$(echo "$available_configs" | head -n1 | cut -d'|' -f2)
-
-                    if [[ "$config_count" -gt 1 ]]; then
-                        cdp_print_check warn "config selection" "multiple configs found; run cdp-config to choose one"
-                        ((warning_count++))
-                    fi
-                else
-                    config_path="$HOME/.cdp/projects.json"
-                    config_source="default custom config"
-                fi
-            fi
-        fi
-    fi
-
-    if [[ -f "$config_path" ]]; then
-        cdp_print_check ok "config file" "$config_source -> $config_path"
-    else
-        cdp_print_check fail "config file" "not found at $config_path"
-        ((error_count++))
-        echo ""
-        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
-        return 1
-    fi
-
-    if ! command -v jq &> /dev/null; then
-        echo ""
-        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
-        return 1
-    fi
-
-    if jq -e 'type == "array"' "$config_path" >/dev/null 2>&1; then
-        cdp_print_check ok "JSON" "parsed successfully"
-    else
-        local backup_count
-        backup_count=$(cdp_valid_json_backups "$config_path" | wc -l | tr -d ' ')
-        if [[ "$backup_count" -gt 0 ]]; then
-            cdp_print_check fail "JSON" "expected a top-level project array; $backup_count valid cdp backup(s) available"
-        else
-            cdp_print_check fail "JSON" "expected a top-level project array"
-        fi
-        ((error_count++))
-        echo ""
-        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
-        return 1
-    fi
-
-    local project_count
-    local enabled_count
-    local invalid_count
-    local duplicate_count
-    local missing_path_count=0
-
-    project_count=$(jq 'length' "$config_path")
-    enabled_count=$(jq '[.[] | select(.enabled == true)] | length' "$config_path")
-    invalid_count=$(jq '[.[] | select((.name | type != "string") or (.rootPath | type != "string") or (.enabled | type != "boolean"))] | length' "$config_path")
-    duplicate_count=$(jq '[group_by(.name)[] | select(length > 1)] | length' "$config_path")
-
-    while IFS='|' read -r name raw_project_path; do
-        [[ -z "$name" && -z "$raw_project_path" ]] && continue
-        local resolved_path
-        resolved_path=$(convert_windows_to_wsl "$raw_project_path")
-        if [[ ! -d "$resolved_path" ]]; then
-            ((missing_path_count++))
-        fi
-    done < <(jq -r '.[] | select(.enabled == true) | "\(.name)|\(.rootPath)"' "$config_path")
-
-    if [[ "$invalid_count" -eq 0 ]]; then
-        cdp_print_check ok "project schema" "0 invalid project entries"
-    else
-        cdp_print_check fail "project schema" "$invalid_count invalid project entries"
-        ((error_count++))
-    fi
-
-    if [[ "$enabled_count" -gt 0 ]]; then
-        cdp_print_check ok "enabled projects" "$enabled_count enabled of $project_count total"
-    else
-        cdp_print_check warn "enabled projects" "0 enabled of $project_count total"
-        ((warning_count++))
-    fi
-
-    if [[ "$duplicate_count" -eq 0 ]]; then
-        cdp_print_check ok "duplicate names" "0 duplicate project names"
-    else
-        cdp_print_check warn "duplicate names" "$duplicate_count duplicate project names"
-        ((warning_count++))
-    fi
-
-    if [[ "$missing_path_count" -eq 0 ]]; then
-        cdp_print_check ok "project paths" "0 enabled project paths missing"
-    else
-        cdp_print_check warn "project paths" "$missing_path_count enabled project paths missing"
-        ((warning_count++))
-    fi
-
-    echo ""
-    if [[ "$error_count" -eq 0 && "$warning_count" -eq 0 ]]; then
-        echo -e "${GREEN}All checks passed.${NC}"
-    else
-        echo -e "${YELLOW}Summary: $error_count error(s), $warning_count warning(s).${NC}"
-    fi
-
-    [[ "$error_count" -eq 0 ]]
-}
-
-# Function to change configuration file
-cdp-config() {
-    cdp_parse_safety_options "$@" || return 1
-    set -- "${CDP_SAFETY_ARGS[@]}"
-    local selected_index="${1:-}"
-    [[ $# -le 1 ]] || { echo -e "${RED}Error: cdp-config accepts an optional selection number.${NC}"; return 1; }
-    echo -e "\n========================================"
-    echo -e "  ${CYAN}Change Configuration File${NC}"
-    echo -e "========================================"
-    echo ""
-
-    # Find all available configs
-    local available_configs=$(get_all_available_configs)
-
-    if [[ -z "$available_configs" ]]; then
-        echo -e "${YELLOW}No configuration files found.${NC}"
-        echo ""
-        echo -e "${CYAN}Available options:${NC}"
-        echo -e "  ${GRAY}1. Create a custom config with:${NC} ${CYAN}cdp-add${NC}"
-        echo -e "  ${GRAY}2. Install Project Manager extension in VS Code/Cursor${NC}"
-        return 0
-    fi
-
-    # Show current config
-    local current_config=$(get_stored_config_choice)
-    if [[ -n "$current_config" ]]; then
-        echo -e "${CYAN}Current configuration:${NC}"
-        local current_source=$(echo "$available_configs" | grep -F "$current_config" | cut -d'|' -f2)
-        if [[ -n "$current_source" ]]; then
-            echo -e "  ${GREEN}$current_source${NC}"
-        fi
-        echo -e "  ${GRAY}$current_config${NC}"
-        echo ""
-    fi
-
-    # Show all available configs
-    echo -e "${CYAN}Available configuration files:${NC}"
-    echo -e "${GRAY}$(printf '=%.0s' {1..80})${NC}"
-    echo ""
-
-    local index=1
-    local -a config_paths=()
-    local -a config_sources=()
-    while IFS='|' read -r config_entry_path source; do
-        config_paths+=("$config_entry_path")
-        config_sources+=("$source")
-
-        local is_current=""
-        if [[ "$config_entry_path" == "$current_config" ]]; then
-            is_current=" ${CYAN}(current)${NC}"
-        fi
-
-        echo -e "  ${YELLOW}[$index]${NC} ${GREEN}$source${NC}$is_current"
-        echo -e "      ${GRAY}$config_entry_path${NC}"
-        ((index++))
-    done <<< "$available_configs"
-
-    echo ""
-
-    # Get user selection
-    local config_count=${#config_paths[@]}
-    while true; do
-        local selection="$selected_index"
-        if [[ -z "$selection" ]]; then
-            echo -e "${RED}Configuration selection requires a number plus --yes, or a number plus --dry-run.${NC}"
-            return 1
-        fi
-
-        if [[ "$selection" == "0" ]]; then
-            echo -e "\n${GRAY}Operation cancelled.${NC}"
-            return 0
-        fi
-
-        if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le $config_count ]]; then
-            local selected_path="${config_paths[$((selection-1))]}"
-            local selected_source="${config_sources[$((selection-1))]}"
-
-            echo -e "${YELLOW}Configuration selection plan:${NC} $selected_source -> $selected_path"
-            local approval_status=0
-            cdp_require_high_risk_approval "active configuration selection" || approval_status=$?
-            if [[ $approval_status -eq 2 ]]; then
-                cdp_action_result select-config "$selected_path" preview false
-                return 0
-            fi
-            [[ $approval_status -eq 0 ]] || return 1
-
-            # Save the choice
-            save_config_choice "$selected_path"
-
-            echo -e "\n========================================"
-            echo -e "  ${GREEN}Configuration Updated!${NC}"
-            echo -e "========================================"
-            echo ""
-            echo -e "${GRAY}Now using:${NC} ${GREEN}$selected_source${NC}"
-            echo -e "${GRAY}Path:${NC} ${CYAN}$selected_path${NC}"
-            echo -e "${GRAY}Saved to:${NC} ${CYAN}~/.cdp/config${NC}"
-            echo ""
-            cdp_action_result select-config "$selected_path" succeeded true
-            return 0
-        else
-            echo -e "${RED}Invalid selection. Please enter a number between 0 and $config_count.${NC}"
-            return 1
-        fi
-    done
-}
+# cdp shell domain: Completion.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
 
 # Export functions for bash/zsh
 if [[ -n "${BASH_VERSION:-}" ]]; then

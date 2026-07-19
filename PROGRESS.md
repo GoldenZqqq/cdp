@@ -34,6 +34,7 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - [x] Add PowerShell ShouldProcess/WhatIf/Confirm and shell dry-run/yes safety boundaries to mutating commands.
 - [x] Return or print per-target action results and continue safe batch processing after item failures.
 - [x] Split the PowerShell module into bounded domain files with a stable bootstrap, export surface, and recursive package coverage.
+- [x] Split bash/zsh source into bounded domain fragments with deterministic single-file generation and offline-install verification.
 - [ ] Complete the remaining v2.1.0 engineering, performance, CI, media, and documentation tasks.
 - [ ] Pass the full cross-platform release gate and publish/verify every public channel.
 
@@ -43,8 +44,8 @@ Release status: v2.0.5 passed local and hosted CI and is published on GitHub. Po
 - PowerShell modularization: all `119/119` function bodies match the pre-split AST text; the largest domain file is 557 lines.
 - Bash, zsh, and Bash 3.2: persistence, stale-fingerprint, invalid JSON, lock,
   flush/replacement failure, backup recovery, doctor diagnostics, and syntax checks passed.
-- Shell installer digest: `9b265198fbeea63f49ee56de4beadb3a8cc78b8617484e179509b0d868cbc390`.
-- Deterministic Scoop package digest: `83a89dd5f4a79d1f476b33e018c3118cd5352f4379f317a4481b4e75643ceee8`.
+- Shell installer digest: `50b4c4b416b48c0cbf0b6f22ccc690bfc130e16784d375d6535b3acc1ad6f06c`.
+- Deterministic Scoop package digest: `d5867b220317c81c6606f1de6bb174de0c32392a2afe943751a3f93abd9341d9`.
 
 ## 2.0.5 Security Checklist
 

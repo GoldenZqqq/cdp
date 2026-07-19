@@ -95,12 +95,23 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y fzf jq
+          sudo apt-get install -y fzf jq shellcheck
 
       - name: Check bash syntax
         run: |
           bash -n ./src/cdp.sh
+          bash -n ./src/Shell/*.sh
           bash -n ./install-wsl.sh
+          bash -n ./scripts/Build-ShellScript.sh
+
+      - name: Check generated shell artifact
+        run: bash ./scripts/Build-ShellScript.sh --check
+
+      - name: Run ShellCheck errors
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh
+
+      - name: Run shell modularization tests
+        run: bash ./tests/cdp.Shell.Modularization.Tests.sh
 
       - name: Run shell CLI parser tests
         run: bash ./tests/cdp.Cli.Tests.sh
@@ -139,12 +150,23 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install fzf jq
+          brew install fzf jq shellcheck
 
       - name: Check bash syntax
         run: |
           bash -n ./src/cdp.sh
+          bash -n ./src/Shell/*.sh
           bash -n ./install-wsl.sh
+          bash -n ./scripts/Build-ShellScript.sh
+
+      - name: Check generated shell artifact
+        run: bash ./scripts/Build-ShellScript.sh --check
+
+      - name: Run ShellCheck errors
+        run: shellcheck --severity=error --exclude=SC2296 ./src/cdp.sh ./src/Shell/*.sh ./install-wsl.sh ./scripts/Build-ShellScript.sh
+
+      - name: Run shell modularization tests
+        run: bash ./tests/cdp.Shell.Modularization.Tests.sh
 
       - name: Run shell CLI parser tests
         run: bash ./tests/cdp.Cli.Tests.sh

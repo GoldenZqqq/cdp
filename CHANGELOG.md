@@ -18,6 +18,7 @@
 - Status push plans now include the resolved remote and upstream before execution.
 - Config discovery is read-only; only explicit config-selection commands persist the active choice.
 - Split the PowerShell implementation into bounded Config, State, Picker, Status, Workspace, Hooks, Commands, Completion, and supporting domain files without changing public exports.
+- Split bash/zsh development sources into bounded domain fragments while retaining a deterministic single-file `cdp.sh` for source, offline, and verified remote installation.
 
 ## 2.0.5
 

@@ -1,0 +1,109 @@
+# cdp shell domain: Completion.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+# Export functions for bash/zsh
+if [[ -n "${BASH_VERSION:-}" ]]; then
+    export -f cdp
+    export -f cdp_about
+    export -f cdp-ls
+    export -f cdp-add
+    export -f cdp-rm
+    export -f cdp-config
+    export -f cdp-doctor
+    export -f cdp-recent
+    export -f cdp-pin
+    export -f cdp-unpin
+    export -f cdp-clean
+    export -f cdp-init
+    export -f cdp-alias
+    export -f cdp-unalias
+    export -f cdp-tag
+    export -f cdp-untag
+    export -f cdp-scan
+fi
+
+_cdp_completions() {
+    local cur prev
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config"
+    local launchers="code cursor codex claude gemini"
+
+    if [[ "$prev" == "--open" || "$prev" == "-o" ]]; then
+        COMPREPLY=($(compgen -W "$launchers" -- "$cur"))
+        return
+    fi
+
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        local projects=""
+        local config_path
+        config_path=$(get_default_config 2>/dev/null)
+        if [[ -n "$config_path" && -f "$config_path" ]] && command -v jq &>/dev/null; then
+            projects=$(jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null | tr '\r' ' ')
+        fi
+        COMPREPLY=($(compgen -W "$subcommands $projects" -- "$cur"))
+        return
+    fi
+
+    if [[ "${COMP_WORDS[1]}" =~ ^(pin|unpin|alias|unalias|tag|untag)$ && $COMP_CWORD -eq 2 ]]; then
+        local projects=""
+        local config_path
+        config_path=$(get_default_config 2>/dev/null)
+        if [[ -n "$config_path" && -f "$config_path" ]] && command -v jq &>/dev/null; then
+            projects=$(jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null | tr '\r' ' ')
+        fi
+        COMPREPLY=($(compgen -W "$projects" -- "$cur"))
+        return
+    fi
+}
+
+if [[ -n "${BASH_VERSION:-}" ]]; then
+    complete -F _cdp_completions cdp
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+    autoload -Uz compinit 2>/dev/null
+    _cdp_zsh_complete_words() {
+        setopt localoptions noksharrays
+        local completion_current="$1"
+        shift
+        local -a completion_words=("$@")
+        local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config)
+        local launchers=(code cursor codex claude gemini)
+        local cur="${completion_words[$completion_current]}"
+        local prev="${completion_words[$((completion_current-1))]}"
+
+        if [[ "$prev" == "--open" || "$prev" == "-o" ]]; then
+            compadd -a launchers
+            return
+        fi
+
+        if [[ $completion_current -eq 2 ]]; then
+            local projects=()
+            local config_path
+            config_path=$(get_default_config 2>/dev/null)
+            if [[ -n "$config_path" && -f "$config_path" ]] && command -v jq &>/dev/null; then
+                projects=(${(f)"$(jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null)"})
+            fi
+            compadd -a subcommands
+            compadd -a projects
+            return
+        fi
+
+        if [[ "${completion_words[2]}" =~ ^(pin|unpin|alias|unalias|tag|untag)$ && $completion_current -eq 3 ]]; then
+            local projects=()
+            local config_path
+            config_path=$(get_default_config 2>/dev/null)
+            if [[ -n "$config_path" && -f "$config_path" ]] && command -v jq &>/dev/null; then
+                projects=(${(f)"$(jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null)"})
+            fi
+            compadd -a projects
+            return
+        fi
+    }
+    _cdp_zsh_completions() {
+        setopt localoptions noksharrays
+        _cdp_zsh_complete_words "$CURRENT" "${words[@]}"
+    }
+    compdef _cdp_zsh_completions cdp 2>/dev/null || true
+fi
