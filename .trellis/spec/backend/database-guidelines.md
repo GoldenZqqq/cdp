@@ -55,6 +55,12 @@ active state is read-only until explicitly restored; never silently reset it.
 Normalize data at the read boundary. Do not let every command invent defaults
 or write raw parsed objects independently.
 
+PowerShell JSON arrays must pass through `ConvertTo-CdpJsonArrayItems` after
+`ConvertFrom-Json`. Windows PowerShell 5.1 can emit a JSON array as one
+non-enumerated pipeline object, so wrapping `Get-Content | ConvertFrom-Json`
+inside `@(...)` is not a portable array boundary. Preserve empty arrays and
+top-level null entries while normalizing.
+
 Workspace migration resolves legacy strings by one exact current project name
 and object references by one exact raw `rootPath`. A renamed object updates only
 its `name` hint; missing or ambiguous identities remain untouched. If migration

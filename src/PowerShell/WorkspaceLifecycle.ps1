@@ -37,7 +37,8 @@ function Test-CdpWorkspaceSize {
     param([object]$Value)
 
     $integerTypes = @(
-        [byte], [sbyte], [short], [ushort], [int], [uint], [long], [ulong]
+        [System.Byte], [System.SByte], [System.Int16], [System.UInt16],
+        [System.Int32], [System.UInt32], [System.Int64], [System.UInt64]
     )
     $isInteger = $false
     foreach ($integerType in $integerTypes) {

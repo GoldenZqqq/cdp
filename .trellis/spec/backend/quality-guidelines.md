@@ -752,6 +752,14 @@ InModuleScope cdp -Parameters @{ Value = $value } {
 - Environment variables, location, and module config cache are restored after each scenario that changes them.
 - Argument completer tests use `TabExpansion2` so the registered command boundary, not a copied scriptblock, is exercised.
 - Capture `Write-Host` output with information-stream redirection (`6>&1`) when success/failure text is part of the contract.
+- Parse JSON fixtures with `ConvertFrom-Json -InputObject` and the production
+  array normalizer; do not rely on pipeline enumeration inside `@(...)` under
+  Windows PowerShell 5.1.
+- Use framework type names such as `[System.Int16]`, not edition-dependent
+  aliases such as `[short]`, in shared PowerShell 5.1/7 code.
+- Native exec probes use temporary `-File` scripts when the test targets argv,
+  cwd, stderr, or exit codes; nested `powershell -Command` parsing is a separate
+  host behavior and must not obscure the cdp boundary.
 
 ### 4. Validation & Error Matrix
 
@@ -855,7 +863,7 @@ CDP_TEST_TMUX_LOG    records fake tmux arguments
 ### 3. Contracts
 
 - The same test file must run under bash and zsh without a caller pre-sourcing helpers.
-- Normalize the temporary base with a physical `pwd` before `mktemp -d`; runner-provided `TMPDIR` may end in `/`, and logical double-slash paths must not become expected filesystem identities.
+- Normalize both the temporary base and the created root with a physical `pwd` around `mktemp -d`; runner-provided `TMPDIR` may end in `/`, and macOS may expose `/var` logically while `pwd -P` resolves `/private/var`.
 - Config, state, repositories, workspaces, fake executables, and logs live under one validated `mktemp -d` root and are removed by its trap.
 - Every test that reaches workspace launch shadows `tmux` with a fixture executable, even when workspace behavior is not the test's primary subject. Runner images may preinstall real `tmux`, which must never create or attach a session during tests.
 - Dependency-negative checks override `PATH` only in child scopes and explicitly remove test functions; later tests retain the original executable search path.

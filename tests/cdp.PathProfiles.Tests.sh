@@ -53,6 +53,7 @@ new_project="$(CDP_PATH_PROFILE=linux cdp_new_project_json api /work/api)"
 jq -e '.rootPath == "/work/api" and .paths.linux == "/work/api"' <<< "$new_project" >/dev/null
 
 test_root="$(mktemp -d "${TMPDIR:-/tmp}/cdp-path-profile-tests.XXXXXX")"
+test_root="$(cd "$test_root" && pwd -P)"
 trap 'rm -rf "$test_root"' EXIT
 mkdir -p "$test_root/resolved" "$test_root/added"
 

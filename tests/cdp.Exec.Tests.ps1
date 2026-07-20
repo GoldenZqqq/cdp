@@ -209,13 +209,21 @@ Describe 'cdp exec native execution' {
             [PSCustomObject]@{ name='second'; rootPath=$script:SecondPath; enabled=$true },
             [PSCustomObject]@{ name='third'; rootPath=$script:ThirdPath; enabled=$true }
         ) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
+        $script:CaptureProbe = Join-Path $TestDrive 'capture-probe.ps1'
+        $script:ExitProbe = Join-Path $TestDrive 'exit-probe.ps1'
+        $script:SleepProbe = Join-Path $TestDrive 'sleep-probe.ps1'
+        '[Console]::Out.Write($PWD.Path); [Console]::Error.Write("warn")' |
+            Set-Content -LiteralPath $script:CaptureProbe -Encoding UTF8
+        'if ((Split-Path -Leaf $PWD.Path) -eq $args[0]) { exit [int]$args[1] } else { exit 0 }' |
+            Set-Content -LiteralPath $script:ExitProbe -Encoding UTF8
+        'Start-Sleep -Seconds 2' | Set-Content -LiteralPath $script:SleepProbe -Encoding UTF8
     }
 
     It 'captures ordered stdout stderr exit codes and working directories' {
-        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; HostExe=$script:PowerShellExecutable } {
+        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; HostExe=$script:PowerShellExecutable; Probe=$script:CaptureProbe } {
             $invocation = ConvertFrom-CdpInvokeArguments -Command exec -RemainingArgs @(
-                '--all','--config',$ConfigPath,'--jobs','2','--yes','--',$HostExe,'-NoLogo','-NoProfile','-Command',
-                '[Console]::Out.Write($PWD.Path); [Console]::Error.Write("warn")'
+                '--all','--config',$ConfigPath,'--jobs','2','--yes','--',$HostExe,
+                '-NoLogo','-NoProfile','-File',$Probe
             )
             $plan = New-CdpExecPlan -Invocation $invocation
             Invoke-CdpExecWorkers -Plan $plan
@@ -246,24 +254,26 @@ foreach ($value in $args) { '<' + $value + '>' }
             Invoke-CdpExecWorkers -Plan $plan
 
             $plan.Items[0].Status | Should -Be succeeded
-            $plan.Items[0].Stdout | Should -Be "cwd=$($plan.Items[0].ResolvedPath)`ncount=2`n<path with spaces>`n<;touch $Marker>"
+            $plan.Items[0].Stdout | Should -Be (@(
+                "cwd=$($plan.Items[0].ResolvedPath)", 'count=2', '<path with spaces>', "<;touch $Marker>"
+            ) -join [Environment]::NewLine)
             Test-Path -LiteralPath $Marker | Should -BeFalse
         }
     }
 
     It 'continues after failures and fail-fast cancels future batches' {
-        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; HostExe=$script:PowerShellExecutable } {
+        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; HostExe=$script:PowerShellExecutable; Probe=$script:ExitProbe } {
             $continueInvocation = ConvertFrom-CdpInvokeArguments -Command exec -RemainingArgs @(
-                '--all','--config',$ConfigPath,'--jobs','1','--yes','--',$HostExe,'-NoLogo','-NoProfile','-Command',
-                'if ((Split-Path -Leaf $PWD.Path) -eq "first") { exit 7 } else { exit 0 }'
+                '--all','--config',$ConfigPath,'--jobs','1','--yes','--',$HostExe,
+                '-NoLogo','-NoProfile','-File',$Probe,'first','7'
             )
             $continuePlan = New-CdpExecPlan -Invocation $continueInvocation
             Invoke-CdpExecWorkers -Plan $continuePlan
             @($continuePlan.Items.Status) | Should -Be @('failed','succeeded','succeeded')
 
             $fastInvocation = ConvertFrom-CdpInvokeArguments -Command exec -RemainingArgs @(
-                '--all','--config',$ConfigPath,'--jobs','1','--fail-fast','--yes','--',$HostExe,'-NoLogo','-NoProfile','-Command',
-                'if ((Split-Path -Leaf $PWD.Path) -eq "first") { exit 7 } else { exit 0 }'
+                '--all','--config',$ConfigPath,'--jobs','1','--fail-fast','--yes','--',$HostExe,
+                '-NoLogo','-NoProfile','-File',$Probe,'first','7'
             )
             $fastPlan = New-CdpExecPlan -Invocation $fastInvocation
             Invoke-CdpExecWorkers -Plan $fastPlan
@@ -274,9 +284,10 @@ foreach ($value in $args) { '<' + $value + '>' }
 
     It 'times out commands and dry-run creates no process side effect' {
         $marker = Join-Path $TestDrive 'marker.txt'
-        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; Marker=$marker; HostExe=$script:PowerShellExecutable } {
+        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; Marker=$marker; HostExe=$script:PowerShellExecutable; Probe=$script:SleepProbe } {
             $timeoutInvocation = ConvertFrom-CdpInvokeArguments -Command exec -RemainingArgs @(
-                'first','--config',$ConfigPath,'--timeout','1','--yes','--',$HostExe,'-NoLogo','-NoProfile','-Command','Start-Sleep -Seconds 2'
+                'first','--config',$ConfigPath,'--timeout','1','--yes','--',$HostExe,
+                '-NoLogo','-NoProfile','-File',$Probe
             )
             $timeoutPlan = New-CdpExecPlan -Invocation $timeoutInvocation
             Invoke-CdpExecWorkers -Plan $timeoutPlan
@@ -294,10 +305,10 @@ foreach ($value in $args) { '<' + $value + '>' }
     }
 
     It 'emits one schema document with stable ordered results and exit code' {
-        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; HostExe=$script:PowerShellExecutable } {
+        InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; HostExe=$script:PowerShellExecutable; Probe=$script:ExitProbe } {
             $invocation = ConvertFrom-CdpInvokeArguments -Command exec -RemainingArgs @(
-                '--all','--config',$ConfigPath,'--jobs','1','--json','--yes','--',$HostExe,'-NoLogo','-NoProfile','-Command',
-                'if ((Split-Path -Leaf $PWD.Path) -eq "second") { exit 5 } else { exit 0 }'
+                '--all','--config',$ConfigPath,'--jobs','1','--json','--yes','--',$HostExe,
+                '-NoLogo','-NoProfile','-File',$Probe,'second','5'
             )
             $plan = New-CdpExecPlan -Invocation $invocation
             Invoke-CdpExecWorkers -Plan $plan

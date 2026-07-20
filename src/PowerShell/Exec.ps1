@@ -23,14 +23,19 @@ function Start-CdpExecWorker {
         $worker = {
             param($WorkingDirectory, $Executable, [string[]]$Arguments, $StdoutPath, $StderrPath)
             $watch = [Diagnostics.Stopwatch]::StartNew()
+            $previousErrorActionPreference = $ErrorActionPreference
             try {
                 Set-Location -LiteralPath $WorkingDirectory -ErrorAction Stop
                 $global:LASTEXITCODE = 0
+                $ErrorActionPreference = 'Continue'
                 $null | & $Executable @Arguments 1> $StdoutPath 2> $StderrPath
                 [PSCustomObject]@{ ExitCode=[int]$global:LASTEXITCODE; ElapsedMs=[int]$watch.ElapsedMilliseconds; Error='' }
             } catch {
                 [PSCustomObject]@{ ExitCode=$null; ElapsedMs=[int]$watch.ElapsedMilliseconds; Error=$_.Exception.Message }
-            } finally { $watch.Stop() }
+            } finally {
+                $ErrorActionPreference = $previousErrorActionPreference
+                $watch.Stop()
+            }
         }
         [void]$pipeline.AddScript($worker.ToString())
         [void]$pipeline.AddArgument([string]$Item.ResolvedPath)

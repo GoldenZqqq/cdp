@@ -46,7 +46,7 @@ Describe 'cdp workspace lifecycle persistence' {
 
     It 'creates stable references and supports show edit remove' {
         Invoke-CdpWorkspace -Add team -Projects api,web -Open codex -Layout split-horizontal -ConfigPath $script:ConfigPath -Confirm:$false
-        $created = @(Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8 | ConvertFrom-Json)[0]
+        $created = (ConvertFrom-Json -InputObject (Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8))[0]
         $created.projects[0].rootPath | Should -Be $script:ApiPath
         $created.layout.mode | Should -Be split
 
@@ -54,14 +54,14 @@ Describe 'cdp workspace lifecycle persistence' {
         $shown.name | Should -Be team
 
         Invoke-CdpWorkspace -Edit team -Projects web -ClearOpen -Layout tabs -ConfigPath $script:ConfigPath -Confirm:$false
-        $edited = @(Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8 | ConvertFrom-Json)[0]
+        $edited = (ConvertFrom-Json -InputObject (Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8))[0]
         @($edited.projects).Count | Should -Be 1
         $edited.projects[0].name | Should -Be web
         $edited.PSObject.Properties['open'] | Should -BeNullOrEmpty
         $edited.layout.mode | Should -Be tabs
 
         Invoke-CdpWorkspace -Remove team -ConfigPath $script:ConfigPath -Confirm:$false
-        @(Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8 | ConvertFrom-Json).Count | Should -Be 0
+        (ConvertFrom-Json -InputObject (Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8)).Count | Should -Be 0
     }
 
     It 'migrates legacy references and refreshes renamed names by raw identity' {
@@ -74,7 +74,7 @@ Describe 'cdp workspace lifecycle persistence' {
         @($before | Where-Object Status -eq renamed).Count | Should -Be 1
 
         Invoke-CdpWorkspace -Validate -Fix -Name team -ConfigPath $script:ConfigPath -Confirm:$false | Out-Null
-        $workspace = @(Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8 | ConvertFrom-Json)[0]
+        $workspace = (ConvertFrom-Json -InputObject (Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8))[0]
         $workspace.projects[0].rootPath | Should -Be $script:ApiPath
         $workspace.projects[1].name | Should -Be web
     }
@@ -118,7 +118,7 @@ Describe 'cdp workspace lifecycle persistence' {
         }) -Depth 8 | Set-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Encoding UTF8
 
         Invoke-CdpWorkspace -Validate -Fix -Name team -ConfigPath $script:ConfigPath -Confirm:$false | Out-Null
-        $workspace = @(Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8 | ConvertFrom-Json)[0]
+        $workspace = (ConvertFrom-Json -InputObject (Get-Content -LiteralPath (Join-Path $TestDrive 'workspaces.json') -Raw -Encoding UTF8))[0]
 
         $workspace.futureWorkspace | Should -Be 'keep-workspace'
         $workspace.projects[0].name | Should -Be api

@@ -31,6 +31,19 @@ function New-CdpActionResult {
     $result
 }
 
+function ConvertTo-CdpJsonArrayItems {
+    param([Parameter(Mandatory = $false)][AllowNull()][object]$Value)
+
+    $items = if ($null -eq $Value) {
+        [object[]]@()
+    } elseif ($Value -is [System.Array]) {
+        [object[]]$Value.Clone()
+    } else {
+        [object[]]@($Value)
+    }
+    return ,$items
+}
+
 function Read-CdpJsonArrayMutationDocument {
     param([Parameter(Mandatory = $true)][string]$LiteralPath)
 
@@ -86,7 +99,9 @@ function Read-CdpJsonDocument {
     $fingerprint = Get-CdpFileFingerprint -LiteralPath $LiteralPath
     $content = Get-Content -LiteralPath $LiteralPath -Raw -Encoding UTF8
     $parsedValue = ConvertFrom-Json -InputObject $content
-    $value = if ($content.TrimStart().StartsWith('[')) { @($parsedValue) } else { $parsedValue }
+    $value = if ($content.TrimStart().StartsWith('[')) {
+        ConvertTo-CdpJsonArrayItems -Value $parsedValue
+    } else { $parsedValue }
     [PSCustomObject]@{
         Path = $LiteralPath
         Fingerprint = $fingerprint
@@ -226,7 +241,9 @@ function Restore-CdpJsonBackup {
 
     $content = Get-Content -LiteralPath $backup[0].FullName -Raw -Encoding UTF8
     $parsedValue = ConvertFrom-Json -InputObject $content
-    $value = if ($content.TrimStart().StartsWith('[')) { @($parsedValue) } else { $parsedValue }
+    $value = if ($content.TrimStart().StartsWith('[')) {
+        ConvertTo-CdpJsonArrayItems -Value $parsedValue
+    } else { $parsedValue }
     Write-CdpJsonFile `
         -LiteralPath $LiteralPath `
         -Value $value `

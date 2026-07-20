@@ -7,7 +7,7 @@ BeforeAll {
 
 Describe 'cdp path profile resolver' {
     It 'selects the same explicit mapping for all supported profiles' {
-        $projects = @(Get-Content -LiteralPath $script:FixturePath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $script:FixturePath -Raw -Encoding UTF8)
         InModuleScope cdp -Parameters @{ Project = $projects[0] } {
             (Resolve-CdpProjectPath -Project $Project -Profile windows).ResolvedPath | Should -Be 'C:/Work/api'
             (Resolve-CdpProjectPath -Project $Project -Profile wsl).ResolvedPath | Should -Be '/home/dev/api'
@@ -17,7 +17,7 @@ Describe 'cdp path profile resolver' {
     }
 
     It 'keeps legacy rootPath fallback and WSL conversion compatible' {
-        $projects = @(Get-Content -LiteralPath $script:FixturePath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $script:FixturePath -Raw -Encoding UTF8)
         InModuleScope cdp -Parameters @{ Project = $projects[1] } {
             $linux = Resolve-CdpProjectPath -Project $Project -Profile linux
             $wsl = Resolve-CdpProjectPath -Project $Project -Profile wsl
@@ -29,7 +29,7 @@ Describe 'cdp path profile resolver' {
     }
 
     It 'never falls back when an explicit current mapping is invalid' {
-        $projects = @(Get-Content -LiteralPath $script:FixturePath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $script:FixturePath -Raw -Encoding UTF8)
         InModuleScope cdp -Parameters @{ Project = $projects[2] } {
             $resolution = Resolve-CdpProjectPath -Project $Project -Profile linux
             $resolution.IsExplicit | Should -BeTrue
@@ -76,7 +76,7 @@ Describe 'cdp path profile integrations' {
         New-Item -ItemType Directory -Path $projectPath | Out-Null
 
         Add-Project -Name Added -Path $projectPath -ConfigPath $configPath -Confirm:$false | Out-Null
-        $project = @(Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)[0]
+        $project = (ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8))[0]
 
         $project.rootPath | Should -Be $projectPath
         $project.paths.linux | Should -Be $projectPath
@@ -92,7 +92,7 @@ Describe 'cdp path profile integrations' {
         }) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $configPath -Encoding UTF8
 
         Add-Project -Name Duplicate -Path $projectPath -ConfigPath $configPath -Confirm:$false | Out-Null
-        @(Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json).Count | Should -Be 1
+        (ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)).Count | Should -Be 1
     }
 
     It 'uses resolved paths for status JSON while preserving raw identity' {
@@ -130,7 +130,7 @@ Describe 'cdp path profile integrations' {
         Add-ProjectTag -Name Shared -Tag profile-test -ConfigPath $configPath -Confirm:$false | Out-Null
         Repair-ProjectConfig -ConfigPath $configPath -Confirm:$false | Out-Null
         Show-CdpProjectStatus -ConfigPath $configPath -Fix -Confirm:$false 6>&1 | Out-Null
-        $project = @(Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)[0]
+        $project = (ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8))[0]
 
         $project.enabled | Should -BeTrue
         $project.paths.linux | Should -Be (Join-Path $TestDrive 'missing-linux')
@@ -151,7 +151,7 @@ Describe 'cdp path profile integrations' {
         ) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $configPath -Encoding UTF8
 
         Show-CdpProjectStatus -ConfigPath $configPath -Fix -Confirm:$false 6>&1 | Out-Null
-        $projects = @(Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $projects = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)
         @($projects.name) | Should -Be @('ExplicitExisting')
     }
 
@@ -197,6 +197,6 @@ Describe 'cdp path profile integrations' {
         $document.projects[0].resolvedPath | Should -BeNullOrEmpty
 
         Show-CdpProjectStatus -ConfigPath $configPath -Fix -Confirm:$false 6>&1 | Out-Null
-        @(Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json).Count | Should -Be 1
+        (ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)).Count | Should -Be 1
     }
 }

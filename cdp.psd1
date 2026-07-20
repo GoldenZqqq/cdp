@@ -120,6 +120,8 @@ v2.2.0 - Automation and Multi-Repository Workflows
 - Improved: switching, status, workspace, doctor/repair, add/scan/init, picker/list, and recent paths share one resolver while rootPath remains backward compatible
 - Safety: repair and status fix preserve unavailable explicit platform mappings and mutate missing projects by name plus raw path identity
 - Safety: workspace migration preserves unknown/unresolved references, launch planning validates every target before native WT/tmux argv execution, and dry-run starts no process
+- Fixed: Windows PowerShell 5.1 normalizes JSON arrays consistently for path profiles, workspaces, and multi-repository exec
+- Fixed: Windows PowerShell 5.1 workspace size validation and native stderr capture no longer fail on edition-specific runtime behavior
 
 v2.1.0 - Engineering Foundation
 - Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks

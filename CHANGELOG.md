@@ -26,6 +26,11 @@
 - Workspace edits and migration preserve unknown fields, avoid same-name fallback after deletion, and skip persistence when `validate --fix` has no semantic change.
 - Multi-repository exec now resolves the complete selection/path/executable plan before approval, invokes only native executable + argv without `eval`, preserves selection order, and returns stable exit codes 0-3.
 
+### Fixed
+
+- Fixed Windows PowerShell 5.1 JSON-array normalization so path profiles, workspace lifecycle, and workspace-backed exec receive individual records instead of one wrapped array.
+- Fixed Windows PowerShell 5.1 workspace size type checks and native stderr handling, and made Windows/macOS regression fixtures independent of edition-specific command parsing and physical temporary-path aliases.
+
 ## 2.1.0
 
 ### Added
