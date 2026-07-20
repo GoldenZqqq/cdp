@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"复用 recent state schema、invalid-state read-only 与原子持久化契约。"}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"新增 PowerShell/Shell frecency domain 并保持生成产物边界。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"定义损坏 state fallback、reset safety 与 no-op 行为。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"执行跨平台排序 fixture、PowerShell 5.1、bash/zsh/Bash 3.2 门禁。"}

@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"检查 reset 是否保留未知字段、拒绝 invalid state 并避免 no-op 写入。"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"检查缺失/损坏/未来时间与大历史的降级和错误通道。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"检查 shared fixture、排序一致性、completion、CI 与发布元数据。"}
