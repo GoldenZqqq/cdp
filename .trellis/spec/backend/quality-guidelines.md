@@ -759,6 +759,9 @@ InModuleScope cdp -Parameters @{ Value = $value } {
   aliases such as `[short]`, in shared PowerShell 5.1/7 code.
 - Test object presence with `$null -ne $value`; Windows PowerShell 5.1 can treat
   deserialized `PSCustomObject` values differently in direct boolean conditions.
+- Put `@(...)` around the complete `if`/`switch` expression when its result must
+  remain an array. Arrays created inside a branch are emitted again by the
+  control-flow pipeline, and a single item has no reliable `.Count` in 5.1.
 - Native exec probes use temporary `-File` scripts when the test targets argv,
   cwd, stderr, or exit codes; nested `powershell -Command` parsing is a separate
   host behavior and must not obscure the cdp boundary.

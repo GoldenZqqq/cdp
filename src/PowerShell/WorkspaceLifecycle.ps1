@@ -128,11 +128,13 @@ function Resolve-CdpWorkspaceReference {
     $legacy = $Reference -is [string]
     $configuredName = if ($legacy) { [string]$Reference } else { [string](Get-CdpWorkspaceReferenceValue $Reference 'name') }
     $rawPath = if ($legacy) { '' } else { [string](Get-CdpWorkspaceReferenceValue $Reference 'rootPath') }
-    $projectMatches = if ($legacy) {
-        @($Projects | Where-Object { [string]::Equals([string]$_.name, $configuredName, [StringComparison]::Ordinal) })
-    } else {
-        @($Projects | Where-Object { [string]::Equals([string]$_.rootPath, $rawPath, [StringComparison]::Ordinal) })
-    }
+    $projectMatches = @(
+        if ($legacy) {
+            $Projects | Where-Object { [string]::Equals([string]$_.name, $configuredName, [StringComparison]::Ordinal) }
+        } else {
+            $Projects | Where-Object { [string]::Equals([string]$_.rootPath, $rawPath, [StringComparison]::Ordinal) }
+        }
+    )
     $project = if ($projectMatches.Count -eq 1) { $projectMatches[0] } else { $null }
     $status = if ($schemaStatus -ne 'ok') {
         $schemaStatus
