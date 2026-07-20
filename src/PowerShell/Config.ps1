@@ -65,7 +65,7 @@ function Get-CdpProjectConfig {
 
     $jsonContent = Get-Content -LiteralPath $configItem.FullName -Raw -Encoding UTF8
     $allProjects = ConvertFrom-Json -InputObject $jsonContent
-    $projects = ConvertTo-CdpJsonArrayItems -Value $allProjects
+    $projects = (ConvertTo-CdpJsonArrayValue -Value $allProjects).Value
 
     $configData = [PSCustomObject]@{
         Path = $configItem.FullName

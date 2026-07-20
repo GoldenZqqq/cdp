@@ -31,7 +31,7 @@ function New-CdpActionResult {
     $result
 }
 
-function ConvertTo-CdpJsonArrayItems {
+function ConvertTo-CdpJsonArrayValue {
     param([Parameter(Mandatory = $false)][AllowNull()][object]$Value)
 
     $items = if ($null -eq $Value) {
@@ -41,7 +41,7 @@ function ConvertTo-CdpJsonArrayItems {
     } else {
         [object[]]@($Value)
     }
-    return ,$items
+    [PSCustomObject]@{ Value = $items }
 }
 
 function Read-CdpJsonArrayMutationDocument {
@@ -100,7 +100,7 @@ function Read-CdpJsonDocument {
     $content = Get-Content -LiteralPath $LiteralPath -Raw -Encoding UTF8
     $parsedValue = ConvertFrom-Json -InputObject $content
     $value = if ($content.TrimStart().StartsWith('[')) {
-        ConvertTo-CdpJsonArrayItems -Value $parsedValue
+        (ConvertTo-CdpJsonArrayValue -Value $parsedValue).Value
     } else { $parsedValue }
     [PSCustomObject]@{
         Path = $LiteralPath
@@ -242,7 +242,7 @@ function Restore-CdpJsonBackup {
     $content = Get-Content -LiteralPath $backup[0].FullName -Raw -Encoding UTF8
     $parsedValue = ConvertFrom-Json -InputObject $content
     $value = if ($content.TrimStart().StartsWith('[')) {
-        ConvertTo-CdpJsonArrayItems -Value $parsedValue
+        (ConvertTo-CdpJsonArrayValue -Value $parsedValue).Value
     } else { $parsedValue }
     Write-CdpJsonFile `
         -LiteralPath $LiteralPath `
