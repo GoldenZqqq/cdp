@@ -116,6 +116,13 @@ cd -- "$resolved_path" || exit 1
 PowerShell follows the same boundary with a fixed module-owned worker:
 
 ```powershell
-Set-Location -LiteralPath $ResolvedPath
-$null | & $Executable @Arguments 1> $StdoutPath 2> $StderrPath
+$startInfo = [Diagnostics.ProcessStartInfo]::new()
+$startInfo.FileName = $Executable
+$startInfo.WorkingDirectory = $ResolvedPath
+$startInfo.RedirectStandardOutput = $true
+$startInfo.RedirectStandardError = $true
+# .NET Core uses ArgumentList; Windows PowerShell 5.1 uses a quoted Arguments line.
 ```
+
+Do not use PowerShell stream redirection for native stderr in the shared worker:
+Windows PowerShell 5.1 wraps it as `NativeCommandError` and corrupts raw capture.

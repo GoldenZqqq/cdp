@@ -92,7 +92,7 @@ Describe 'cdp path profile integrations' {
         }) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $configPath -Encoding UTF8
 
         Add-Project -Name Duplicate -Path $projectPath -ConfigPath $configPath -Confirm:$false | Out-Null
-        (ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)).Count | Should -Be 1
+        @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)).Count | Should -Be 1
     }
 
     It 'uses resolved paths for status JSON while preserving raw identity' {
@@ -197,6 +197,6 @@ Describe 'cdp path profile integrations' {
         $document.projects[0].resolvedPath | Should -BeNullOrEmpty
 
         Show-CdpProjectStatus -ConfigPath $configPath -Fix -Confirm:$false 6>&1 | Out-Null
-        (ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)).Count | Should -Be 1
+        @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)).Count | Should -Be 1
     }
 }

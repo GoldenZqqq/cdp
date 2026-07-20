@@ -757,6 +757,8 @@ InModuleScope cdp -Parameters @{ Value = $value } {
   Windows PowerShell 5.1.
 - Use framework type names such as `[System.Int16]`, not edition-dependent
   aliases such as `[short]`, in shared PowerShell 5.1/7 code.
+- Test object presence with `$null -ne $value`; Windows PowerShell 5.1 can treat
+  deserialized `PSCustomObject` values differently in direct boolean conditions.
 - Native exec probes use temporary `-File` scripts when the test targets argv,
   cwd, stderr, or exit codes; nested `powershell -Command` parsing is a separate
   host behavior and must not obscure the cdp boundary.

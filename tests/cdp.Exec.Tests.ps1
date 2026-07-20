@@ -248,14 +248,14 @@ foreach ($value in $args) { '<' + $value + '>' }
         InModuleScope cdp -Parameters @{ ConfigPath=$script:ConfigPath; Probe=$probe; Marker=$marker; HostExe=$script:PowerShellExecutable } {
             $invocation = ConvertFrom-CdpInvokeArguments -Command exec -RemainingArgs @(
                 'first','--config',$ConfigPath,'--yes','--',$HostExe,'-NoLogo','-NoProfile','-File',$Probe,
-                'path with spaces',";touch $Marker"
+                'path with spaces',";touch $Marker",''
             )
             $plan = New-CdpExecPlan -Invocation $invocation
             Invoke-CdpExecWorkers -Plan $plan
 
             $plan.Items[0].Status | Should -Be succeeded
             $plan.Items[0].Stdout | Should -Be (@(
-                "cwd=$($plan.Items[0].ResolvedPath)", 'count=2', '<path with spaces>', "<;touch $Marker>"
+                "cwd=$($plan.Items[0].ResolvedPath)", 'count=3', '<path with spaces>', "<;touch $Marker>", '<>'
             ) -join [Environment]::NewLine)
             Test-Path -LiteralPath $Marker | Should -BeFalse
         }

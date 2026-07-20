@@ -7,6 +7,7 @@ script_path="$0"
 if [[ -n "${BASH_SOURCE:-}" ]]; then script_path="${BASH_SOURCE[0]}"; fi
 repo_root="$(CDPATH= cd -- "$(dirname -- "$script_path")/.." && pwd)"
 test_root="$(mktemp -d "${TMPDIR:-/tmp}/cdp-exec-tests.XXXXXX")"
+test_root="$(cd "$test_root" && pwd -P)"
 trap 'rm -rf "$test_root"' EXIT
 
 export HOME="$test_root/home"

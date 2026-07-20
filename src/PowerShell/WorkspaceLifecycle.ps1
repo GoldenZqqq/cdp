@@ -5,7 +5,7 @@ function ConvertTo-CdpWorkspaceLayout {
     param([string]$Value, [object]$Existing)
 
     if ([string]::IsNullOrWhiteSpace($Value)) {
-        if ($Existing) { return $Existing }
+        if ($null -ne $Existing) { return $Existing }
         return [PSCustomObject]@{ mode = 'tabs' }
     }
     switch ($Value.ToLowerInvariant()) {
@@ -133,11 +133,20 @@ function Resolve-CdpWorkspaceReference {
     } else {
         @($Projects | Where-Object { [string]::Equals([string]$_.rootPath, $rawPath, [StringComparison]::Ordinal) })
     }
-    $status = if ($schemaStatus -ne 'ok') { $schemaStatus } elseif ($projectMatches.Count -eq 0) { 'missing-project' } elseif ($projectMatches.Count -gt 1) { 'ambiguous-project' } else { 'ok' }
     $project = if ($projectMatches.Count -eq 1) { $projectMatches[0] } else { $null }
-    if ($schemaStatus -eq 'ok' -and $project -and $project.enabled -ne $true) { $status = 'disabled-project' }
-    if ($schemaStatus -eq 'ok' -and $project -and $legacy) { $status = 'legacy' }
-    if ($schemaStatus -eq 'ok' -and $project -and -not $legacy -and -not [string]::Equals([string]$project.name, $configuredName, [StringComparison]::Ordinal)) { $status = 'renamed' }
+    $status = if ($schemaStatus -ne 'ok') {
+        $schemaStatus
+    } elseif ($projectMatches.Count -eq 0) {
+        'missing-project'
+    } elseif ($projectMatches.Count -gt 1) {
+        'ambiguous-project'
+    } elseif ($project.enabled -ne $true) {
+        'disabled-project'
+    } elseif ($legacy) {
+        'legacy'
+    } elseif (-not [string]::Equals([string]$project.name, $configuredName, [StringComparison]::Ordinal)) {
+        'renamed'
+    } else { 'ok' }
     New-CdpWorkspaceResolvedReference -Reference $Reference -Project $project -Status $status -WorkspaceOpen $WorkspaceOpen
 }
 
@@ -145,17 +154,18 @@ function New-CdpWorkspaceResolvedReference {
     param([object]$Reference, [object]$Project, [string]$Status, [string]$WorkspaceOpen)
 
     $legacy = $Reference -is [string]
+    $hasProject = $null -ne $Project
     $configuredName = if ($legacy) { [string]$Reference } else { [string](Get-CdpWorkspaceReferenceValue $Reference 'name') }
-    $rawPath = if ($legacy) { if ($Project) { [string]$Project.rootPath } else { '' } } else { [string](Get-CdpWorkspaceReferenceValue $Reference 'rootPath') }
-    $resolution = if ($Project) { Resolve-CdpProjectPath -Project $Project } else { $null }
+    $rawPath = if ($legacy -and $hasProject) { [string]$Project.rootPath } elseif ($legacy) { '' } else { [string](Get-CdpWorkspaceReferenceValue $Reference 'rootPath') }
+    $resolution = if ($hasProject) { Resolve-CdpProjectPath -Project $Project } else { $null }
     $canReplaceStatus = $Status -in @('ok', 'legacy', 'renamed')
-    if ($canReplaceStatus -and $resolution -and $resolution.ErrorCode) { $Status = 'invalid-path-profile' }
-    elseif ($canReplaceStatus -and $resolution -and -not (Test-Path -LiteralPath $resolution.ResolvedPath)) { $Status = 'missing-path' }
+    if ($canReplaceStatus -and $null -ne $resolution -and $resolution.ErrorCode) { $Status = 'invalid-path-profile' }
+    elseif ($canReplaceStatus -and $null -ne $resolution -and -not (Test-Path -LiteralPath $resolution.ResolvedPath)) { $Status = 'missing-path' }
     $projectOpen = [string](Get-CdpWorkspaceReferenceValue $Reference 'open')
     $launcherName = if ($projectOpen) { $projectOpen } else { $WorkspaceOpen }
     try { if ($launcherName) { [void](Get-CdpWorkspaceLauncher -Open $launcherName) } }
     catch { if ($Status -in @('ok', 'legacy', 'renamed')) { $Status = 'invalid-launcher' } }
-    [PSCustomObject]@{ IsProjectReference=$true; Reference=$Reference; ConfiguredName=$configuredName; Name=if($Project){[string]$Project.name}else{$configuredName}; RawPath=$rawPath; ResolvedPath=if($resolution){$resolution.ResolvedPath}else{''}; Project=$Project; Status=$Status; Launcher=$launcherName; Size=Get-CdpWorkspaceReferenceValue $Reference 'size' }
+    [PSCustomObject]@{ IsProjectReference=$true; Reference=$Reference; ConfiguredName=$configuredName; Name=if($hasProject){[string]$Project.name}else{$configuredName}; RawPath=$rawPath; ResolvedPath=if($null -ne $resolution){$resolution.ResolvedPath}else{''}; Project=$Project; Status=$Status; Launcher=$launcherName; Size=Get-CdpWorkspaceReferenceValue $Reference 'size' }
 }
 
 function Get-CdpWorkspaceValidation {
@@ -188,11 +198,11 @@ function Convert-CdpWorkspaceReferences {
     $changed = $false
     foreach ($result in $Validation) {
         if (-not $result.IsProjectReference) { continue }
-        if ($result.Project -and $result.Reference -is [string]) {
+        if ($null -ne $result.Project -and $result.Reference -is [string]) {
             $reference = New-CdpWorkspaceProjectReference -Project $result.Project
             $updated += $reference
             $changed = $true
-        } elseif ($result.Project -and -not [string]::Equals([string]$result.Project.name, [string](Get-CdpWorkspaceReferenceValue $result.Reference 'name'), [StringComparison]::Ordinal)) {
+        } elseif ($null -ne $result.Project -and -not [string]::Equals([string]$result.Project.name, [string](Get-CdpWorkspaceReferenceValue $result.Reference 'name'), [StringComparison]::Ordinal)) {
             Set-CdpWorkspaceReferenceValue -Reference $result.Reference -Name name -Value ([string]$result.Project.name)
             $updated += $result.Reference
             $changed = $true

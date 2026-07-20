@@ -7,6 +7,67 @@ function New-CdpExecTempDirectory {
     $path
 }
 
+function ConvertTo-CdpWindowsCommandLineArgument {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
+
+    if ($Value.Length -gt 0 -and $Value -notmatch '[\s"]') { return $Value }
+    $escaped = [regex]::Replace($Value, '(\\*)"', {
+        param($match)
+        ($match.Groups[1].Value * 2) + '\"'
+    })
+    $escaped = [regex]::Replace($escaped, '(\\+)$', '$1$1')
+    '"' + $escaped + '"'
+}
+
+function Join-CdpWindowsCommandLineArguments {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()][AllowEmptyString()][string[]]$Arguments
+    )
+
+    (@($Arguments | ForEach-Object {
+        ConvertTo-CdpWindowsCommandLineArgument -Value ([string]$_)
+    }) -join ' ')
+}
+
+function Get-CdpExecWorkerScript {
+    {
+        param($WorkingDirectory, $Executable, [string[]]$Arguments, $ArgumentLine, $StdoutPath, $StderrPath)
+        $watch = [Diagnostics.Stopwatch]::StartNew()
+        $process = $null
+        try {
+            $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+            $startInfo.FileName = $Executable
+            $startInfo.WorkingDirectory = $WorkingDirectory
+            $startInfo.UseShellExecute = $false
+            $startInfo.CreateNoWindow = $true
+            $startInfo.RedirectStandardOutput = $true
+            $startInfo.RedirectStandardError = $true
+            if ($startInfo.PSObject.Properties['ArgumentList']) {
+                foreach ($argument in $Arguments) { [void]$startInfo.ArgumentList.Add($argument) }
+            } else { $startInfo.Arguments = $ArgumentLine }
+            $process = New-Object System.Diagnostics.Process
+            $process.StartInfo = $startInfo
+            [void]$process.Start()
+            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+            $stderrTask = $process.StandardError.ReadToEndAsync()
+            $process.WaitForExit()
+            $encoding = New-Object System.Text.UTF8Encoding($false)
+            [IO.File]::WriteAllText($StdoutPath, $stdoutTask.Result, $encoding)
+            [IO.File]::WriteAllText($StderrPath, $stderrTask.Result, $encoding)
+            [PSCustomObject]@{ ExitCode=[int]$process.ExitCode; ElapsedMs=[int]$watch.ElapsedMilliseconds; Error='' }
+        } catch {
+            [PSCustomObject]@{ ExitCode=$null; ElapsedMs=[int]$watch.ElapsedMilliseconds; Error=$_.Exception.Message }
+        } finally {
+            if ($null -ne $process) {
+                try { if (-not $process.HasExited) { $process.Kill() } } catch {}
+                $process.Dispose()
+            }
+            $watch.Stop()
+        }
+    }
+}
+
 function Start-CdpExecWorker {
     param(
         [Parameter(Mandatory = $true)][object]$Item,
@@ -20,27 +81,13 @@ function Start-CdpExecWorker {
     $pipeline = [PowerShell]::Create()
     try {
         $pipeline.RunspacePool = $Pool
-        $worker = {
-            param($WorkingDirectory, $Executable, [string[]]$Arguments, $StdoutPath, $StderrPath)
-            $watch = [Diagnostics.Stopwatch]::StartNew()
-            $previousErrorActionPreference = $ErrorActionPreference
-            try {
-                Set-Location -LiteralPath $WorkingDirectory -ErrorAction Stop
-                $global:LASTEXITCODE = 0
-                $ErrorActionPreference = 'Continue'
-                $null | & $Executable @Arguments 1> $StdoutPath 2> $StderrPath
-                [PSCustomObject]@{ ExitCode=[int]$global:LASTEXITCODE; ElapsedMs=[int]$watch.ElapsedMilliseconds; Error='' }
-            } catch {
-                [PSCustomObject]@{ ExitCode=$null; ElapsedMs=[int]$watch.ElapsedMilliseconds; Error=$_.Exception.Message }
-            } finally {
-                $ErrorActionPreference = $previousErrorActionPreference
-                $watch.Stop()
-            }
-        }
+        $worker = Get-CdpExecWorkerScript
+        $argumentLine = Join-CdpWindowsCommandLineArguments -Arguments @($Plan.Arguments)
         [void]$pipeline.AddScript($worker.ToString())
         [void]$pipeline.AddArgument([string]$Item.ResolvedPath)
         [void]$pipeline.AddArgument([string]$Plan.Executable)
         [void]$pipeline.AddArgument([string[]]@($Plan.Arguments))
+        [void]$pipeline.AddArgument($argumentLine)
         [void]$pipeline.AddArgument($stdoutPath)
         [void]$pipeline.AddArgument($stderrPath)
         $startedAt = [DateTime]::UtcNow
