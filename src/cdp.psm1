@@ -36,6 +36,9 @@ $domainFiles = @(
     'StatusBatch.ps1',
     'WorkspaceLifecycle.ps1',
     'Workspace.ps1',
+    'ExecSelection.ps1',
+    'ExecOutput.ps1',
+    'Exec.ps1',
     'Health.ps1',
     'Commands.ps1',
     'Completion.ps1'

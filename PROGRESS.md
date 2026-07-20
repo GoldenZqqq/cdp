@@ -22,7 +22,7 @@ Latest verified GitHub release: v2.1.0 (verified 2026-07-19). Latest verified Po
 
 Current release target: v2.2.0.
 
-Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development has completed the machine-readable status contract, cross-platform path profiles, and workspace lifecycle; safe multi-repository exec is next.
+Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development has completed the machine-readable status contract, cross-platform path profiles, workspace lifecycle, and safe multi-repository exec; frecency ranking is next.
 
 ## 2.2.0 Automation and Multi-Repository Checklist
 
@@ -31,7 +31,7 @@ Release status: v2.1.0 passed the complete hosted matrix and is published on Git
 - [x] Add cross-runtime JSON, parser, stdout/stderr, exit-code, and no-color regressions.
 - [x] Add cross-platform path profiles.
 - [x] Add workspace lifecycle operations.
-- [ ] Add safe multi-repository exec.
+- [x] Add safe multi-repository exec.
 - [ ] Add frecency ranking.
 - [ ] Complete and publish v2.2.0.
 
@@ -40,6 +40,8 @@ Status JSON verification: the PowerShell 7.5.2 quality gate passed Pester `104/1
 Path profile verification: PowerShell 7.5.2 passed Pester `117/117`, command coverage `2529/3604` (`70.17%`), PSScriptAnalyzer, and release metadata. One shared fixture covers Windows, WSL, Linux, and macOS resolution, legacy fallback, WSL conversion, invalid overrides/mappings, raw/resolved status identity, safe fix/repair behavior, and add/scan-compatible writes. bash, zsh, and the fixed Bash 3.2 container passed the path contract plus the existing CLI/status/safety/persistence matrices. After workspace lifecycle integration, the generated shell SHA-256 is `33fbf6c5b2e0cf003943269b715c34c6e9a24276b023360ea82fce261cce514b`; the current deterministic Scoop draft SHA-256 is `b1dc4e5925e66f5180c978d7f3c1f9035fe793d901adc341d81ec9c28996e771`.
 
 Workspace lifecycle verification: PowerShell and shell now share stable raw-path references, legacy migration, rename/delete/name-reuse diagnostics, unknown-field preservation, no-op fix behavior, launcher precedence, tabs/split layouts, exact WT/tmux argv, partial failure, dry-run, and completion contracts. The full PowerShell 7.5.2 gate passed `129/129` with `72.30%` command coverage (`3088/4271`) and no PSScriptAnalyzer errors. bash, zsh, and the fixed Bash 3.2 image passed lifecycle, CLI, status JSON, path-profile, safe-mutation, shell-v2, persistence, modularization, ShellCheck, documentation, installer, and deterministic Scoop gates. Generated shell SHA-256: `33fbf6c5b2e0cf003943269b715c34c6e9a24276b023360ea82fce261cce514b`; Scoop draft SHA-256: `b1dc4e5925e66f5180c978d7f3c1f9035fe793d901adc341d81ec9c28996e771`.
+
+Multi-repository exec verification: PowerShell, bash, zsh, and Bash 3.2 cover explicit/tag/workspace/`--all` selection, exact raw-identity deduplication, path-profile and stable-reference failures, mandatory `--` argv isolation, bounded workers, timeouts, continue/fail-fast cancellation, dry-run/approval safety, deterministic human/JSON output, and exit codes 0-3. The full PowerShell 7.5.2 gate passed `146/146` with `73.49%` command coverage (`3629/4938`) and no PSScriptAnalyzer errors. Bash, zsh, and the fixed Bash 3.2 matrix passed exec plus the existing modularization, CLI, status, path-profile, workspace, safety, shell-v2, and persistence suites. Generated shell SHA-256: `8a42caa197e3ca54d8c827b4847447d2526b45b03961630e4e4efd38c5af83e2`; deterministic Scoop draft SHA-256: `1f95cd5087d5d62f1c78fceea9fe11770a572c6294991db3f331dae280fb416a`.
 
 ## 2.1.0 Engineering Foundation Checklist
 

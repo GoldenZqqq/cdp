@@ -396,6 +396,7 @@ function Invoke-CdpManagementInvocation {
 function Test-CdpInvocationMutation {
     param([Parameter(Mandatory = $true)][object]$Invocation)
 
+    if ($Invocation.Kind -eq 'exec') { return $true }
     if ($Invocation.Kind -eq 'status') { return $Invocation.Fix -or $Invocation.Push }
     if ($Invocation.Kind -eq 'workspace') {
         return $Invocation.WorkspaceAction -in @('add', 'edit', 'remove', 'open') -or
@@ -413,7 +414,7 @@ function Invoke-Cdp {
 
     .DESCRIPTION
         Keeps the classic `cdp` project switch behavior and adds lightweight
-        subcommands such as `cdp doctor`.
+        subcommands such as `cdp doctor`, `cdp workspace`, and `cdp exec`.
 
     .PARAMETER Command
         Optional subcommand, query, or path-like config argument. Use `doctor` to
@@ -454,6 +455,10 @@ function Invoke-Cdp {
     .EXAMPLE
         cdp api -Open codex
         # Switches to the matching project and starts Codex there
+
+    .EXAMPLE
+        cdp exec '@work' --dry-run -- git status --short
+        # Previews one native command across every enabled project tagged work
     #>
 
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -484,7 +489,8 @@ function Invoke-Cdp {
         [string[]]$RemainingArgs
     )
 
-    $jsonRequested = @($Command, $ConfigPath) + @($RemainingArgs) | Where-Object { $_ -in @('--json', '-json') }
+    $jsonRequested = Test-CdpJsonRequested -Command $Command -ConfigPath $ConfigPath -RemainingArgs $RemainingArgs
+    $execRequested = (Resolve-CdpCommandKind -Command $Command) -eq 'exec'
     try {
         $parserArgs = @($RemainingArgs)
         if ($AllowHook) { $parserArgs = @('--allow-hook') + $parserArgs }
@@ -511,11 +517,13 @@ function Invoke-Cdp {
             $global:LASTEXITCODE = 3
         } else {
             Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+            if ($execRequested) { $global:LASTEXITCODE = 3 }
         }
         return
     }
 
     switch ($invocation.Kind) {
+        'exec' { Invoke-CdpExecInvocation -Invocation $invocation; return }
         'status' { Invoke-CdpStatusInvocation -Invocation $invocation; return }
         'workspace' { Invoke-CdpWorkspaceInvocation -Invocation $invocation; return }
         'switch' {

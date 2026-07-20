@@ -41,12 +41,21 @@ cdp_completion_workspace_names() {
     jq -r '.[] | .name' "$workspace_path" 2>/dev/null
 }
 
+cdp_completion_tags() {
+    local config_path
+    config_path=$(get_default_config 2>/dev/null)
+    [[ -n "$config_path" && -f "$config_path" ]] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    jq -r '.[] | select(.enabled == true) | (.tags // [])[]' "$config_path" 2>/dev/null |
+        sort -u | while IFS= read -r tag; do printf '@%s\n' "$tag"; done
+}
+
 _cdp_completions() {
     local cur prev
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config"
+    local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook exec add remove config"
     local launchers="code cursor codex claude gemini"
     local layouts="tabs split-horizontal split-vertical"
 
@@ -67,6 +76,18 @@ _cdp_completions() {
             projects=$(jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null | tr '\r' ' ')
         fi
         COMPREPLY=($(compgen -W "$subcommands $projects" -- "$cur"))
+        return
+    fi
+
+    if [[ "${COMP_WORDS[1]}" =~ ^(exec|run)$ ]]; then
+        local i projects tags workspace_names
+        for ((i=2; i<COMP_CWORD; i++)); do [[ "${COMP_WORDS[$i]}" == -- ]] && { COMPREPLY=(); return; }; done
+        if [[ "$prev" == --workspace ]]; then workspace_names=$(cdp_completion_workspace_names | tr '\r\n' '  '); COMPREPLY=($(compgen -W "$workspace_names" -- "$cur")); return; fi
+        if [[ "$prev" == --jobs ]]; then COMPREPLY=($(compgen -W '1 2 4 8 16' -- "$cur")); return; fi
+        if [[ "$prev" == --timeout ]]; then COMPREPLY=($(compgen -W '30 60 300 600' -- "$cur")); return; fi
+        projects=$(cdp_completion_project_names | tr '\r\n' '  ')
+        tags=$(cdp_completion_tags | tr '\r\n' '  ')
+        COMPREPLY=($(compgen -W "--workspace --all --config --jobs --timeout --fail-fast --continue --json --dry-run --yes -- $projects $tags" -- "$cur"))
         return
     fi
 
@@ -102,7 +123,7 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
         local completion_current="$1"
         shift
         local -a completion_words=("$@")
-        local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config)
+        local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook exec add remove config)
         local launchers=(code cursor codex claude gemini)
         local layouts=(tabs split-horizontal split-vertical)
         local cur="${completion_words[$completion_current]}"
@@ -126,6 +147,19 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
             fi
             compadd -a subcommands
             compadd -a projects
+            return
+        fi
+
+        if [[ "${completion_words[2]}" =~ ^(exec|run)$ ]]; then
+            local index
+            for ((index=3; index<completion_current; index++)); do [[ "${completion_words[$index]}" == -- ]] && return; done
+            if [[ "$prev" == --workspace ]]; then local workspace_names=(${(f)"$(cdp_completion_workspace_names)"}); compadd -a workspace_names; return; fi
+            if [[ "$prev" == --jobs ]]; then local job_values=(1 2 4 8 16); compadd -a job_values; return; fi
+            if [[ "$prev" == --timeout ]]; then local timeout_values=(30 60 300 600); compadd -a timeout_values; return; fi
+            local exec_options=(--workspace --all --config --jobs --timeout --fail-fast --continue --json --dry-run --yes --)
+            local exec_projects=(${(f)"$(cdp_completion_project_names)"})
+            local exec_tags=(${(f)"$(cdp_completion_tags)"})
+            compadd -a exec_options; compadd -a exec_projects; compadd -a exec_tags
             return
         fi
 

@@ -412,6 +412,30 @@ if [[ -n "${BASH_VERSION:-}" ]]; then
     COMPREPLY=()
     _cdp_completions
     assert_contains "${COMPREPLY[*]}" "split-horizontal"
+
+    COMP_WORDS=(cdp exec Hoo)
+    COMP_CWORD=2
+    COMPREPLY=()
+    _cdp_completions
+    assert_contains "${COMPREPLY[*]}" "HookProject"
+
+    COMP_WORDS=(cdp exec @w)
+    COMP_CWORD=2
+    COMPREPLY=()
+    _cdp_completions
+    assert_contains "${COMPREPLY[*]}" "@work"
+
+    COMP_WORDS=(cdp exec --workspace te)
+    COMP_CWORD=3
+    COMPREPLY=()
+    _cdp_completions
+    assert_contains "${COMPREPLY[*]}" "team"
+
+    COMP_WORDS=(cdp exec HookProject -- sh --j)
+    COMP_CWORD=5
+    COMPREPLY=()
+    _cdp_completions
+    [[ ${#COMPREPLY[@]} -eq 0 ]] || fail "exec completion leaked after --"
     shell_name="bash"
 elif [[ -n "${ZSH_VERSION:-}" ]]; then
     typeset -ga CDP_TEST_COMPLETIONS
@@ -459,6 +483,18 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
 
     run_zsh_completion cdp workspace edit team --layout sp
     assert_contains "${CDP_TEST_COMPLETIONS[*]}" "split-horizontal"
+
+    run_zsh_completion cdp exec Hoo
+    assert_contains "${CDP_TEST_COMPLETIONS[*]}" "HookProject"
+
+    run_zsh_completion cdp exec @w
+    assert_contains "${CDP_TEST_COMPLETIONS[*]}" "@work"
+
+    run_zsh_completion cdp exec --workspace te
+    assert_contains "${CDP_TEST_COMPLETIONS[*]}" "team"
+
+    run_zsh_completion cdp exec HookProject -- sh --j
+    [[ ${#CDP_TEST_COMPLETIONS[@]} -eq 0 ]] || fail "exec completion leaked after --"
     shell_name="zsh"
 else
     fail "unsupported shell"

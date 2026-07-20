@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"parse-plan-approve-execute、partial failure、timeout 与 native argv。"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"JSON stdout、human grouping、action/result 输出契约。"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"parser、path profiles、workspace refs、safe mutation、跨 shell fixture。"}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"新增 PowerShell/shell exec domains 与生成 artifact 边界。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"selector 到 plan、worker、ordered JSON 的全链路复核。"}

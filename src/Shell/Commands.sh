@@ -10,6 +10,11 @@ cdp() {
     fi
 
     case "$1" in
+        exec|run)
+            shift
+            cdp-exec "$@"
+            return
+            ;;
         status|st)
             shift
             cdp-status "$@"

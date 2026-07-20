@@ -3109,6 +3109,510 @@ cdp-workspace() {
 
 # Main cdp function
 
+# cdp shell domain: ExecSelection.sh
+# shellcheck shell=bash
+# Generated runtime fragment; do not source peer fragments.
+
+CDP_EXEC_SELECTOR_KIND=""
+CDP_EXEC_SELECTOR_VALUES=()
+CDP_EXEC_CONFIG_PATH=""
+CDP_EXEC_COMMAND=""
+CDP_EXEC_EXECUTABLE=""
+CDP_EXEC_ARGUMENTS=()
+CDP_EXEC_JOBS=0
+CDP_EXEC_TIMEOUT=0
+CDP_EXEC_FAIL_FAST=false
+CDP_EXEC_CONTINUE=false
+CDP_EXEC_JSON=false
+CDP_EXEC_DRY_RUN=false
+CDP_EXEC_YES=false
+CDP_EXEC_NAMES=()
+CDP_EXEC_RAW_PATHS=()
+CDP_EXEC_PATHS=()
+CDP_EXEC_STATUSES=()
+CDP_EXEC_EXIT_CODES=()
+CDP_EXEC_ELAPSED=()
+CDP_EXEC_STDOUT=()
+CDP_EXEC_STDERR=()
+CDP_EXEC_ERRORS=()
+
+cdp_exec_fail() {
+    printf 'Error: %s\n' "$*" >&2
+    return 3
+}
+
+cdp_exec_reset() {
+    CDP_EXEC_SELECTOR_KIND=""; CDP_EXEC_SELECTOR_VALUES=(); CDP_EXEC_CONFIG_PATH=""
+    CDP_EXEC_COMMAND=""; CDP_EXEC_EXECUTABLE=""; CDP_EXEC_ARGUMENTS=()
+    CDP_EXEC_JOBS=0; CDP_EXEC_TIMEOUT=0; CDP_EXEC_FAIL_FAST=false; CDP_EXEC_CONTINUE=false
+    CDP_EXEC_JSON=false; CDP_EXEC_DRY_RUN=false; CDP_EXEC_YES=false
+    CDP_EXEC_NAMES=(); CDP_EXEC_RAW_PATHS=(); CDP_EXEC_PATHS=(); CDP_EXEC_STATUSES=()
+    CDP_EXEC_EXIT_CODES=(); CDP_EXEC_ELAPSED=(); CDP_EXEC_STDOUT=(); CDP_EXEC_STDERR=(); CDP_EXEC_ERRORS=()
+}
+
+cdp_exec_set_selector() {
+    local kind="$1" value="${2:-}"
+    if [[ -n "$CDP_EXEC_SELECTOR_KIND" && "$CDP_EXEC_SELECTOR_KIND" != "$kind" ]]; then
+        cdp_exec_fail 'exec selector types cannot be combined.'; return 3
+    fi
+    if [[ "$kind" != projects && -n "$CDP_EXEC_SELECTOR_KIND" ]]; then
+        cdp_exec_fail 'exec selector types cannot be combined.'; return 3
+    fi
+    CDP_EXEC_SELECTOR_KIND="$kind"
+    [[ "$kind" == all ]] || CDP_EXEC_SELECTOR_VALUES+=("$value")
+}
+
+cdp_exec_parse_integer() {
+    local option="$1" value="$2" maximum="$3"
+    [[ "$value" =~ ^[0-9]+$ ]] || { cdp_exec_fail "exec $option must be between 1 and $maximum."; return 3; }
+    (( value >= 1 && value <= maximum )) || { cdp_exec_fail "exec $option must be between 1 and $maximum."; return 3; }
+    if [[ "$option" == jobs ]]; then CDP_EXEC_JOBS="$value"; else CDP_EXEC_TIMEOUT="$value"; fi
+}
+
+cdp_exec_parse_value_option() {
+    local option="$1" value="$2"
+    case "$option" in
+        --config) [[ -n "$value" ]] || { cdp_exec_fail 'exec config path cannot be empty.'; return 3; }; [[ -z "$CDP_EXEC_CONFIG_PATH" ]] || { cdp_exec_fail '--config specified more than once.'; return 3; }; CDP_EXEC_CONFIG_PATH="$value" ;;
+        --workspace) [[ -n "$value" ]] || { cdp_exec_fail 'exec workspace selector cannot be empty.'; return 3; }; cdp_exec_set_selector workspace "$value" ;;
+        --jobs) cdp_exec_parse_integer jobs "$value" 16 ;;
+        --timeout) cdp_exec_parse_integer timeout "$value" 3600 ;;
+    esac
+}
+
+cdp_exec_parse_option() {
+    case "$1" in
+        --all) cdp_exec_set_selector all ;;
+        --fail-fast) CDP_EXEC_FAIL_FAST=true ;;
+        --continue) CDP_EXEC_CONTINUE=true ;;
+        --json) CDP_EXEC_JSON=true ;;
+        --dry-run) CDP_EXEC_DRY_RUN=true ;;
+        --yes) CDP_EXEC_YES=true ;;
+        @*) [[ "$1" != @ ]] || { cdp_exec_fail 'exec tag selector cannot be empty.'; return 3; }; cdp_exec_set_selector tag "${1#@}" ;;
+        -*) cdp_exec_fail "unknown exec option: $1"; return 3 ;;
+        *) [[ -n "$1" ]] || { cdp_exec_fail 'exec project selector cannot be empty.'; return 3; }; cdp_exec_set_selector projects "$1" ;;
+    esac
+}
+
+cdp_exec_parse() {
+    cdp_exec_reset
+    local boundary=false
+    while [[ $# -gt 0 ]]; do
+        if [[ "$1" == -- ]]; then boundary=true; shift; break; fi
+        case "$1" in
+            --config|--workspace|--jobs|--timeout)
+                [[ $# -ge 2 ]] || { cdp_exec_fail "missing value after $1."; return 3; }
+                cdp_exec_parse_value_option "$1" "$2" || return 3
+                shift 2
+                ;;
+            *) cdp_exec_parse_option "$1" || return 3; shift ;;
+        esac
+    done
+    $boundary || { cdp_exec_fail 'cdp exec requires -- before the command.'; return 3; }
+    [[ $# -gt 0 && -n "$1" ]] || { cdp_exec_fail 'cdp exec requires a non-empty command after --.'; return 3; }
+    CDP_EXEC_COMMAND="$1"; shift; CDP_EXEC_ARGUMENTS=("$@")
+    [[ -n "$CDP_EXEC_SELECTOR_KIND" ]] || { cdp_exec_fail 'cdp exec requires projects, @tag, --workspace, or --all.'; return 3; }
+    $CDP_EXEC_FAIL_FAST && $CDP_EXEC_CONTINUE && { cdp_exec_fail '--fail-fast and --continue cannot be used together.'; return 3; }
+    $CDP_EXEC_DRY_RUN && $CDP_EXEC_YES && { cdp_exec_fail '--dry-run and --yes cannot be used together.'; return 3; }
+    return 0
+}
+
+cdp_exec_setting() {
+    local name="$1" default_value="$2" maximum="$3" value
+    value="$default_value"
+    case "$name" in
+        CDP_EXEC_CONCURRENCY) value="${CDP_EXEC_CONCURRENCY:-$default_value}" ;;
+        CDP_EXEC_TIMEOUT_SECONDS) value="${CDP_EXEC_TIMEOUT_SECONDS:-$default_value}" ;;
+    esac
+    [[ "$value" =~ ^[0-9]+$ ]] || value="$default_value"
+    (( value < 1 )) && value=1
+    (( value > maximum )) && value="$maximum"
+    printf '%s\n' "$value"
+}
+
+cdp_exec_raw_seen() {
+    local raw_path="$1" existing
+    [[ -n "$raw_path" ]] || return 1
+    if (( ${#CDP_EXEC_RAW_PATHS[@]} > 0 )); then
+        for existing in "${CDP_EXEC_RAW_PATHS[@]}"; do [[ "$existing" == "$raw_path" ]] && return 0; done
+    fi
+    return 1
+}
+
+cdp_exec_append_item() {
+    local name="$1" raw_path="$2" resolved_path="$3" item_status="$4" error="${5:-}"
+    cdp_exec_raw_seen "$raw_path" && return 0
+    CDP_EXEC_NAMES+=("$name"); CDP_EXEC_RAW_PATHS+=("$raw_path"); CDP_EXEC_PATHS+=("$resolved_path")
+    CDP_EXEC_STATUSES+=("$item_status"); CDP_EXEC_EXIT_CODES+=(""); CDP_EXEC_ELAPSED+=(0)
+    CDP_EXEC_STDOUT+=(""); CDP_EXEC_STDERR+=(""); CDP_EXEC_ERRORS+=("$error")
+}
+
+cdp_exec_add_project_json() {
+    local project_json="$1" name raw_path resolved_path="" item_status=planned error=""
+    name=$(jq -r '.name // empty' <<< "$project_json")
+    raw_path=$(jq -r '.rootPath // empty' <<< "$project_json")
+    if cdp_resolve_project_json "$project_json"; then resolved_path="$CDP_PROJECT_RESOLVED_PATH"
+    else resolved_path="$CDP_PROJECT_RESOLVED_PATH"; item_status=path_profile_invalid; error="$CDP_PROJECT_PATH_ERROR_MESSAGE"; fi
+    if [[ "$(jq -r '.enabled == true' <<< "$project_json")" != true ]]; then item_status=disabled_project; error='Project is disabled.'
+    elif [[ "$item_status" == planned && ! -d "$resolved_path" ]]; then item_status=path_missing; error='Resolved project path does not exist.'; fi
+    cdp_exec_append_item "$name" "$raw_path" "$resolved_path" "$item_status" "$error"
+}
+
+cdp_exec_select_projects() {
+    local projects_json="$1" name matches count project_json
+    for name in "${CDP_EXEC_SELECTOR_VALUES[@]}"; do
+        matches=$(jq -c --arg name "$name" '[.[] | select(.name == $name)]' <<< "$projects_json") || return 3
+        count=$(jq 'length' <<< "$matches")
+        [[ "$count" -gt 0 ]] || { cdp_exec_fail "exec project '$name' not found."; return 3; }
+        [[ "$count" -eq 1 ]] || { cdp_exec_fail "exec project '$name' is ambiguous."; return 3; }
+        project_json=$(jq -c '.[0]' <<< "$matches"); cdp_exec_add_project_json "$project_json"
+    done
+}
+
+cdp_exec_select_tag() {
+    local projects_json="$1" tag="${CDP_EXEC_SELECTOR_VALUES[0]}" matches project_json count=0
+    matches=$(jq -c --arg tag "$tag" '($tag|ascii_downcase) as $t | .[] | select(.enabled == true) | select(((.tags // []) | map(ascii_downcase) | index($t)) != null)' <<< "$projects_json") || return 3
+    while IFS= read -r project_json <&3; do [[ -n "$project_json" ]] || continue; cdp_exec_add_project_json "$project_json"; count=$((count + 1)); done 3< <(printf '%s\n' "$matches")
+    [[ "$count" -gt 0 ]] || { cdp_exec_fail "exec tag '@$tag' matched no enabled projects."; return 3; }
+}
+
+cdp_exec_select_all() {
+    local projects_json="$1" project_json count=0
+    while IFS= read -r project_json <&3; do [[ -n "$project_json" ]] || continue; cdp_exec_add_project_json "$project_json"; count=$((count + 1)); done 3< <(jq -c '.[] | select(.enabled == true)' <<< "$projects_json")
+    [[ "$count" -gt 0 ]] || { cdp_exec_fail 'exec --all matched no enabled projects.'; return 3; }
+}
+
+cdp_exec_workspace_status() {
+    case "$1" in
+        ok|legacy|renamed) printf planned ;;
+        missing-project|invalid-reference) printf missing_project ;;
+        ambiguous-project) printf ambiguous_project ;;
+        disabled-project) printf disabled_project ;;
+        invalid-path-profile) printf path_profile_invalid ;;
+        missing-path) printf path_missing ;;
+        *) printf missing_project ;;
+    esac
+}
+
+cdp_exec_add_workspace_result() {
+    local result="$1" workspace_status item_status error=""
+    workspace_status=$(jq -r '.status' <<< "$result"); item_status=$(cdp_exec_workspace_status "$workspace_status")
+    [[ "$item_status" == planned ]] || error="Workspace reference status: $workspace_status."
+    cdp_exec_append_item "$(jq -r '.name // empty' <<< "$result")" "$(jq -r '.rawPath // empty' <<< "$result")" \
+        "$(jq -r '.resolvedPath // empty' <<< "$result")" "$item_status" "$error"
+}
+
+cdp_exec_select_workspace() {
+    local projects_json="$1" workspace_path workspace_json matches reference sanitized result count=0
+    workspace_path="$(dirname "$CDP_EXEC_CONFIG_PATH")/workspaces.json"
+    workspace_json=$(cdp_workspace_read_json "$workspace_path") || return 3
+    matches=$(jq -c --arg name "${CDP_EXEC_SELECTOR_VALUES[0]}" '[.[] | select(.name == $name)]' <<< "$workspace_json") || return 3
+    [[ "$(jq 'length' <<< "$matches")" -eq 1 ]] || { cdp_exec_fail "workspace '${CDP_EXEC_SELECTOR_VALUES[0]}' not found or ambiguous."; return 3; }
+    jq -e '.[0].projects | type == "array"' <<< "$matches" >/dev/null 2>&1 || {
+        cdp_exec_fail "workspace '${CDP_EXEC_SELECTOR_VALUES[0]}' projects must be a JSON array."; return 3;
+    }
+    while IFS= read -r reference <&3; do
+        [[ -n "$reference" ]] || continue
+        sanitized=$(jq -c 'if type == "object" then {name:(.name // null),rootPath:(.rootPath // null)} else . end' <<< "$reference")
+        result=$(cdp_workspace_reference_result "$sanitized" "$projects_json" '' '') || return 3
+        cdp_exec_add_workspace_result "$result"; count=$((count + 1))
+    done 3< <(jq -c '.[0].projects[]?' <<< "$matches")
+    [[ "$count" -gt 0 ]] || { cdp_exec_fail "workspace '${CDP_EXEC_SELECTOR_VALUES[0]}' does not contain projects."; return 3; }
+}
+
+cdp_exec_resolve_executable() {
+    local resolved
+    resolved=$(command -v -- "$CDP_EXEC_COMMAND" 2>/dev/null || true)
+    [[ -n "$resolved" && "$resolved" == */* && -f "$resolved" && -x "$resolved" ]] || {
+        cdp_exec_fail "exec command '$CDP_EXEC_COMMAND' was not found as a native executable."; return 3;
+    }
+    CDP_EXEC_EXECUTABLE="$resolved"
+}
+
+cdp_exec_build_plan() {
+    command -v jq >/dev/null 2>&1 || { cdp_exec_fail "'jq' command not found."; return 3; }
+    [[ -n "$CDP_EXEC_CONFIG_PATH" ]] || CDP_EXEC_CONFIG_PATH=$(get_default_config)
+    [[ -f "$CDP_EXEC_CONFIG_PATH" ]] || { cdp_exec_fail "configuration file not found: $CDP_EXEC_CONFIG_PATH"; return 3; }
+    local projects_json
+    projects_json=$(cat "$CDP_EXEC_CONFIG_PATH") || { cdp_exec_fail 'failed to read configuration.'; return 3; }
+    jq -e 'type == "array"' <<< "$projects_json" >/dev/null 2>&1 || { cdp_exec_fail 'project configuration must be a JSON array.'; return 3; }
+    cdp_current_path_profile >/dev/null || { cdp_exec_fail 'invalid CDP_PATH_PROFILE.'; return 3; }
+    case "$CDP_EXEC_SELECTOR_KIND" in
+        projects) cdp_exec_select_projects "$projects_json" || return 3 ;;
+        tag) cdp_exec_select_tag "$projects_json" || return 3 ;;
+        workspace) cdp_exec_select_workspace "$projects_json" || return 3 ;;
+        all) cdp_exec_select_all "$projects_json" || return 3 ;;
+    esac
+    [[ "$CDP_EXEC_JOBS" -gt 0 ]] || CDP_EXEC_JOBS=$(cdp_exec_setting CDP_EXEC_CONCURRENCY 4 16)
+    [[ "$CDP_EXEC_TIMEOUT" -gt 0 ]] || CDP_EXEC_TIMEOUT=$(cdp_exec_setting CDP_EXEC_TIMEOUT_SECONDS 300 3600)
+    cdp_exec_resolve_executable
+}
+
+# cdp shell domain: ExecOutput.sh
+# shellcheck shell=bash
+# Generated runtime fragment; do not source peer fragments.
+
+cdp_exec_json_array() {
+    local result='[]' value
+    for value in "$@"; do result=$(jq -cn --argjson items "$result" --arg value "$value" '$items + [$value]') || return 1; done
+    printf '%s\n' "$result"
+}
+
+cdp_exec_selector_json() {
+    local value_json
+    case "$CDP_EXEC_SELECTOR_KIND" in
+        projects) value_json=$(cdp_exec_json_array "${CDP_EXEC_SELECTOR_VALUES[@]}") || return 1 ;;
+        tag|workspace) value_json=$(jq -cn --arg value "${CDP_EXEC_SELECTOR_VALUES[0]}" '$value') || return 1 ;;
+        all) value_json=null ;;
+    esac
+    jq -cn --arg kind "$CDP_EXEC_SELECTOR_KIND" --argjson value "$value_json" '{kind:$kind,value:$value}'
+}
+
+cdp_exec_unavailable() {
+    case "$1" in
+        missing_project|ambiguous_project|disabled_project|path_profile_invalid|path_missing) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+cdp_exec_exit_code() {
+    local item_status
+    if $CDP_EXEC_FAIL_FAST; then
+        for item_status in "${CDP_EXEC_STATUSES[@]}"; do [[ "$item_status" == canceled ]] && { printf 2; return; }; done
+    fi
+    for item_status in "${CDP_EXEC_STATUSES[@]}"; do
+        if [[ "$item_status" == failed || "$item_status" == timed_out || "$item_status" == canceled ]] || cdp_exec_unavailable "$item_status"; then
+            printf 1; return
+        fi
+    done
+    printf 0
+}
+
+cdp_exec_result_json() {
+    local i="$1" exit_code=null error_value=null
+    [[ -n "${CDP_EXEC_EXIT_CODES[$i]}" ]] && exit_code="${CDP_EXEC_EXIT_CODES[$i]}"
+    [[ -n "${CDP_EXEC_ERRORS[$i]}" ]] && error_value=$(jq -cn --arg value "${CDP_EXEC_ERRORS[$i]}" '$value')
+    jq -n --arg name "${CDP_EXEC_NAMES[$i]}" --arg rawPath "${CDP_EXEC_RAW_PATHS[$i]}" \
+        --arg resolvedPath "${CDP_EXEC_PATHS[$i]}" --arg status "${CDP_EXEC_STATUSES[$i]}" \
+        --arg stdout "${CDP_EXEC_STDOUT[$i]}" --arg stderr "${CDP_EXEC_STDERR[$i]}" \
+        --argjson exitCode "$exit_code" --argjson elapsedMs "${CDP_EXEC_ELAPSED[$i]}" --argjson error "$error_value" \
+        '{name:$name,rawPath:$rawPath,resolvedPath:$resolvedPath,status:$status,exitCode:$exitCode,
+          elapsedMs:$elapsedMs,stdout:$stdout,stderr:$stderr,error:$error}'
+}
+
+cdp_exec_summary_json() {
+    local planned=0 succeeded=0 failed=0 timed_out=0 canceled=0 unavailable=0 item_status exit_code
+    for item_status in "${CDP_EXEC_STATUSES[@]}"; do
+        case "$item_status" in
+            planned) planned=$((planned + 1)) ;; succeeded) succeeded=$((succeeded + 1)) ;;
+            failed) failed=$((failed + 1)) ;; timed_out) timed_out=$((timed_out + 1)) ;;
+            canceled) canceled=$((canceled + 1)) ;;
+            *) cdp_exec_unavailable "$item_status" && unavailable=$((unavailable + 1)) ;;
+        esac
+    done
+    exit_code=$(cdp_exec_exit_code)
+    jq -cn --argjson total "${#CDP_EXEC_NAMES[@]}" --argjson planned "$planned" --argjson succeeded "$succeeded" \
+        --argjson failed "$failed" --argjson timedOut "$timed_out" --argjson canceled "$canceled" \
+        --argjson unavailable "$unavailable" --argjson exitCode "$exit_code" \
+        '{total:$total,planned:$planned,succeeded:$succeeded,failed:$failed,timedOut:$timedOut,
+          canceled:$canceled,unavailable:$unavailable,exitCode:$exitCode}'
+}
+
+cdp_exec_document_json() {
+    local duration_ms="$1" result_file results selector arguments summary generated_at
+    result_file=$(mktemp "${TMPDIR:-/tmp}/cdp-exec-json.XXXXXX") || return 1
+    local i
+    for ((i=0; i<${#CDP_EXEC_NAMES[@]}; i++)); do
+        cdp_exec_result_json "$i" >> "$result_file" || { rm -f "$result_file"; return 1; }
+    done
+    results=$(jq -s '.' "$result_file") || { rm -f "$result_file"; return 1; }; rm -f "$result_file"
+    selector=$(cdp_exec_selector_json) || return 1
+    if (( ${#CDP_EXEC_ARGUMENTS[@]} > 0 )); then arguments=$(cdp_exec_json_array "${CDP_EXEC_ARGUMENTS[@]}") || return 1
+    else arguments='[]'; fi
+    summary=$(cdp_exec_summary_json) || return 1
+    generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    jq -n --arg generatedAt "$generated_at" --arg executable "$CDP_EXEC_COMMAND" \
+        --argjson durationMs "$duration_ms" --argjson selector "$selector" --argjson arguments "$arguments" \
+        --argjson jobs "$CDP_EXEC_JOBS" --argjson timeoutSeconds "$CDP_EXEC_TIMEOUT" \
+        --argjson failFast "$CDP_EXEC_FAIL_FAST" --argjson dryRun "$CDP_EXEC_DRY_RUN" \
+        --argjson summary "$summary" --argjson results "$results" \
+        '{schemaVersion:1,generatedAt:$generatedAt,durationMs:$durationMs,selector:$selector,
+          command:{executable:$executable,arguments:$arguments},
+          options:{jobs:$jobs,timeoutSeconds:$timeoutSeconds,failFast:$failFast,dryRun:$dryRun},
+          summary:$summary,results:$results}'
+}
+
+cdp_exec_print_block() {
+    local label="$1" text="$2"
+    [[ -n "$text" ]] || return 0
+    printf '  %s:\n' "$label"
+    while IFS= read -r line; do printf '    %s\n' "$line"; done <<< "$text"
+}
+
+cdp_exec_render_human() {
+    local i item_status exit_code summary
+    printf '\ncdp exec (%d projects)\n' "${#CDP_EXEC_NAMES[@]}"
+    printf '%.0s-' {1..88}; printf '\n'
+    for ((i=0; i<${#CDP_EXEC_NAMES[@]}; i++)); do
+        item_status="${CDP_EXEC_STATUSES[$i]}"
+        printf '[%02d] %s  %s\n' "$((i + 1))" "${CDP_EXEC_NAMES[$i]}" "$item_status"
+        printf '  raw:      %s\n  resolved: %s\n' "${CDP_EXEC_RAW_PATHS[$i]}" "${CDP_EXEC_PATHS[$i]}"
+        if [[ -n "${CDP_EXEC_EXIT_CODES[$i]}" ]]; then printf '  exit: %s  elapsed: %sms\n' "${CDP_EXEC_EXIT_CODES[$i]}" "${CDP_EXEC_ELAPSED[$i]}"
+        elif [[ "${CDP_EXEC_ELAPSED[$i]}" -gt 0 ]]; then printf '  elapsed: %sms\n' "${CDP_EXEC_ELAPSED[$i]}"; fi
+        cdp_exec_print_block stdout "${CDP_EXEC_STDOUT[$i]}"; cdp_exec_print_block stderr "${CDP_EXEC_STDERR[$i]}"
+        [[ -z "${CDP_EXEC_ERRORS[$i]}" ]] || printf '  error: %s\n' "${CDP_EXEC_ERRORS[$i]}"
+    done
+    printf '%.0s-' {1..88}; printf '\n'
+    summary=$(cdp_exec_summary_json) || return 3
+    jq -r '"succeeded=\(.succeeded) failed=\(.failed) timed_out=\(.timedOut) canceled=\(.canceled) unavailable=\(.unavailable)"' <<< "$summary"
+    exit_code=$(jq -r '.exitCode' <<< "$summary"); return "$exit_code"
+}
+
+cdp_exec_render() {
+    local duration_ms="$1" document exit_code
+    if $CDP_EXEC_JSON; then
+        document=$(cdp_exec_document_json "$duration_ms") || { cdp_exec_fail 'failed to serialize exec JSON.'; return 3; }
+        printf '%s\n' "$document"
+        exit_code=$(jq -r '.summary.exitCode' <<< "$document"); return "$exit_code"
+    fi
+    cdp_exec_render_human
+}
+
+# cdp shell domain: Exec.sh
+# shellcheck shell=bash
+# Generated runtime fragment; do not source peer fragments.
+
+CDP_EXEC_RESULT_DIR=""
+
+cdp_exec_now_ms() {
+    local value
+    value=$(date +%s%3N 2>/dev/null || true)
+    if [[ "$value" =~ ^[0-9]+$ && ${#value} -ge 13 ]]; then printf '%s\n' "$value"
+    else value=$(date +%s); printf '%s000\n' "$value"; fi
+}
+
+cdp_exec_write_worker_failure() {
+    local index="$1" message="$2" elapsed="${3:-0}"
+    printf failed > "$CDP_EXEC_RESULT_DIR/$index.status"
+    printf '%s' "$message" > "$CDP_EXEC_RESULT_DIR/$index.error"
+    printf '%s' "$elapsed" > "$CDP_EXEC_RESULT_DIR/$index.elapsed"
+    : > "$CDP_EXEC_RESULT_DIR/$index.exit"
+}
+
+cdp_exec_worker() {
+    local index="$1" start end elapsed child_pid exit_code=0 deadline now timed_out=false
+    start=$(cdp_exec_now_ms)
+    if ! cd -- "${CDP_EXEC_PATHS[$index]}"; then
+        cdp_exec_write_worker_failure "$index" 'Failed to enter resolved project path.'
+        return 0
+    fi
+    if (( ${#CDP_EXEC_ARGUMENTS[@]} > 0 )); then
+        "$CDP_EXEC_EXECUTABLE" "${CDP_EXEC_ARGUMENTS[@]}" </dev/null \
+            > "$CDP_EXEC_RESULT_DIR/$index.stdout" 2> "$CDP_EXEC_RESULT_DIR/$index.stderr" &
+    else
+        "$CDP_EXEC_EXECUTABLE" </dev/null > "$CDP_EXEC_RESULT_DIR/$index.stdout" \
+            2> "$CDP_EXEC_RESULT_DIR/$index.stderr" &
+    fi
+    child_pid=$!
+    deadline=$((start + (CDP_EXEC_TIMEOUT * 1000)))
+    while kill -0 "$child_pid" 2>/dev/null; do
+        now=$(cdp_exec_now_ms)
+        if (( now >= deadline )); then
+            timed_out=true; kill -TERM "$child_pid" 2>/dev/null || true
+            sleep 0.1; kill -KILL "$child_pid" 2>/dev/null || true
+            break
+        fi
+        sleep 0.1
+    done
+    if wait "$child_pid" 2>/dev/null; then exit_code=0; else exit_code=$?; fi
+    end=$(cdp_exec_now_ms); elapsed=$((end - start)); (( elapsed < 0 )) && elapsed=0
+    printf '%s' "$elapsed" > "$CDP_EXEC_RESULT_DIR/$index.elapsed"
+    if $timed_out; then
+        printf timed_out > "$CDP_EXEC_RESULT_DIR/$index.status"; : > "$CDP_EXEC_RESULT_DIR/$index.exit"
+        printf 'Command timed out.' > "$CDP_EXEC_RESULT_DIR/$index.error"
+    elif [[ "$exit_code" -eq 0 ]]; then
+        printf succeeded > "$CDP_EXEC_RESULT_DIR/$index.status"; printf 0 > "$CDP_EXEC_RESULT_DIR/$index.exit"; : > "$CDP_EXEC_RESULT_DIR/$index.error"
+    else
+        printf failed > "$CDP_EXEC_RESULT_DIR/$index.status"; printf '%s' "$exit_code" > "$CDP_EXEC_RESULT_DIR/$index.exit"
+        printf 'Command exited with code %s.' "$exit_code" > "$CDP_EXEC_RESULT_DIR/$index.error"
+    fi
+}
+
+cdp_exec_load_worker_result() {
+    local index="$1"
+    CDP_EXEC_STATUSES[$index]=$(cat "$CDP_EXEC_RESULT_DIR/$index.status" 2>/dev/null || printf failed)
+    CDP_EXEC_EXIT_CODES[$index]=$(cat "$CDP_EXEC_RESULT_DIR/$index.exit" 2>/dev/null || true)
+    CDP_EXEC_ELAPSED[$index]=$(cat "$CDP_EXEC_RESULT_DIR/$index.elapsed" 2>/dev/null || printf 0)
+    CDP_EXEC_STDOUT[$index]=$(cat "$CDP_EXEC_RESULT_DIR/$index.stdout" 2>/dev/null || true)
+    CDP_EXEC_STDERR[$index]=$(cat "$CDP_EXEC_RESULT_DIR/$index.stderr" 2>/dev/null || true)
+    CDP_EXEC_ERRORS[$index]=$(cat "$CDP_EXEC_RESULT_DIR/$index.error" 2>/dev/null || true)
+}
+
+cdp_exec_preflight_fail_fast() {
+    local failure_seen=false i
+    for ((i=0; i<${#CDP_EXEC_STATUSES[@]}; i++)); do
+        if $failure_seen && [[ "${CDP_EXEC_STATUSES[$i]}" == planned ]]; then
+            CDP_EXEC_STATUSES[$i]=canceled; CDP_EXEC_ERRORS[$i]='Canceled by fail-fast before execution.'
+        elif [[ "${CDP_EXEC_STATUSES[$i]}" != planned ]]; then failure_seen=true; fi
+    done
+}
+
+cdp_exec_cancel_future() {
+    local i
+    for ((i=0; i<${#CDP_EXEC_STATUSES[@]}; i++)); do
+        if [[ "${CDP_EXEC_STATUSES[$i]}" == planned ]]; then
+            CDP_EXEC_STATUSES[$i]=canceled; CDP_EXEC_ERRORS[$i]='Canceled by fail-fast after an earlier failure.'
+        fi
+    done
+}
+
+cdp_exec_batch_failed() {
+    local index
+    for index in "$@"; do
+        [[ "${CDP_EXEC_STATUSES[$index]}" == failed || "${CDP_EXEC_STATUSES[$index]}" == timed_out ]] && return 0
+    done
+    return 1
+}
+
+cdp_exec_run_batches() {
+    local runnable=() batch=() pids=() i offset end index pid
+    $CDP_EXEC_FAIL_FAST && cdp_exec_preflight_fail_fast
+    for ((i=0; i<${#CDP_EXEC_STATUSES[@]}; i++)); do [[ "${CDP_EXEC_STATUSES[$i]}" == planned ]] && runnable+=("$i"); done
+    [[ ${#runnable[@]} -gt 0 ]] || return 0
+    CDP_EXEC_RESULT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/cdp-exec.XXXXXX") || { cdp_exec_fail 'failed to create exec workspace.'; return 3; }
+    for ((offset=0; offset<${#runnable[@]}; offset+=CDP_EXEC_JOBS)); do
+        end=$((offset + CDP_EXEC_JOBS)); (( end > ${#runnable[@]} )) && end=${#runnable[@]}
+        batch=(); pids=()
+        for ((i=offset; i<end; i++)); do
+            index="${runnable[$i]}"; batch+=("$index"); cdp_exec_worker "$index" 2>/dev/null & pids+=("$!")
+        done
+        for pid in "${pids[@]}"; do wait "$pid" || true; done
+        for index in "${batch[@]}"; do cdp_exec_load_worker_result "$index"; done
+        if $CDP_EXEC_FAIL_FAST && cdp_exec_batch_failed "${batch[@]}"; then cdp_exec_cancel_future; break; fi
+    done
+}
+
+cdp_exec_cleanup() {
+    if [[ -n "$CDP_EXEC_RESULT_DIR" && -d "$CDP_EXEC_RESULT_DIR" ]]; then rm -rf -- "$CDP_EXEC_RESULT_DIR"; fi
+    CDP_EXEC_RESULT_DIR=""
+}
+
+cdp-exec() {
+    local started finished duration result=0
+    started=$(cdp_exec_now_ms)
+    cdp_exec_parse "$@" || return 3
+    cdp_exec_build_plan || return 3
+    if ! $CDP_EXEC_DRY_RUN && ! $CDP_EXEC_YES; then
+        cdp_exec_fail 'exec requires --yes or --dry-run.'; return 3
+    fi
+    if ! $CDP_EXEC_DRY_RUN; then
+        if cdp_exec_run_batches; then :; else result=$?; cdp_exec_cleanup; return "$result"; fi
+    fi
+    finished=$(cdp_exec_now_ms); duration=$((finished - started)); (( duration < 0 )) && duration=0
+    if cdp_exec_render "$duration"; then result=0; else result=$?; fi
+    cdp_exec_cleanup
+    return "$result"
+}
+
 # cdp shell domain: Projects.sh
 # shellcheck shell=bash
 # Generated from the canonical cdp.sh source; do not source peer fragments.
@@ -3538,6 +4042,11 @@ cdp() {
     fi
 
     case "$1" in
+        exec|run)
+            shift
+            cdp-exec "$@"
+            return
+            ;;
         status|st)
             shift
             cdp-status "$@"
@@ -3976,12 +4485,21 @@ cdp_completion_workspace_names() {
     jq -r '.[] | .name' "$workspace_path" 2>/dev/null
 }
 
+cdp_completion_tags() {
+    local config_path
+    config_path=$(get_default_config 2>/dev/null)
+    [[ -n "$config_path" && -f "$config_path" ]] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    jq -r '.[] | select(.enabled == true) | (.tags // [])[]' "$config_path" 2>/dev/null |
+        sort -u | while IFS= read -r tag; do printf '@%s\n' "$tag"; done
+}
+
 _cdp_completions() {
     local cur prev
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config"
+    local subcommands="status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook exec add remove config"
     local launchers="code cursor codex claude gemini"
     local layouts="tabs split-horizontal split-vertical"
 
@@ -4002,6 +4520,18 @@ _cdp_completions() {
             projects=$(jq -r '.[] | select(.enabled == true) | .name' "$config_path" 2>/dev/null | tr '\r' ' ')
         fi
         COMPREPLY=($(compgen -W "$subcommands $projects" -- "$cur"))
+        return
+    fi
+
+    if [[ "${COMP_WORDS[1]}" =~ ^(exec|run)$ ]]; then
+        local i projects tags workspace_names
+        for ((i=2; i<COMP_CWORD; i++)); do [[ "${COMP_WORDS[$i]}" == -- ]] && { COMPREPLY=(); return; }; done
+        if [[ "$prev" == --workspace ]]; then workspace_names=$(cdp_completion_workspace_names | tr '\r\n' '  '); COMPREPLY=($(compgen -W "$workspace_names" -- "$cur")); return; fi
+        if [[ "$prev" == --jobs ]]; then COMPREPLY=($(compgen -W '1 2 4 8 16' -- "$cur")); return; fi
+        if [[ "$prev" == --timeout ]]; then COMPREPLY=($(compgen -W '30 60 300 600' -- "$cur")); return; fi
+        projects=$(cdp_completion_project_names | tr '\r\n' '  ')
+        tags=$(cdp_completion_tags | tr '\r\n' '  ')
+        COMPREPLY=($(compgen -W "--workspace --all --config --jobs --timeout --fail-fast --continue --json --dry-run --yes -- $projects $tags" -- "$cur"))
         return
     fi
 
@@ -4037,7 +4567,7 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
         local completion_current="$1"
         shift
         local -a completion_words=("$@")
-        local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook add remove config)
+        local subcommands=(status doctor about recent pin unpin alias unalias tag untag clean init scan workspace hook exec add remove config)
         local launchers=(code cursor codex claude gemini)
         local layouts=(tabs split-horizontal split-vertical)
         local cur="${completion_words[$completion_current]}"
@@ -4061,6 +4591,19 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
             fi
             compadd -a subcommands
             compadd -a projects
+            return
+        fi
+
+        if [[ "${completion_words[2]}" =~ ^(exec|run)$ ]]; then
+            local index
+            for ((index=3; index<completion_current; index++)); do [[ "${completion_words[$index]}" == -- ]] && return; done
+            if [[ "$prev" == --workspace ]]; then local workspace_names=(${(f)"$(cdp_completion_workspace_names)"}); compadd -a workspace_names; return; fi
+            if [[ "$prev" == --jobs ]]; then local job_values=(1 2 4 8 16); compadd -a job_values; return; fi
+            if [[ "$prev" == --timeout ]]; then local timeout_values=(30 60 300 600); compadd -a timeout_values; return; fi
+            local exec_options=(--workspace --all --config --jobs --timeout --fail-fast --continue --json --dry-run --yes --)
+            local exec_projects=(${(f)"$(cdp_completion_project_names)"})
+            local exec_tags=(${(f)"$(cdp_completion_tags)"})
+            compadd -a exec_options; compadd -a exec_projects; compadd -a exec_tags
             return
         fi
 

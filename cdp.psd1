@@ -115,6 +115,7 @@ v2.2.0 - Automation and Multi-Repository Workflows
 - Added: shared cross-runtime path-profile fixtures and path_profile_invalid automation diagnostics
 - Added: full workspace list/show/add/edit/remove/validate/fix/open lifecycle with stable raw-path references
 - Added: tabs and horizontal/vertical split layouts, per-project launchers, split sizes, and workspace completion
+- Added: safe cdp exec/run selectors, native argv execution, bounded concurrency/timeouts, dry-run/fail-fast, and schema version 1 JSON results
 - Improved: structured status keeps raw and resolved paths separate and exposes stable status, attention-reason, and redacted error codes
 - Improved: switching, status, workspace, doctor/repair, add/scan/init, picker/list, and recent paths share one resolver while rootPath remains backward compatible
 - Safety: repair and status fix preserve unavailable explicit platform mappings and mutate missing projects by name plus raw path identity

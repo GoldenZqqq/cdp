@@ -55,6 +55,11 @@ returns/prints `skipped` with `Changed=false` when no migration is needed.
   reason, while an invalid global profile override is fatal rather than a
   per-project record.
 
+Exec JSON follows the same stdout ownership rule. It emits one ordered schema
+version 1 document with selector, executable argv, resolved options, summary,
+and results. Native stdout/stderr belong inside each result; fatal diagnostics
+go only to stderr. Concurrent completion order must never reorder results.
+
 ## Secret and Hook Redaction
 
 - Never print hook command text or environment values.

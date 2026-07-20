@@ -33,6 +33,8 @@ Use the existing concern boundaries:
   schema/table projection, cache, workers, and actions.
 - `WorkspaceLifecycle.ps1` / `Workspace.ps1`: stable workspace schema, CRUD,
   validation/migration, launch planning, and WT execution; `Hooks.ps1` owns trusted onEnter.
+- `ExecSelection.ps1` / `Exec.ps1` / `ExecOutput.ps1`: multi-repository
+  selection/path planning, bounded native argv workers, and ordered human/JSON output.
 - `Picker.ps1` / `Completion.ps1` / `Health.ps1`: interaction and diagnostics.
 
 New functions belong in the narrowest existing domain. Add a new domain only
@@ -57,6 +59,8 @@ Keep `Paths.sh` as the single project-path resolver, `WorkspaceLifecycle.sh` as
 the workspace schema/CRUD/plan owner, and `StatusBatch.sh` as the status
 cache/settings owner. Callers must not reintroduce local Windows-to-WSL
 conversion branches or duplicate stable-reference resolution in `Workspace.sh`.
+`ExecSelection.sh`, `Exec.sh`, and `ExecOutput.sh` own the equivalent shell
+selection, batch/watchdog execution, and rendering contract.
 
 ## Test and Tool Placement
 

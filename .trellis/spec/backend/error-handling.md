@@ -43,6 +43,12 @@ Read-only status JSON aggregates failures after scanning safe later projects:
 parse/dependency/config/serialization failure. A code-3 path writes stderr only;
 codes 0-2 always accompany one complete schema document on stdout.
 
+Multi-repository exec uses the same complete-plan boundary. Fatal parse,
+dependency, config, selector, executable, or serialization failures return 3
+and write no JSON stdout. Continue-mode target failures return 1; fail-fast
+cancellation returns 2. Unavailable targets never start a process, and dry-run
+never creates one.
+
 ## Redaction
 
 Never include command-hook text, environment values, API keys, or full trust

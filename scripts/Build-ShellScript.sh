@@ -29,6 +29,9 @@ fragments=(
     StatusOutput.sh
     WorkspaceLifecycle.sh
     Workspace.sh
+    ExecSelection.sh
+    ExecOutput.sh
+    Exec.sh
     Projects.sh
     ProjectMetadata.sh
     Commands.sh

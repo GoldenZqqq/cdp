@@ -205,6 +205,11 @@ cdp workspace edit fullstack api web --open codex
 cdp workspace validate fullstack --fix --dry-run
 cdp workspace open fullstack --yes
 
+# Preview, run, or automate one native command across selected projects
+cdp exec @work --dry-run -- git status --short
+cdp exec --workspace fullstack --jobs 4 --yes -- git status --short
+cdp exec --all --json --yes -- git rev-parse --show-toplevel
+
 # Preview or approve project removal and active-config selection
 cdp remove api --dry-run
 cdp remove api --yes
@@ -293,6 +298,22 @@ New definitions store stable project references instead of names alone:
 
 Launcher priority is CLI `--open`, then per-project `open`, then workspace `open`. Split sizes must be integers from 10 through 90. Windows Terminal receives `new-tab` / `split-pane` argv and tmux receives `new-window` / `split-window` argv—cdp never evaluates a concatenated workspace command string. Launch planning resolves every reference and local path before the first process, continues later safe projects after an item failure, and returns failure when any target is unsafe. Use PowerShell `-WhatIf` or shell `--dry-run` to inspect the workspace, layout, current name, raw/resolved path, launcher, and reference status without writing or launching; shell execution still requires `--yes`.
 
+### Safe Multi-Repository Exec
+
+`cdp exec` runs one native executable across explicit projects, one `@tag`, one workspace, or explicit `--all` selection. The required `--` boundary keeps every following token as command argv, so cdp does not reinterpret command options or evaluate shell syntax:
+
+```bash
+cdp exec api web --dry-run -- git status --short
+cdp exec @work --jobs 4 --yes -- git fetch --prune
+cdp exec --workspace fullstack --json --yes -- git rev-parse --show-toplevel
+```
+
+Selection and local path resolution finish before the first process. Explicit projects keep input order, workspaces keep reference order, tag/`--all` selections keep config order, and duplicate raw `rootPath` identities run once. Workspace references retain rename/delete/ambiguity protection and path-profile behavior.
+
+Every real exec is treated as high impact: PowerShell uses `ShouldProcess` (`-WhatIf` / `-Confirm:$false`), while bash/zsh require `--yes`; `--dry-run` creates no process. Commands are invoked as an executable plus an argv array with isolated cwd/stdout/stderr and no interactive stdin. cdp never uses `eval` or an implicit shell—use an explicit `sh -c` or `pwsh -Command` only when a pipeline or redirection is intentionally required.
+
+The default policy continues safe later repositories. `--fail-fast` finishes the current bounded batch, then marks unscheduled repositories `canceled`. Use `--jobs 1-16`, `--timeout 1-3600`, `CDP_EXEC_CONCURRENCY`, and `CDP_EXEC_TIMEOUT_SECONDS` to bound execution.
+
 ### Cross-Platform Path Profiles
 
 One project can now keep platform-specific local paths while preserving its original Project Manager-compatible `rootPath`. cdp selects `paths.windows`, `paths.wsl`, `paths.linux`, or `paths.macos` for the current runtime. When the current mapping is absent, legacy configs still fall back to `rootPath`; WSL also keeps the automatic `C:\...` to `/mnt/c/...` conversion.
@@ -309,6 +330,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 
 - **Multi-project Git dashboard**: `cdp status` shows branch, dirty and untracked counts, ahead/behind sync, linked worktrees, and last commit time for every project
 - **Machine-readable status**: `cdp status --json` emits stable schema version 1 with raw/resolved paths, Git counts, attention reasons, redacted errors, timing, summaries, and automation exit codes
+- **Safe multi-repository exec**: run one native executable by project, tag, workspace, or explicit `--all` with argv isolation, bounded concurrency/timeouts, dry-run, fail-fast, and schema-versioned JSON results
 - **Cross-platform path profiles**: one Project Manager-compatible entry can map Windows, WSL, Linux, and macOS paths without rewriting `rootPath`
 - **Full cross-platform support**: Windows PowerShell 5.1/7.x + macOS (zsh/bash) + Linux + WSL, all covered by CI
 - **Intelligent tab completion**: Press Tab after `cdp` to auto-complete subcommands and project names on PowerShell, bash, and zsh
@@ -336,6 +358,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | --- | --- | --- |
 | `Invoke-Cdp` | `cdp` | Short entry point. Opens the project picker by default |
 | `Show-CdpProjectStatus` | `cdp status`, `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, `--refresh`, `--json`, and `--no-color` controls |
+| `Invoke-Cdp` | `cdp exec`, `cdp run` | Safely executes one native command across explicit projects, a tag, a workspace, or explicit `--all` |
 | `Invoke-CdpWorkspace` | `cdp workspace`, `cdp ws` | Lists, shows, adds, edits, removes, validates, migrates, or launches stable multi-project workspaces |
 | `Invoke-Cdp` | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `Invoke-Cdp -Query api` | `cdp api` | Quickly matches by project name or path and switches directly on one match |
@@ -368,6 +391,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | --- | --- |
 | `cdp` | Opens the fzf menu and switches projects |
 | `cdp status` / `cdp-status` | Git status dashboard with `--dirty`, `@tag`, `--jobs`, `--refresh`, `--json`, and `--no-color` controls |
+| `cdp exec` / `cdp run` | Safe native argv execution across projects, a tag, a workspace, or explicit `--all`; real execution requires `--yes` |
 | `cdp workspace` / `cdp ws` | Full workspace lifecycle with stable references, validation/fix, launcher overrides, and tabs/split layouts |
 | `cdp hook list/trust/revoke` | Lists redacted hook status and manages project-scoped persistent trust |
 | `cdp api` | Quickly matches by project name or path and switches directly on one match |
@@ -486,7 +510,7 @@ cdp persists project, recent-state, and workspace JSON through same-directory at
 
 ### Safe mutations
 
-PowerShell mutation functions support native `-WhatIf` and `-Confirm`; use `-PassThru` to receive `Action`, `Target`, `Status`, `Changed`, and `Error` fields. Bash/zsh mutations accept `--dry-run` and `--yes` and print one result line per target. Low-risk add, pin, alias/tag, workspace-definition, and hook-trust changes keep their default execution behavior. Repair, remove, scan/import, init, status fix/push, active-config selection, and external workspace launch require explicit approval. Shell high-impact commands never read confirmation from stdin: pass `--yes`, or use `--dry-run` to preview without writing JSON, pushing Git, or starting workspace processes.
+PowerShell mutation functions support native `-WhatIf` and `-Confirm`; use `-PassThru` to receive `Action`, `Target`, `Status`, `Changed`, and `Error` fields. Bash/zsh mutations accept `--dry-run` and `--yes` and print one result line per target. Low-risk add, pin, alias/tag, workspace-definition, and hook-trust changes keep their default execution behavior. Repair, remove, scan/import, init, status fix/push, active-config selection, external workspace launch, and every real multi-repository exec require explicit approval. Shell high-impact commands never read confirmation from stdin: pass `--yes`, or use `--dry-run` to preview without writing JSON, pushing Git, or starting processes.
 
 `cdp clean` and `cdp status --fix` keep an unavailable explicit platform path instead of deleting or disabling the shared project entry. Legacy fallback paths retain the existing repair behavior. This prevents a missing mount or machine-local checkout from damaging paths that remain valid on another platform.
 
@@ -499,6 +523,14 @@ PowerShell mutation functions support native `-WhatIf` and `-Confirm`; use `-Pas
 Stable status codes are `clean`, `changed`, `path_missing`, `path_profile_invalid`, `not_git`, `scan_timeout`, and `scan_failed`. Stable attention reasons are `dirty`, `untracked`, `behind`, `path_missing`, `path_profile_invalid`, `scan_timeout`, and `scan_failed`. Consumers should reject unsupported schema major versions but may ignore unknown additive fields.
 
 JSON mode is read-only and cannot be combined with `--fix` or `--push`. Its exit codes are `0` for clean success, `1` when a rendered project needs attention, `2` for a partial timeout/scan failure, and `3` for a fatal parse, dependency, configuration, or serialization failure. `--dirty` filters the project array while `summary.total` still reports every scanned enabled project. Use `--no-color` / `-NoColor` when a plain human-readable table is preferred.
+
+### Exec automation contract
+
+`cdp exec ... --json -- <command> [args...]` writes exactly one schema version 1 document to stdout. Fatal parse, dependency, config, selector, executable-resolution, or serialization diagnostics write only to stderr. The document contains the selector, original executable token and argv, resolved jobs/timeout/fail-fast/dry-run options, an ordered summary, and ordered results with `name`, `rawPath`, `resolvedPath`, `status`, `exitCode`, `elapsedMs`, `stdout`, `stderr`, and `error`.
+
+Stable result statuses are `planned`, `succeeded`, `failed`, `timed_out`, `canceled`, `missing_project`, `ambiguous_project`, `disabled_project`, `path_profile_invalid`, and `path_missing`. Exit code `0` means every command succeeded or the dry-run plan is valid; `1` means continue mode had a command or target failure; `2` means fail-fast produced canceled targets; `3` means the operation failed before a complete result document could be produced.
+
+The command boundary is mandatory. Tokens after `--`, including `--json`, spaces, empty strings, and shell metacharacters, remain command argv rather than cdp options. stdout/stderr are captured per repository and rendered in selection order, not completion order.
 
 ---
 
@@ -518,6 +550,8 @@ Set `CDP_FZF_PATH` to the actual path returned by `(Get-Command fzf).Path`. `cdp
 `cdp status` uses bounded local concurrency and at most two Git probes per committed repository. Use `CDP_STATUS_CONCURRENCY` (1-16) or `--jobs` / `-ThrottleLimit` to tune the worker count. `CDP_STATUS_TIMEOUT_SECONDS` (1-60, default 10) limits a repository scan so one slow repository does not block the full dashboard.
 
 The status cache is disabled by default. Set `CDP_STATUS_CACHE_TTL` to 1-60 seconds to reuse status results within the current shell or PowerShell session, and use `--refresh` / `-Refresh` when fresh data is required. `status --fix` and `status --push` always bypass the cache.
+
+`cdp exec` defaults to at most four workers and a 300-second per-project timeout. Override them per command with `--jobs` and `--timeout`, or set `CDP_EXEC_CONCURRENCY` (1-16) and `CDP_EXEC_TIMEOUT_SECONDS` (1-3600).
 
 ```powershell
 $env:CDP_STATUS_CONCURRENCY = "4"
@@ -660,6 +694,7 @@ CI covers:
 - [x] Project tags / aliases
 - [x] `cdp status` multi-project Git status dashboard
 - [x] Full workspace lifecycle with stable references, validation/migration, and tabs/split launchers
+- [x] Safe multi-repository exec with selectors, argv isolation, bounded concurrency, timeouts, dry-run, fail-fast, and JSON results
 - [x] Atomic JSON persistence, safe mutations, and project-scoped hook trust
 - [x] Bounded concurrent status collection with timeouts, cache, and benchmarks
 - [x] Repository-owned coverage, package, documentation, browser, and media quality gates

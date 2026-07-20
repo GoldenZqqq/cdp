@@ -11,6 +11,8 @@
 - Added one shared PowerShell/bash/zsh path-profile contract fixture covering legacy fallback, WSL conversion, invalid mappings, and raw/resolved identity.
 - Added the complete workspace lifecycle: list/show/add/edit/remove/validate/fix/open, stable `{name, rootPath}` references, and legacy-reference migration.
 - Added tabs, horizontal/vertical split layouts, per-project launcher overrides, 10-90 split sizes, and workspace-aware completion.
+- Added `cdp exec` / `cdp run` for explicit projects, one tag, one workspace, or explicit `--all` selection with a mandatory command boundary.
+- Added bounded 1-16 concurrency, 1-3600 second per-project timeouts, continue/fail-fast policies, dry-run/approval safety, isolated stdout/stderr, and schema version 1 exec JSON.
 
 ### Changed
 
@@ -22,6 +24,7 @@
 - Status schema version 1 now reports the stable `path_profile_invalid` status/reason and uses fatal exit code 3 for an invalid global profile override.
 - Workspace launch planning now resolves schema, stable identity, path profile, launcher precedence, and native WT/tmux argv before starting processes; unsafe items fail without blocking later safe targets.
 - Workspace edits and migration preserve unknown fields, avoid same-name fallback after deletion, and skip persistence when `validate --fix` has no semantic change.
+- Multi-repository exec now resolves the complete selection/path/executable plan before approval, invokes only native executable + argv without `eval`, preserves selection order, and returns stable exit codes 0-3.
 
 ## 2.1.0
 

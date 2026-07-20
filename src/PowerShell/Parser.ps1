@@ -26,6 +26,16 @@ function New-CdpInvocation {
         WorkspaceName = $null
         WorkspaceLayout = $null
         ClearOpen = $false
+        ExecSelectorKind = $null
+        ExecProjectNames = @()
+        ExecTag = $null
+        ExecWorkspace = $null
+        ExecAll = $false
+        ExecCommand = $null
+        ExecArguments = @()
+        TimeoutSeconds = 0
+        FailFast = $false
+        ExecContinue = $false
         Projects = @()
         Name = $null
         Value = $null
@@ -44,6 +54,16 @@ function Get-CdpInvocationTokens {
     if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $tokens += $ConfigPath }
     if ($null -ne $RemainingArgs) { $tokens += @($RemainingArgs) }
     @($tokens | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function Get-CdpRawInvocationTokens {
+    param([string]$Command, [string]$ConfigPath, [string[]]$RemainingArgs)
+
+    $tokens = @()
+    if (-not [string]::IsNullOrEmpty($Command)) { $tokens += $Command }
+    if (-not [string]::IsNullOrEmpty($ConfigPath)) { $tokens += $ConfigPath }
+    if ($null -ne $RemainingArgs) { $tokens += @($RemainingArgs) }
+    $tokens
 }
 
 function Split-CdpCommonOptions {
@@ -110,6 +130,7 @@ function Resolve-CdpCommandKind {
     switch -Regex ($Command.ToLowerInvariant()) {
         '^(status|st)$' { return 'status' }
         '^(workspace|ws)$' { return 'workspace' }
+        '^(exec|run)$' { return 'exec' }
         '^(hook|hooks)$' { return 'hook' }
         '^(doctor|health|check)$' { return 'doctor' }
         '^(about|version|--version|-v)$' { return 'about' }
@@ -128,6 +149,103 @@ function Resolve-CdpCommandKind {
         '^(config|select-config)$' { return 'config' }
         default { return $null }
     }
+}
+
+function Split-CdpExecCommandBoundary {
+    param([string[]]$Tokens)
+
+    $boundary = [Array]::IndexOf($Tokens, '--')
+    if ($boundary -lt 0) { throw 'cdp exec requires -- before the command.' }
+    if ($boundary -eq ($Tokens.Count - 1)) { throw 'cdp exec requires a command after --.' }
+    if ([string]::IsNullOrWhiteSpace($Tokens[$boundary + 1])) {
+        throw 'cdp exec requires a non-empty command after --.'
+    }
+    [PSCustomObject]@{
+        Options = @($Tokens | Select-Object -First $boundary)
+        Command = $Tokens[$boundary + 1]
+        Arguments = @($Tokens | Select-Object -Skip ($boundary + 2))
+    }
+}
+
+function Test-CdpJsonRequested {
+    param([string]$Command, [string]$ConfigPath, [string[]]$RemainingArgs)
+
+    $tokens = @(Get-CdpRawInvocationTokens -Command $Command -ConfigPath $ConfigPath -RemainingArgs $RemainingArgs)
+    if ($tokens.Count -eq 0) { return $false }
+    if ((Resolve-CdpCommandKind -Command $tokens[0]) -eq 'exec') {
+        $boundary = [Array]::IndexOf($tokens, '--')
+        if ($boundary -ge 0) { $tokens = @($tokens | Select-Object -First $boundary) }
+    }
+    @($tokens | Where-Object { $_ -in @('--json', '-json') }).Count -gt 0
+}
+
+function Set-CdpExecIntegerOption {
+    param([object]$Result, [string]$Name, [string]$Value)
+
+    $parsed = 0
+    $maximum = if ($Name -eq 'jobs') { 16 } else { 3600 }
+    if (-not [int]::TryParse($Value, [ref]$parsed) -or $parsed -lt 1 -or $parsed -gt $maximum) {
+        throw "Exec $Name must be an integer between 1 and $maximum."
+    }
+    if ($Name -eq 'jobs') { $Result.ThrottleLimit = $parsed } else { $Result.TimeoutSeconds = $parsed }
+}
+
+function Add-CdpExecSelectorToken {
+    param([object]$Result, [string]$Token)
+
+    if ([string]::IsNullOrWhiteSpace($Token)) { throw 'Exec project selector cannot be empty.' }
+    if ($Token.StartsWith('@')) {
+        if ($Result.ExecTag -or $Result.ExecProjectNames.Count -gt 0 -or $Result.ExecWorkspace -or $Result.ExecAll) {
+            throw 'Exec selector types cannot be combined.'
+        }
+        if ($Token.Length -eq 1) { throw 'Exec tag selector cannot be empty.' }
+        $Result.ExecTag = $Token.Substring(1)
+        $Result.ExecSelectorKind = 'tag'
+        return
+    }
+    if ($Result.ExecTag -or $Result.ExecWorkspace -or $Result.ExecAll) { throw 'Exec selector types cannot be combined.' }
+    $Result.ExecProjectNames = @($Result.ExecProjectNames) + @($Token)
+    $Result.ExecSelectorKind = 'projects'
+}
+
+function ConvertFrom-CdpExecTokens {
+    param([string[]]$Tokens)
+
+    $parts = Split-CdpExecCommandBoundary -Tokens $Tokens
+    $result = New-CdpInvocation -Kind 'exec'
+    $result.ExecCommand = $parts.Command
+    $result.ExecArguments = @($parts.Arguments)
+    for ($i = 0; $i -lt $parts.Options.Count; $i++) {
+        $token = $parts.Options[$i]
+        if ($token -in @('--config', '-config', '--workspace', '--jobs', '--timeout')) {
+            if ($i + 1 -ge $parts.Options.Count) { throw "Missing value after $token." }
+            $value = $parts.Options[++$i]
+            if ($token -in @('--config', '-config')) {
+                if ([string]::IsNullOrWhiteSpace($value)) { throw 'Exec config path cannot be empty.' }
+                if ($result.ConfigPath) { throw 'The --config option was specified more than once.' }
+                $result.ConfigPath = $value
+            }
+            elseif ($token -eq '--workspace') {
+                if ($result.ExecSelectorKind) { throw 'Exec selector types cannot be combined.' }
+                if ([string]::IsNullOrWhiteSpace($value)) { throw 'Exec workspace selector cannot be empty.' }
+                $result.ExecWorkspace=$value; $result.ExecSelectorKind='workspace'
+            }
+            else { Set-CdpExecIntegerOption -Result $result -Name $token.TrimStart('-') -Value $value }
+            continue
+        }
+        if ($token -eq '--all') { if ($result.ExecSelectorKind) { throw 'Exec selector types cannot be combined.' }; $result.ExecAll=$true; $result.ExecSelectorKind='all'; continue }
+        if ($token -eq '--fail-fast') { if ($result.FailFast) { throw 'The --fail-fast option was specified more than once.' }; $result.FailFast=$true; continue }
+        if ($token -eq '--continue') { $result.ExecContinue=$true; continue }
+        if ($token -in @('--json', '-json')) { $result.Json=$true; continue }
+        if ($token -in @('--dry-run', '-dry-run')) { $result.DryRun=$true; continue }
+        if ($token -in @('--yes', '-yes')) { $result.Yes=$true; continue }
+        if ($token.StartsWith('-')) { throw "Unknown exec option: $token" }
+        Add-CdpExecSelectorToken -Result $result -Token $token
+    }
+    if (-not $result.ExecSelectorKind) { throw 'cdp exec requires projects, @tag, --workspace, or --all.' }
+    if ($result.FailFast -and $result.ExecContinue) { throw 'The --fail-fast and --continue options cannot be used together.' }
+    if ($result.DryRun -and $result.Yes) { throw 'The --dry-run and --yes options cannot be used together.' }
+    $result
 }
 
 function ConvertFrom-CdpStatusTokens {
@@ -415,6 +533,11 @@ function ConvertFrom-CdpSwitchTokens {
 function ConvertFrom-CdpInvokeArguments {
     param([string]$Command, [string]$ConfigPath, [string]$Query, [string]$Open, [string[]]$RemainingArgs)
 
+    $rawTokens = @(Get-CdpRawInvocationTokens -Command $Command -ConfigPath $ConfigPath -RemainingArgs $RemainingArgs)
+    if ($rawTokens.Count -gt 0 -and (Resolve-CdpCommandKind -Command $rawTokens[0]) -eq 'exec') {
+        if ($Open -or $Query) { throw 'Project switching options are not valid for exec.' }
+        return ConvertFrom-CdpExecTokens -Tokens @($rawTokens | Select-Object -Skip 1)
+    }
     $tokens = @(Get-CdpInvocationTokens -Command $Command -ConfigPath $ConfigPath -RemainingArgs $RemainingArgs)
     $common = Split-CdpCommonOptions -Tokens $tokens -Open $Open
     $tokens = @($common.Tokens)

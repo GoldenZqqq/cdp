@@ -14,6 +14,7 @@ implementation patterns.
 | [Error Handling](./error-handling.md) | Exceptions, native exit codes, safe mutation results, partial failure, and recovery | Active |
 | [Quality Guidelines](./quality-guidelines.md) | CLI contracts, cross-runtime regression scenarios, CI, package, and release validation | Active |
 | [Output and Diagnostics](./logging-guidelines.md) | User messages, progress, structured action output, stderr, and redaction | Active |
+| [Safe Multi-Repository Exec](./exec-guidelines.md) | Selector, argv, approval, bounded execution, JSON, and exit-code contracts | Active |
 
 ## Pre-Development Checklist
 
@@ -23,7 +24,8 @@ implementation patterns.
 4. Read `error-handling.md` and `logging-guidelines.md` for new command paths.
 5. Read the matching scenarios in `quality-guidelines.md` before editing parser,
    status, hooks, workspace, installer, generated shell, or release metadata.
-6. Preserve PowerShell 5.1 and bash 3.2 syntax unless the support policy changes.
+6. Read `exec-guidelines.md` before changing multi-repository command execution.
+7. Preserve PowerShell 5.1 and bash 3.2 syntax unless the support policy changes.
 
 ## Quality Check
 
