@@ -31,6 +31,9 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 $modulePath = Join-Path $PSScriptRoot "cdp.psd1"
 $moduleInfo = Test-ModuleManifest -Path $modulePath
 Write-Host "Module: $($moduleInfo.Name) v$($moduleInfo.Version)" -ForegroundColor Green
+if ($moduleInfo.ReleaseNotes.Length -gt 10600) {
+    throw "ReleaseNotes exceeds the PowerShell Gallery 10600-character limit ($($moduleInfo.ReleaseNotes.Length))."
+}
 Write-Host ""
 
 try {
@@ -94,7 +97,12 @@ try {
 
     # Pack the module
     Write-Host "Creating NuGet package..." -ForegroundColor Cyan
-    & $nugetPath pack $nuspecPath -OutputDirectory $moduleDir -NoPackageAnalysis 2>&1 | Out-Host
+    $packOutput = @(& $nugetPath pack $nuspecPath -OutputDirectory $moduleDir -NoPackageAnalysis 2>&1)
+    $packExitCode = $LASTEXITCODE
+    $packOutput | Out-Host
+    if ($packExitCode -ne 0) {
+        throw "NuGet pack failed with exit code $packExitCode."
+    }
 
     # Find the created package
     $nupkgPath = Join-Path $moduleDir "cdp.$($moduleInfo.Version).nupkg"
@@ -107,7 +115,12 @@ try {
     # Upload to PowerShell Gallery
     Write-Host "`nUploading to PowerShell Gallery..." -ForegroundColor Cyan
     $publishUrl = "https://www.powershellgallery.com/api/v2/package"
-    & $nugetPath push $nupkgPath -Source $publishUrl -ApiKey $ApiKey 2>&1 | Out-Host
+    $pushOutput = @(& $nugetPath push $nupkgPath -Source $publishUrl -ApiKey $ApiKey 2>&1)
+    $pushExitCode = $LASTEXITCODE
+    $pushOutput | Out-Host
+    if ($pushExitCode -ne 0) {
+        throw "NuGet push failed with exit code $pushExitCode."
+    }
 
     # Cleanup
     Remove-Item $tempDir -Recurse -Force
