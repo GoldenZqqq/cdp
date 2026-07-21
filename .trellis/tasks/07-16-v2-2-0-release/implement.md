@@ -62,9 +62,9 @@ The pinned Bash 3.2 command and any additional repository-owned validation are t
 - [x] Audit prerequisites and release metadata.
 - [x] Pass the full local release matrix.
 - [x] Generate and verify the retained deterministic asset.
-- [ ] Push the final release commit and pass exact hosted CI.
-- [ ] Publish and verify tag, GitHub Release, asset and Scoop.
-- [ ] Publish/verify Gallery or record the sole external credential blocker.
+- [x] Push the final release commit and pass exact hosted CI.
+- [x] Publish and verify tag, GitHub Release, asset and Scoop.
+- [x] Publish/verify Gallery or record the sole external credential blocker.
 - [ ] Archive release, automation and roadmap tasks with final evidence.
 
 ## Local Completion Record

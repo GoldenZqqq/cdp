@@ -12,6 +12,13 @@
 
 ## Acceptance Criteria
 
-- [ ] 6 个子任务完成并各有独立提交。
-- [ ] JSON、路径 profile、exec、workspace、frecency 均有跨平台 contract tests。
-- [ ] 全量门禁通过后统一发布 v2.2.0。
+- [x] 6 个子任务完成并各有独立提交。
+- [x] JSON、路径 profile、exec、workspace、frecency 均有跨平台 contract tests。
+- [x] 全量门禁通过后统一发布 v2.2.0。
+
+## Completion Evidence
+
+- 五个功能任务和 release 任务均有独立提交与验收证据。
+- Release commit `b2a1e7b` 的 CI run `29800666822` 五项全部成功。
+- Annotated tag、GitHub Release、Scoop 资产和远程 shell 安装均已验证；
+  PowerShell Gallery 因缺少外部 API key 停留在 v2.0.4，未虚报发布。

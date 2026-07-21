@@ -23,11 +23,11 @@
 
 ## Acceptance Criteria
 
-- [ ] 五个前置子任务各有独立工作提交、归档和验收证据。
-- [ ] 本地 release candidate 的全量门禁、旧配置兼容、升级/降级说明、资产内容和 manifest hash 全部通过。
-- [ ] 最终 release commit SHA、annotated tag、精确 `main` CI、GitHub Release URL 和公共资产 hash 证据完整。
-- [ ] PowerShell Gallery 显示精确 v2.2.0，或明确记录缺少外部 API key 的唯一阻塞且不虚报发布成功。
-- [ ] PowerShell 5.1/7、bash/zsh/Bash 3.2、Scoop 和源码安装路径不存在发布阻断性回归。
+- [x] 五个前置子任务各有独立工作提交、归档和验收证据。
+- [x] 本地 release candidate 的全量门禁、旧配置兼容、升级/降级说明、资产内容和 manifest hash 全部通过。
+- [x] 最终 release commit SHA、annotated tag、精确 `main` CI、GitHub Release URL 和公共资产 hash 证据完整。
+- [x] PowerShell Gallery 显示精确 v2.2.0，或明确记录缺少外部 API key 的唯一阻塞且不虚报发布成功。
+- [x] PowerShell 5.1/7、bash/zsh/Bash 3.2、Scoop 和源码安装路径不存在发布阻断性回归。
 
 ## Out of Scope
 

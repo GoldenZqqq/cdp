@@ -23,6 +23,8 @@
 
 - Hosted baseline CI `29799179690`: all five jobs passed, including Windows
   PowerShell 5.1 and PowerShell 7.
+- Final release CI `29800666822` for commit
+  `b2a1e7beb44d13fa07079f77812233ec60df854c`: all five jobs passed.
 - ARM64 PowerShell 7.5.0 container: Pester `156/156`, coverage `3795/5130`
   (`73.98%`), no PSScriptAnalyzer Error findings, release metadata passed.
 - Bash/zsh and fixed Bash 3.2 contract, persistence, safe-mutation, status,
@@ -41,6 +43,8 @@
 - SHA-256: `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`.
 - `scoop/cdp.json` declares the same hash, version, URL and extract directory.
 - Independent second build matched the retained archive byte-for-byte.
+- Public GitHub Release and Scoop downloads were both `141,245` bytes and
+  matched the retained archive byte-for-byte.
 
 ## Installation Smoke
 
@@ -49,9 +53,15 @@
 - Isolated ARM64 PowerShell package install from the candidate archive reported
   module version `2.2.0` at the expected CurrentUser module path.
 
-## Pending External Steps
+## Publication Result
 
-- Push the release-preparation commit and wait for its exact `main` CI run.
-- Create and verify annotated tag `v2.2.0`, GitHub Release and public asset hash.
-- Verify Scoop download bytes and publish PowerShell Gallery only if
-  `PS_GALLERY_API_KEY` is available. At evidence capture time the key is absent.
+- Release commit: `b2a1e7beb44d13fa07079f77812233ec60df854c`.
+- Annotated tag `v2.2.0` peels to the release commit locally and remotely.
+- GitHub Release: https://github.com/GoldenZqqq/cdp/releases/tag/v2.2.0;
+  public, latest, non-draft, and non-prerelease.
+- Tag-pinned public shell installation downloaded the expected `cdp.sh` hash
+  and reported v2.2.0.
+- PowerShell Gallery remains at v2.0.4. Neither the local environment nor
+  repository Actions secrets contains `PS_GALLERY_API_KEY`. The Gallery package
+  endpoint redirected a v2.2.0 request to `cdp.2.0.4.nupkg`, so its final HTTP
+  200 was not accepted as exact-version evidence.

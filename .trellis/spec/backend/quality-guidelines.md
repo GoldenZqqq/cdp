@@ -1082,6 +1082,10 @@ pnpm --dir tests/web test
 - Browser tooling stays isolated under `tests/web`; the dedicated CI job calls
   repository-owned asset and Playwright entries and uploads its report.
 - Installer/metadata validators do not accept, read, print, or persist Gallery API keys.
+- Gallery publication verification enumerates the official feed or requests an
+  exact version through PowerShellGet. A versioned package page or download HTTP
+  200 is not sufficient: the Gallery may redirect a missing version to the
+  latest existing `.nupkg`, so verify the resolved package identity and version.
 - In Windows PowerShell 5.1 negative process tests, native stderr redirected with `2>&1` becomes an ErrorRecord. Temporarily use `ErrorActionPreference=Continue` only around the expected failing child and restore it in `finally` before asserting exit code/output.
 
 ### 4. Validation & Error Matrix
@@ -1100,6 +1104,9 @@ pnpm --dir tests/web test
   still returns the canonical version and produces the same package digest and
   normalized `0700`/`0600` modes as the release asset.
 - Missing metadata file or invalid manifest/JSON -> validator exits nonzero before release work.
+- Missing exact Gallery version -> the feed remains on an older version; a
+  versioned package request may redirect to that older package and still end in
+  HTTP 200. Record the credential/channel blocker instead of reporting success.
 
 ### 5. Good / Base / Bad Cases
 
@@ -1126,6 +1133,7 @@ if Documents/PowerShell exists, install there regardless of PSEdition
 Get-Module -ListAvailable cdp returns anything -> claim installation success
 Scoop maintains its own copied module-path algorithm
 update manifest version but forget Scoop/CHANGELOG/tests/PROGRESS
+accept HTTP 200 from a Gallery version URL without checking the resolved nupkg version
 ```
 
 ### 6. Tests Required
@@ -1142,6 +1150,9 @@ update manifest version but forget Scoop/CHANGELOG/tests/PROGRESS
 - CI runs the static/media gate before provisioning Chromium, then executes the
   pinned Playwright smoke and uploads its HTML report even on failure.
 - Final gate also includes PSScriptAnalyzer on installer/scripts/module, Scoop JSON and workflow YAML parsing, shell regressions/syntax, secret-reference search, Trellis validation, and `git diff --check`.
+- Post-release verification checks the exact Gallery version in the feed or
+  through `Find-Module`; when following a package redirect, assert the resolved
+  `.nupkg` version instead of only its final HTTP status.
 
 ### 7. Wrong vs Correct
 

@@ -22,12 +22,20 @@
 
 ## Acceptance Criteria
 
-- [ ] 所有 Trellis 路线任务均有明确范围、验收标准和父子关系。
+- [x] 所有 Trellis 路线任务均有明确范围、验收标准和父子关系。
 - [x] v2.0.4 的全部子任务独立提交并完成发布核验。
-- [x] v2.0.5 安全热修完成实现与本地验证；远程渠道发布核验待 release gate。
-- [ ] v2.1.0 的全部子任务独立提交并完成发布核验。
-- [ ] v2.2.0 的全部子任务独立提交并完成发布核验。
-- [ ] 最终全量验证覆盖 PowerShell 5.1/7、bash、zsh、CI、文档和发布渠道。
+- [x] v2.0.5 安全热修完成实现、完整门禁与 GitHub/Scoop 发布核验。
+- [x] v2.1.0 的全部子任务独立提交并完成 GitHub/Scoop 发布核验。
+- [x] v2.2.0 的全部子任务独立提交并完成 GitHub/Scoop 发布核验。
+- [x] 最终全量验证覆盖 PowerShell 5.1/7、bash、zsh、CI、文档和发布渠道；Gallery 缺少外部 API key 的阻塞已如实记录。
+
+## Completion Evidence
+
+- 公开版本路线已按 `v2.0.4 -> v2.0.5 -> v2.1.0 -> v2.2.0` 顺序完成。
+- v2.2.0 release commit `b2a1e7b`、annotated tag、GitHub Release、Scoop
+  资产、远程安装和 CI run `29800666822` 已完成最终核验。
+- PowerShell Gallery feed 仍止于 v2.0.4；本机与 Actions 都没有
+  `PS_GALLERY_API_KEY`，这是跨版本路线唯一未能执行的外部渠道操作。
 
 ## Out of Scope
 

@@ -18,11 +18,11 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Latest verified GitHub release: v2.1.0 (verified 2026-07-19). Latest verified PowerShell Gallery release: v2.0.4.
+Latest verified GitHub release: v2.2.0 (verified 2026-07-21). Latest verified PowerShell Gallery release: v2.0.4.
 
 Current release target: v2.2.0.
 
-Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development and local release validation are complete; the release-preparation commit and final hosted `main` CI are the next gates before publication.
+Release status: v2.2.0 passed the complete local and hosted matrices and is published as the latest GitHub Release. Its retained, GitHub, and Scoop archives match byte-for-byte, and the tag-pinned shell installer passed a public download smoke. PowerShell Gallery remains at v2.0.4 because neither the local environment nor repository Actions secrets contain `PS_GALLERY_API_KEY`; this is the only external v2.2.0 blocker.
 
 ## 2.2.0 Automation and Multi-Repository Checklist
 
@@ -33,7 +33,7 @@ Release status: v2.1.0 passed the complete hosted matrix and is published on Git
 - [x] Add workspace lifecycle operations.
 - [x] Add safe multi-repository exec.
 - [x] Add frecency ranking.
-- [ ] Complete and publish v2.2.0.
+- [x] Complete and publish v2.2.0, with the missing Gallery credential recorded as the only external blocker.
 
 Status JSON verification: the PowerShell 7.5.2 quality gate passed Pester `104/104`, command coverage `2311/3344` (`69.11%`), PSScriptAnalyzer, and release metadata. bash, zsh, and the fixed Bash 3.2 container passed the shared schema fixture plus existing status/safety/persistence regressions.
 
@@ -48,12 +48,14 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 ## 2.2.0 Release Verification
 
 - Archived work commits: status JSON `a0a7c396` / `5dfa68db`, path profiles `03f7af48` / `11329579`, workspace lifecycle `52596c5e` / `b60f339c`, multi-repository exec `11b5435a` / `7e9debed`, and frecency ranking `99655214` / `4c87850b`.
-- Hosted baseline CI run `29799179690` passed all five jobs, including Windows PowerShell 5.1, PowerShell 7, Bash, macOS Bash/zsh, and Web smoke.
+- Final hosted CI run `29800666822` for release commit `b2a1e7beb44d13fa07079f77812233ec60df854c` passed all five jobs, including Windows PowerShell 5.1, PowerShell 7, Bash, macOS Bash/zsh, and Web smoke.
 - Local ARM64 PowerShell 7.5.0 container passed Pester `156/156`, command coverage `3795/5130` (`73.98%`), PSScriptAnalyzer with no Error findings, and release metadata.
 - Local bash/zsh, fixed Bash 3.2, ShellCheck, installer, documentation, Web/Chromium, quality, persistence, safety, contract, performance, and package gates passed.
 - Status benchmark on 50 repositories: jobs=4 min/median/p95 `2.967/3.076/3.536s`; jobs=8 `2.852/2.994/3.486s`.
-- Retained candidate `artifacts/release/cdp-2.2.0.tar.gz`: `141,245` bytes, 54 entries, SHA-256 `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`; an independent second build matched byte-for-byte and the hash matches `scoop/cdp.json`.
-- Temporary HOME shell installation and isolated PowerShell package installation both discovered v2.2.0 successfully. Gallery publication remains pending because `PS_GALLERY_API_KEY` is not present.
+- Annotated tag `v2.2.0` peels to the release commit; https://github.com/GoldenZqqq/cdp/releases/tag/v2.2.0 is public, latest, non-draft, and non-prerelease.
+- Retained, public GitHub, and Scoop `cdp-2.2.0.tar.gz` archives are each `141,245` bytes with 54 entries and SHA-256 `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`; an independent second build also matched byte-for-byte.
+- Temporary HOME local and tag-pinned remote shell installations plus an isolated PowerShell package installation all discovered v2.2.0 successfully.
+- Gallery verification enumerated the official feed, which still ends at v2.0.4. The versioned package endpoint redirects a missing v2.2.0 request to `cdp.2.0.4.nupkg`, so HTTP 200 alone was rejected as false evidence. No local or Actions API key is available for publication.
 
 ## 2.1.0 Engineering Foundation Checklist
 
