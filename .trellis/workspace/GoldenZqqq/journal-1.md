@@ -508,3 +508,38 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 16: 发布并归档 cdp v2.2.0
+
+**Date**: 2026-07-21
+**Task**: 发布并归档 cdp v2.2.0
+**Branch**: `main`
+
+### Summary
+
+补齐并执行 v2.2.0 发布设计；通过本地与托管全量门禁，发布并核验 tag、GitHub Release、Scoop 资产和远程安装；记录 Gallery 凭证外部阻塞并归档 release、automation、roadmap。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bf7bed8` | (see git log) |
+| `b2a1e7b` | (see git log) |
+| `f81f10e` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
