@@ -64,7 +64,10 @@ test("copies the active install command and announces success", async ({ context
   await page.locator("[data-copy-target]").click();
   await expect(page.locator("[data-copy-status]")).toContainText("Command copied to the clipboard");
   await expect(page.locator("[data-copy-label]")).toHaveText("Copied");
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(command);
+  const normalizeNewlines = (value) => value.replace(/\r\n/g, "\n");
+  await expect.poll(async () => normalizeNewlines(
+    await page.evaluate(() => navigator.clipboard.readText())
+  )).toBe(normalizeNewlines(command));
 });
 
 test("closes the mobile navigation with Escape and returns focus", async ({ page }) => {
