@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
-- **Last Active**: 2026-07-19
+- **Total Sessions**: 15
+- **Last Active**: 2026-07-21
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~477 | Active |
+| `journal-1.md` | ~510 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-07-21 | 完成 v2.2.0 Frecency 排序 | `9965521` | `main` |
 | 14 | 2026-07-19 | 完成 v2.1.0 规范与文档刷新 | `1f1a284` | `main` |
 | 13 | 2026-07-19 | 完成官网与媒体质量门禁 | `64a0632` | `main` |
 | 12 | 2026-07-19 | 完成 v2.1.0 CI 质量门禁 | `a076ce3` | `main` |

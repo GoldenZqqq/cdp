@@ -475,3 +475,36 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: 完成 v2.2.0 Frecency 排序
+
+**Date**: 2026-07-21
+**Task**: 完成 v2.2.0 Frecency 排序
+**Branch**: `main`
+
+### Summary
+
+实现 PowerShell 与 bash/zsh 的整数 Frecency 排序、CDP_FRECENCY 关闭开关和 recent reset；补齐跨平台 fixture、Bash 3.2/CI、双语文档、规格与发布元数据。PowerShell 156/156、73.98% 覆盖率，ShellCheck、文档、installer、Scoop、Bash 3.2 矩阵通过。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9965521` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
