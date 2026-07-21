@@ -543,3 +543,39 @@ Implemented workspace mode (cdp workspace) with Windows Terminal multi-tab and t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: 收口 v2.2.0 Gallery 与本地安全语义
+
+**Date**: 2026-07-22
+**Task**: 收口 v2.2.0 Gallery 与本地安全语义
+**Branch**: `main`
+
+### Summary
+
+验证 v2.2.0 Gallery 发布，完成 v2.3.0 远端状态刷新与启动器安全候选，补齐跨平台测试和 CI，并删除旧本地备份引用、stash 与 bundle。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b8bab4a` | (see git log) |
+| `fd7eb7c` | (see git log) |
+| `daa4075` | (see git log) |
+| `d25b78f` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

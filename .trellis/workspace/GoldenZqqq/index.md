@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
-- **Last Active**: 2026-07-21
+- **Total Sessions**: 17
+- **Last Active**: 2026-07-22
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~545 | Active |
+| `journal-1.md` | ~581 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-07-22 | 收口 v2.2.0 Gallery 与本地安全语义 | `b8bab4a`, `fd7eb7c`, `daa4075`, `d25b78f` | `main` |
 | 16 | 2026-07-21 | 发布并归档 cdp v2.2.0 | `bf7bed8`, `b2a1e7b`, `f81f10e` | `main` |
 | 15 | 2026-07-21 | 完成 v2.2.0 Frecency 排序 | `9965521` | `main` |
 | 14 | 2026-07-19 | 完成 v2.1.0 规范与文档刷新 | `1f1a284` | `main` |
