@@ -3,7 +3,7 @@
   "name": "v2-2-0-release",
   "title": "准备并发布 v2.2.0",
   "description": "完成版本文件、迁移文档、全量验证、统一 push、tag、GitHub Release、Gallery 与渠道核验。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

@@ -22,7 +22,7 @@ Latest verified GitHub release: v2.1.0 (verified 2026-07-19). Latest verified Po
 
 Current release target: v2.2.0.
 
-Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development has completed the machine-readable status contract, cross-platform path profiles, workspace lifecycle, safe multi-repository exec, and frecency ranking; final release validation is next.
+Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development and local release validation are complete; the release-preparation commit and final hosted `main` CI are the next gates before publication.
 
 ## 2.2.0 Automation and Multi-Repository Checklist
 
@@ -44,6 +44,16 @@ Workspace lifecycle verification: PowerShell and shell now share stable raw-path
 Multi-repository exec verification: PowerShell, bash, zsh, and Bash 3.2 cover explicit/tag/workspace/`--all` selection, exact raw-identity deduplication, path-profile and stable-reference failures, mandatory `--` argv isolation, bounded workers, timeouts, continue/fail-fast cancellation, dry-run/approval safety, deterministic human/JSON output, and exit codes 0-3. The full PowerShell 7.5.2 gate passed `146/146` with `73.49%` command coverage (`3629/4938`) and no PSScriptAnalyzer errors. Bash, zsh, and the fixed Bash 3.2 matrix passed exec plus the existing modularization, CLI, status, path-profile, workspace, safety, shell-v2, and persistence suites. Generated shell SHA-256: `8a42caa197e3ca54d8c827b4847447d2526b45b03961630e4e4efd38c5af83e2`; deterministic Scoop draft SHA-256: `1124cbd3da5a75f021fde969174d94ac22467eb53bcd0b32708e2eafb9ad6b08`.
 
 Frecency verification: one fixed-time fixture now covers pin groups, integer frequency/decay, future and invalid timestamps, visit-count clamping, duplicate history, exact raw-path identity, opt-out fallback, and original config order across PowerShell, bash, zsh, and Bash 3.2. `cdp recent reset` also covers preview/approval, unknown-field preservation, invalid-state refusal, and empty no-op behavior. The full PowerShell 7.5.2 gate passed `156/156` with `73.98%` command coverage (`3795/5130`) and no PSScriptAnalyzer errors. ShellCheck, documentation, installer, deterministic package, release metadata, and affected shell regressions passed. Generated shell SHA-256: `ada96effe4b5b23b49530d8576898a369f60dcf6eb9d67821b1d5ef7cb80d463`; deterministic Scoop draft SHA-256: `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`.
+
+## 2.2.0 Release Verification
+
+- Archived work commits: status JSON `a0a7c396` / `5dfa68db`, path profiles `03f7af48` / `11329579`, workspace lifecycle `52596c5e` / `b60f339c`, multi-repository exec `11b5435a` / `7e9debed`, and frecency ranking `99655214` / `4c87850b`.
+- Hosted baseline CI run `29799179690` passed all five jobs, including Windows PowerShell 5.1, PowerShell 7, Bash, macOS Bash/zsh, and Web smoke.
+- Local ARM64 PowerShell 7.5.0 container passed Pester `156/156`, command coverage `3795/5130` (`73.98%`), PSScriptAnalyzer with no Error findings, and release metadata.
+- Local bash/zsh, fixed Bash 3.2, ShellCheck, installer, documentation, Web/Chromium, quality, persistence, safety, contract, performance, and package gates passed.
+- Status benchmark on 50 repositories: jobs=4 min/median/p95 `2.967/3.076/3.536s`; jobs=8 `2.852/2.994/3.486s`.
+- Retained candidate `artifacts/release/cdp-2.2.0.tar.gz`: `141,245` bytes, 54 entries, SHA-256 `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`; an independent second build matched byte-for-byte and the hash matches `scoop/cdp.json`.
+- Temporary HOME shell installation and isolated PowerShell package installation both discovered v2.2.0 successfully. Gallery publication remains pending because `PS_GALLERY_API_KEY` is not present.
 
 ## 2.1.0 Engineering Foundation Checklist
 

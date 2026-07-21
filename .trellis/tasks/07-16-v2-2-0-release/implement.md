@@ -59,10 +59,21 @@ The pinned Bash 3.2 command and any additional repository-owned validation are t
 
 ## Completion Checklist
 
-- [ ] Audit prerequisites and release metadata.
-- [ ] Pass the full local release matrix.
-- [ ] Generate and verify the retained deterministic asset.
+- [x] Audit prerequisites and release metadata.
+- [x] Pass the full local release matrix.
+- [x] Generate and verify the retained deterministic asset.
 - [ ] Push the final release commit and pass exact hosted CI.
 - [ ] Publish and verify tag, GitHub Release, asset and Scoop.
 - [ ] Publish/verify Gallery or record the sole external credential blocker.
 - [ ] Archive release, automation and roadmap tasks with final evidence.
+
+## Local Completion Record
+
+- Five archived child-task commit pairs and reachability from `main` verified.
+- Local shell, zsh, fixed Bash 3.2, Web/Chromium, documentation, installer,
+  performance, package, and metadata gates passed.
+- ARM64 PowerShell 7.5.0 container passed Pester `156/156`, coverage
+  `3795/5130` (`73.98%`), PSScriptAnalyzer, and release metadata.
+- Candidate archive is `141,245` bytes with SHA-256
+  `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`;
+  an independent second build matched byte-for-byte.
