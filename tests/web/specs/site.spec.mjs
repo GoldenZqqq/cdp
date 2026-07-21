@@ -36,6 +36,24 @@ test("routes command and install tabs with the keyboard", async ({ page }) => {
   await expect(page.locator("[data-install-command]")).toContainText("brew install fzf jq");
 });
 
+test("demonstrates the AI CLI context route and tool boundary", async ({ page }) => {
+  await page.goto("/");
+  const workflowTabs = page.locator("[data-workflow-tabs]");
+  const powershellTab = workflowTabs.locator('[data-workflow-platform="powershell"]');
+  const shellTab = workflowTabs.locator('[data-workflow-platform="shell"]');
+
+  await expect(page.locator("[data-workflow-command]")).toHaveText("PS C:\\> cdp api -Open codex");
+  await expect(page.locator("[data-workflow-root]")).toHaveText("C:\\Work\\my-api");
+  await powershellTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(shellTab).toBeFocused();
+  await expect(page.locator("#workflow-panel")).toHaveAttribute("aria-labelledby", "workflow-shell-tab");
+  await expect(page.locator("[data-workflow-command]")).toHaveText("$ cdp api --open codex");
+  await expect(page.locator("[data-workflow-root]")).toHaveText("~/Work/my-api");
+  await expect(page.locator(".comparison-table")).toContainText("zoxide / autojump");
+  await expect(page.locator(".comparison-cdp")).toContainText("cdp api -Open codex");
+});
+
 test("copies the active install command and announces success", async ({ context, page }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {
     origin: "http://127.0.0.1:4173"
@@ -72,7 +90,7 @@ test("exposes landmarks, tab semantics, status feedback, and focus styles", asyn
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.locator("main#main")).toBeVisible();
-  await expect(page.getByRole("tablist")).toHaveCount(2);
+  await expect(page.getByRole("tablist")).toHaveCount(3);
   await expect(page.getByRole("status")).toHaveCount(1);
 
   const skipLink = page.locator(".skip-link");

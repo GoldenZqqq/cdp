@@ -5,6 +5,8 @@
 
 @media (max-width: 68rem) {
     .hero-layout,
+    .workflow-layout,
+    .comparison-layout,
     .proof-layout,
     .platform-layout,
     .install-layout {
@@ -32,6 +34,11 @@
     .route-merge {
         width: min(100%, 48rem);
         justify-self: end;
+    }
+
+    .workflow-demo,
+    .comparison-table-wrap {
+        width: 100%;
     }
 
     .noscript-note {
@@ -110,6 +117,14 @@
     .command-rail button {
         scroll-snap-align: start;
     }
+
+    .comparison-table-wrap {
+        overflow-x: auto;
+    }
+
+    .comparison-table {
+        min-width: 42rem;
+    }
 }
 
 @media (max-width: 40rem) {
@@ -185,6 +200,37 @@
     }
 
     .arrival-strip strong {
+        text-align: left;
+    }
+
+    .workflow-copy h3,
+    .comparison-heading h3 {
+        font-size: 2.35rem;
+    }
+
+    .workflow-toolbar,
+    .workflow-ready {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .workflow-tabs {
+        width: 100%;
+    }
+
+    .workflow-tabs button {
+        flex: 1;
+    }
+
+    .workflow-steps li {
+        grid-template-columns: 1fr;
+    }
+
+    .workflow-steps strong {
+        grid-column: auto;
+    }
+
+    .workflow-ready strong {
         text-align: left;
     }
 

@@ -28,9 +28,11 @@ A fast **project workbench** for the Vibe Coding era — one command to see all 
 
 [![Watch the cdp v2.0 demo](./docs/assets/cdp-v2-promo.gif)](https://goldenzqqq.github.io/cdp/#proof)
 
-[Watch the HD demo on the official website](https://goldenzqqq.github.io/cdp/#proof) · [Open the v2.0 MP4 directly](https://goldenzqqq.github.io/cdp/assets/cdp-v2-promo.mp4)
+[Explore the interactive AI CLI route on the official website](https://goldenzqqq.github.io/cdp/#workflow) · [Watch the HD demo](https://goldenzqqq.github.io/cdp/#proof) · [Open the v2.0 MP4 directly](https://goldenzqqq.github.io/cdp/assets/cdp-v2-promo.mp4)
 
 This v2.0 demo showcases cdp's core features: `cdp status` multi-project Git dashboard, `cdp api -Open codex` one-step switch and AI CLI launch, `cdp workspace` multi-project workspaces, onEnter environment hooks, intelligent tab completion, and full Windows / macOS / Linux support.
+
+The public demo now makes the AI CLI route explicit: resolve the named project, enter its OS-specific root, apply approved setup, then launch the tool in that working directory. It also shows where cdp stops and `zoxide` / `autojump` begin: directory jumpers recall visited paths; cdp carries project identity, repository state, and the launcher together.
 
 ---
 
@@ -629,7 +631,7 @@ cdp-config 1 --yes
 | VS Code Project Manager | In-editor switch | None | None | Editor-only |
 | **cdp** | **Fuzzy search + query jump** | **`cdp status` full dashboard** | **`-Open codex/claude/gemini`** | Your project workbench in the terminal |
 
-cdp does not try to replace every directory jumper. zoxide excels at jumping to any recently visited directory; cdp knows your project list, each repo's Git status, and can launch an AI CLI in one move.
+cdp does not try to replace every directory jumper. `zoxide` and `autojump` are excellent at recalling any recently visited directory. cdp is the project-context layer: it resolves a named project, selects the platform-specific root, exposes repository state, and can launch an AI CLI in one move. The tools are complementary rather than mutually exclusive.
 
 ---
 

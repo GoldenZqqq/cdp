@@ -19,6 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="styles-sections.css">
+    <link rel="stylesheet" href="styles-workflow.css">
     <link rel="stylesheet" href="styles-responsive.css">
     <script src="script.js" defer></script>
     <title>cdp — Stop navigating. Start shipping.</title>
@@ -42,7 +43,7 @@
                 <div class="nav-links">
                     <a href="#pain" data-i18n="nav.why">Why cdp</a>
                     <a href="#commands" data-i18n="nav.commands">Real commands</a>
-                    <a href="#proof" data-i18n="nav.demo">Demo</a>
+                    <a href="#workflow" data-i18n="nav.demo">Demo</a>
                     <a href="#install" data-i18n="nav.install">Install</a>
                 </div>
 
@@ -98,7 +99,7 @@
                 <div class="hero-switchyard" aria-label="cdp routing example" data-i18n-aria-label="a11y.heroDemo">
                     <div class="switchyard-topbar">
                         <span class="switchyard-status"><span aria-hidden="true"></span><span data-i18n="hero.routeReady">ROUTE READY</span></span>
-                        <span>cdp v2.0.3</span>
+                        <span>cdp v2.2.0</span>
                     </div>
 
                     <div class="old-route" aria-label="Traditional directory switching" data-i18n-aria-label="a11y.oldRoute">
@@ -222,6 +223,105 @@
                             <span data-i18n="commands.arrival">ARRIVAL</span>
                             <strong data-command-result data-i18n="scenario.switch.result">The current shell is now at the project root</strong>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="workflow-section" id="workflow" aria-labelledby="workflow-title">
+            <div class="page-shell">
+                <div class="section-heading workflow-heading">
+                    <p class="section-signal" data-i18n="workflow.signal">A directory is not a development context.</p>
+                    <h2 id="workflow-title" data-i18n="workflow.title">Route the AI CLI into the right project.</h2>
+                    <p data-i18n="workflow.lede">cdp resolves a named project, enters its local path, applies approved project setup, and starts the tool with the correct working directory.</p>
+                </div>
+
+                <div class="workflow-layout">
+                    <div class="workflow-copy">
+                        <p class="workflow-index">01 / AI CLI ROUTE</p>
+                        <h3 data-i18n="workflow.copyTitle">One command replaces the context checklist.</h3>
+                        <p data-i18n="workflow.copyBody">The launcher is the final step, not the first. cdp establishes project identity and location before Codex, Claude, or Gemini starts.</p>
+                        <ul class="workflow-outcomes">
+                            <li data-i18n="workflow.outcome1">Project query resolves against your explicit project map</li>
+                            <li data-i18n="workflow.outcome2">OS-specific path profile selects the local root</li>
+                            <li data-i18n="workflow.outcome3">Approved onEnter setup runs before the launcher</li>
+                            <li data-i18n="workflow.outcome4">The AI CLI inherits the intended working directory</li>
+                        </ul>
+                    </div>
+
+                    <div class="workflow-demo">
+                        <div class="workflow-toolbar">
+                            <span data-i18n="workflow.terminalLabel">AI SESSION ROUTE</span>
+                            <div class="workflow-tabs" role="tablist" aria-label="Workflow shell" data-i18n-aria-label="a11y.workflowTabs" data-workflow-tabs>
+                                <button type="button" role="tab" id="workflow-powershell-tab" aria-controls="workflow-panel" aria-selected="true" tabindex="0" data-workflow-platform="powershell">PowerShell</button>
+                                <button type="button" role="tab" id="workflow-shell-tab" aria-controls="workflow-panel" aria-selected="false" tabindex="-1" data-workflow-platform="shell">bash / zsh</button>
+                            </div>
+                        </div>
+
+                        <div class="workflow-panel" id="workflow-panel" role="tabpanel" tabindex="0" aria-labelledby="workflow-powershell-tab">
+                            <ol class="workflow-steps">
+                                <li>
+                                    <span class="workflow-step-label" data-i18n="workflow.resolve">01 RESOLVE</span>
+                                    <code data-workflow-command>PS C:\&gt; cdp api -Open codex</code>
+                                    <strong data-i18n="workflow.resolveResult">api → my-api</strong>
+                                </li>
+                                <li>
+                                    <span class="workflow-step-label" data-i18n="workflow.enter">02 ENTER</span>
+                                    <code data-workflow-root>C:\Work\my-api</code>
+                                    <strong data-i18n="workflow.enterResult">local project root selected</strong>
+                                </li>
+                                <li>
+                                    <span class="workflow-step-label" data-i18n="workflow.prepare">03 PREPARE</span>
+                                    <code>branch: main / state: clean</code>
+                                    <strong data-i18n="workflow.prepareResult">approved setup applied</strong>
+                                </li>
+                                <li>
+                                    <span class="workflow-step-label" data-i18n="workflow.launch">04 LAUNCH</span>
+                                    <code data-workflow-launch>codex (cwd: C:\Work\my-api)</code>
+                                    <strong data-i18n="workflow.launchResult">session starts in context</strong>
+                                </li>
+                            </ol>
+                            <div class="workflow-ready">
+                                <span data-i18n="workflow.readyLabel">READY</span>
+                                <strong data-i18n="workflow.ready">The AI CLI starts where the work actually lives.</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comparison-layout">
+                    <div class="comparison-heading">
+                        <p class="workflow-index">02 / TOOL BOUNDARY</p>
+                        <h3 data-i18n="comparison.title">Directory memory and project orchestration solve different jobs.</h3>
+                        <p data-i18n="comparison.lede">Use zoxide or autojump for arbitrary visited directories. Use cdp when a named project, repository state, and launcher must travel together.</p>
+                    </div>
+
+                    <div class="comparison-table-wrap">
+                        <table class="comparison-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col" data-i18n="comparison.tool">Tool</th>
+                                    <th scope="col" data-i18n="comparison.knows">What it knows</th>
+                                    <th scope="col" data-i18n="comparison.status">Repository overview</th>
+                                    <th scope="col" data-i18n="comparison.launcher">AI CLI launch</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th scope="row">zoxide / autojump</th>
+                                    <td data-i18n="comparison.jumpKnows">Visited directory paths</td>
+                                    <td data-i18n="comparison.none">Not built in</td>
+                                    <td data-i18n="comparison.none">Not built in</td>
+                                </tr>
+                                <tr class="comparison-cdp">
+                                    <th scope="row">cdp</th>
+                                    <td data-i18n="comparison.cdpKnows">Named projects + local path profiles</td>
+                                    <td><code>cdp status</code></td>
+                                    <td><code>cdp api -Open codex</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="comparison-note" data-i18n="comparison.note">Complementary by design: fast directory recall on one side, repeatable project context on the other.</p>
                     </div>
                 </div>
             </div>

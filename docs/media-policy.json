@@ -12,6 +12,7 @@
     "docs/index.html",
     "docs/styles.css",
     "docs/styles-sections.css",
+    "docs/styles-workflow.css",
     "docs/styles-responsive.css"
   ],
   "mediaExtensions": [

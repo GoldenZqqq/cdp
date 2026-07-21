@@ -28,9 +28,11 @@
 
 [![观看 cdp v2.0 演示](./docs/assets/cdp-v2-promo.gif)](https://goldenzqqq.github.io/cdp/#proof)
 
-[在官网观看高清演示](https://goldenzqqq.github.io/cdp/#proof) · [直接打开 v2.0 MP4](https://goldenzqqq.github.io/cdp/assets/cdp-v2-promo.mp4)
+[在官网体验 AI CLI 交互演示](https://goldenzqqq.github.io/cdp/#workflow) · [观看高清演示](https://goldenzqqq.github.io/cdp/#proof) · [直接打开 v2.0 MP4](https://goldenzqqq.github.io/cdp/assets/cdp-v2-promo.mp4)
 
 这支 v2.0 演示展示了 cdp 的核心功能：`cdp status` 多项目 Git 仪表盘、`cdp api -Open codex` 一步切换并启动 AI CLI、`cdp workspace` 多项目工作区、onEnter 环境自动激活、智能 Tab 补全，以及 Windows / macOS / Linux 全平台支持。
+
+官网交互演示现在把 AI CLI 路线完整展开：解析命名项目、进入当前系统对应的项目根目录、应用已授权的设置，然后让工具从该工作目录启动。它也明确了 cdp 与 `zoxide` / `autojump` 的边界：目录跳转工具负责回忆访问过的路径；cdp 把项目身份、仓库状态和启动器放在同一条路线里。
 
 ---
 
@@ -629,7 +631,7 @@ cdp-config 1 --yes
 | VS Code Project Manager | 编辑器内切换 | 无 | 无 | 仅限编辑器内使用 |
 | **cdp** | **模糊搜索 + query 直达** | **`cdp status` 全仓库仪表盘** | **`-Open codex/claude/gemini`** | 终端里的项目工作台 |
 
-cdp 的重点不是替代所有跳转工具，而是把”项目根目录切换”和”项目状态总览”合在一起。zoxide 擅长跳到去过的任意目录；cdp 知道你的项目列表、每个仓库的 Git 状态，还能一键启动 AI CLI。
+cdp 的重点不是替代所有跳转工具。`zoxide` 和 `autojump` 擅长回忆去过的任意目录；cdp 是项目上下文层：解析命名项目、选择平台对应的本机根目录、展示仓库状态，并能一键启动 AI CLI。两者可以互补使用，而不是互相排斥。
 
 ---
 

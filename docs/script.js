@@ -15,6 +15,7 @@ document.documentElement.classList.add("js");
             "a11y.heroDemo": "cdp 路由示例",
             "a11y.oldRoute": "传统路径切换",
             "a11y.commandTabs": "cdp 命令",
+            "a11y.workflowTabs": "工作流 Shell",
             "a11y.installTabs": "安装平台",
             "a11y.platformDiagram": "平台路线汇合图",
             "nav.menu": "打开菜单",
@@ -65,6 +66,36 @@ document.documentElement.classList.add("js");
             "scenario.workspace.result": "前端、API 与文档项目已同时就位",
             "scenario.doctor.intent": "在问题影响工作前检查依赖和配置。",
             "scenario.doctor.result": "fzf、配置和项目路径全部健康",
+            "workflow.signal": "目录不等于开发上下文。",
+            "workflow.title": "把 AI CLI 准确送进目标项目。",
+            "workflow.lede": "cdp 解析命名项目、进入本机路径、执行已授权的项目初始化，再让工具从正确工作目录启动。",
+            "workflow.copyTitle": "一条命令，替代开工前的上下文检查。",
+            "workflow.copyBody": "启动器是最后一步，不是第一步。Codex、Claude 或 Gemini 启动前，cdp 会先确定项目身份和本机位置。",
+            "workflow.outcome1": "项目关键词从显式项目地图中解析",
+            "workflow.outcome2": "按当前系统选择对应的本机路径",
+            "workflow.outcome3": "启动器之前执行已授权的 onEnter 设置",
+            "workflow.outcome4": "AI CLI 继承预期的工作目录",
+            "workflow.terminalLabel": "AI SESSION ROUTE",
+            "workflow.resolve": "01 解析",
+            "workflow.resolveResult": "api → my-api",
+            "workflow.enter": "02 进入",
+            "workflow.enterResult": "已选择本机项目根目录",
+            "workflow.prepare": "03 准备",
+            "workflow.prepareResult": "已应用授权设置",
+            "workflow.launch": "04 启动",
+            "workflow.launchResult": "会话在正确上下文中启动",
+            "workflow.readyLabel": "READY",
+            "workflow.ready": "AI CLI 从真正工作的目录开始运行。",
+            "comparison.title": "目录记忆与项目编排，解决的是两类问题。",
+            "comparison.lede": "zoxide 或 autojump 适合跳到任意访问过的目录；命名项目、仓库状态和启动器需要一起移动时，使用 cdp。",
+            "comparison.tool": "工具",
+            "comparison.knows": "它知道什么",
+            "comparison.status": "仓库总览",
+            "comparison.launcher": "AI CLI 启动",
+            "comparison.jumpKnows": "访问过的目录路径",
+            "comparison.none": "非内置能力",
+            "comparison.cdpKnows": "命名项目 + 本机路径配置",
+            "comparison.note": "两者可以互补：一边快速回忆任意目录，另一边提供可重复的项目上下文。",
             "proof.signal": "不相信宣传？看真实终端。",
             "proof.title": "从仓库全景，到 AI CLI 启动。",
             "proof.lede": "v2.0 演示展示 status 仪表盘、智能跳转、workspace、onEnter、Tab 补全和全平台支持。",
@@ -104,6 +135,7 @@ document.documentElement.classList.add("js");
             "a11y.heroDemo": "cdp routing example",
             "a11y.oldRoute": "Traditional directory switching",
             "a11y.commandTabs": "cdp commands",
+            "a11y.workflowTabs": "Workflow shell",
             "a11y.installTabs": "Installation platforms",
             "a11y.platformDiagram": "Platform routes merging into one destination",
             "nav.menu": "Open menu",
@@ -154,6 +186,36 @@ document.documentElement.classList.add("js");
             "scenario.workspace.result": "Frontend, API, and documentation projects are ready together",
             "scenario.doctor.intent": "Check dependencies and configuration before they interrupt work.",
             "scenario.doctor.result": "fzf, configuration, and project paths are healthy",
+            "workflow.signal": "A directory is not a development context.",
+            "workflow.title": "Route the AI CLI into the right project.",
+            "workflow.lede": "cdp resolves a named project, enters its local path, applies approved project setup, and starts the tool with the correct working directory.",
+            "workflow.copyTitle": "One command replaces the context checklist.",
+            "workflow.copyBody": "The launcher is the final step, not the first. cdp establishes project identity and location before Codex, Claude, or Gemini starts.",
+            "workflow.outcome1": "Project query resolves against your explicit project map",
+            "workflow.outcome2": "OS-specific path profile selects the local root",
+            "workflow.outcome3": "Approved onEnter setup runs before the launcher",
+            "workflow.outcome4": "The AI CLI inherits the intended working directory",
+            "workflow.terminalLabel": "AI SESSION ROUTE",
+            "workflow.resolve": "01 RESOLVE",
+            "workflow.resolveResult": "api → my-api",
+            "workflow.enter": "02 ENTER",
+            "workflow.enterResult": "local project root selected",
+            "workflow.prepare": "03 PREPARE",
+            "workflow.prepareResult": "approved setup applied",
+            "workflow.launch": "04 LAUNCH",
+            "workflow.launchResult": "session starts in context",
+            "workflow.readyLabel": "READY",
+            "workflow.ready": "The AI CLI starts where the work actually lives.",
+            "comparison.title": "Directory memory and project orchestration solve different jobs.",
+            "comparison.lede": "Use zoxide or autojump for arbitrary visited directories. Use cdp when a named project, repository state, and launcher must travel together.",
+            "comparison.tool": "Tool",
+            "comparison.knows": "What it knows",
+            "comparison.status": "Repository overview",
+            "comparison.launcher": "AI CLI launch",
+            "comparison.jumpKnows": "Visited directory paths",
+            "comparison.none": "Not built in",
+            "comparison.cdpKnows": "Named projects + local path profiles",
+            "comparison.note": "Complementary by design: fast directory recall on one side, repeatable project context on the other.",
             "proof.signal": "Skip the claims. Watch the terminal.",
             "proof.title": "From repository overview to AI CLI launch.",
             "proof.lede": "The v2.0 demo covers the status dashboard, direct jumps, workspaces, onEnter, Tab completion, and cross-platform support.",
@@ -256,9 +318,23 @@ document.documentElement.classList.add("js");
         }
     };
 
+    const workflowOptions = {
+        powershell: {
+            command: "PS C:\\> cdp api -Open codex",
+            root: "C:\\Work\\my-api",
+            launch: "codex (cwd: C:\\Work\\my-api)"
+        },
+        shell: {
+            command: "$ cdp api --open codex",
+            root: "~/Work/my-api",
+            launch: "codex (cwd: ~/Work/my-api)"
+        }
+    };
+
     const state = {
         language: getPreferredLanguage(),
         command: "switch",
+        workflowPlatform: "powershell",
         platform: "powershell",
         navOpen: false,
         copyTimer: null
@@ -318,6 +394,7 @@ document.documentElement.classList.add("js");
         });
         applyTranslations();
         setCommand(state.command);
+        setWorkflowPlatform(state.workflowPlatform);
         setPlatform(state.platform);
         updateNav();
     }
@@ -364,6 +441,22 @@ document.documentElement.classList.add("js");
         document.querySelector("[data-install-description]").textContent = text(option.descriptionKey);
         document.querySelector("[data-install-command]").textContent = option.command;
         document.querySelector("[data-copy-status]").textContent = "";
+    }
+
+    function setWorkflowPlatform(platformName) {
+        const option = workflowOptions[platformName];
+        const panel = document.querySelector("#workflow-panel");
+        if (!option || !panel) return;
+        state.workflowPlatform = platformName;
+        document.querySelectorAll("[data-workflow-platform]").forEach((button) => {
+            const selected = button.dataset.workflowPlatform === platformName;
+            button.setAttribute("aria-selected", String(selected));
+            button.tabIndex = selected ? 0 : -1;
+            if (selected) panel.setAttribute("aria-labelledby", button.id);
+        });
+        document.querySelector("[data-workflow-command]").textContent = option.command;
+        document.querySelector("[data-workflow-root]").textContent = option.root;
+        document.querySelector("[data-workflow-launch]").textContent = option.launch;
     }
 
     function bindTabList(container, itemSelector, onSelect) {
@@ -439,6 +532,7 @@ document.documentElement.classList.add("js");
             button.addEventListener("click", () => setLanguage(button.dataset.language));
         });
         bindTabList(document.querySelector("[data-command-tabs]"), "[data-command]", (button) => setCommand(button.dataset.command));
+        bindTabList(document.querySelector("[data-workflow-tabs]"), "[data-workflow-platform]", (button) => setWorkflowPlatform(button.dataset.workflowPlatform));
         bindTabList(document.querySelector("[data-install-tabs]"), "[data-platform]", (button) => setPlatform(button.dataset.platform));
         document.querySelector("[data-copy-target]")?.addEventListener("click", (event) => copyCommand(event.currentTarget));
         document.querySelector("[data-nav-toggle]")?.addEventListener("click", () => {

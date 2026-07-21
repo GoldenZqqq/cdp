@@ -1,0 +1,237 @@
+.workflow-section {
+    padding: var(--section-space) 0;
+    background: var(--clear-white);
+}
+
+.workflow-heading {
+    margin-bottom: clamp(3rem, 7vw, 5rem);
+}
+
+.workflow-layout,
+.comparison-layout {
+    display: grid;
+    grid-template-columns: minmax(17rem, 0.72fr) minmax(0, 1.28fr);
+    gap: clamp(2rem, 7vw, 7rem);
+    align-items: start;
+}
+
+.workflow-copy {
+    padding-top: 0.4rem;
+}
+
+.workflow-index {
+    margin-bottom: 1.2rem;
+    color: var(--warp-blue);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.workflow-copy h3,
+.comparison-heading h3 {
+    margin-bottom: 1rem;
+    font-family: var(--font-display);
+    font-size: 3rem;
+    line-height: 0.98;
+}
+
+.workflow-copy > p:not(.workflow-index),
+.comparison-heading > p:last-child {
+    color: var(--slate-copy);
+}
+
+.workflow-outcomes {
+    display: grid;
+    gap: 0;
+    margin: 2rem 0 0;
+    padding: 0;
+    border-top: 2px solid var(--midnight);
+    list-style: none;
+}
+
+.workflow-outcomes li {
+    position: relative;
+    padding: 0.85rem 0 0.85rem 1.5rem;
+    border-bottom: 1px solid var(--line-dark);
+    font-size: 0.92rem;
+    font-weight: 650;
+}
+
+.workflow-outcomes li::before {
+    position: absolute;
+    top: 1.15rem;
+    left: 0;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--route-cyan);
+    content: "";
+}
+
+.workflow-demo {
+    overflow: hidden;
+    border-radius: var(--radius-surface);
+    background: var(--midnight);
+    color: var(--clear-white);
+}
+
+.workflow-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem 0.75rem 1.2rem;
+    background: var(--deep-route);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.workflow-tabs {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.workflow-tabs button {
+    min-height: 2.25rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.72);
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.workflow-tabs button[aria-selected="true"] {
+    border-color: var(--signal-yellow);
+    background: var(--signal-yellow);
+    color: var(--midnight);
+}
+
+.workflow-panel {
+    padding: clamp(1.2rem, 3.5vw, 2.4rem);
+}
+
+.workflow-steps {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-mono);
+}
+
+.workflow-steps li {
+    display: grid;
+    grid-template-columns: minmax(5rem, 0.45fr) minmax(0, 1.1fr);
+    gap: 0.55rem 1rem;
+    align-items: center;
+    padding: 1.05rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.workflow-step-label {
+    color: var(--route-cyan);
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.workflow-steps code {
+    overflow-wrap: anywhere;
+    color: var(--signal-yellow);
+    font-size: 0.82rem;
+}
+
+.workflow-steps strong {
+    grid-column: 2;
+    color: rgba(255, 255, 255, 0.62);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.workflow-ready {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 1.25rem;
+}
+
+.workflow-ready span {
+    color: var(--clean-green);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.workflow-ready strong {
+    color: var(--clear-white);
+    font-size: 0.9rem;
+    text-align: right;
+}
+
+.comparison-layout {
+    margin-top: clamp(5rem, 10vw, 8rem);
+    padding-top: clamp(2rem, 4vw, 3rem);
+    border-top: 2px solid var(--midnight);
+}
+
+.comparison-heading h3 {
+    font-size: 2.65rem;
+}
+
+.comparison-table-wrap {
+    min-width: 0;
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: 0.9rem 0.75rem;
+    border-bottom: 1px solid var(--line-dark);
+    text-align: left;
+    vertical-align: top;
+}
+
+.comparison-table thead th {
+    color: var(--slate-copy);
+    font-family: var(--font-mono);
+    font-size: 0.67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.comparison-table tbody th {
+    min-width: 8rem;
+    font-size: 0.92rem;
+}
+
+.comparison-table td {
+    color: var(--slate-copy);
+}
+
+.comparison-table code {
+    overflow-wrap: anywhere;
+    color: var(--deep-route);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.comparison-cdp th,
+.comparison-cdp td {
+    background: rgba(32, 217, 210, 0.12);
+}
+
+.comparison-note {
+    margin: 1rem 0 0;
+    color: var(--slate-copy);
+    font-size: 0.82rem;
+}

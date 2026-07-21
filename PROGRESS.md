@@ -158,9 +158,10 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 - [x] Add tags or aliases such as `@work`, `@ai`, and short project nicknames.
 - [x] Run PowerShell, ScriptAnalyzer, bash syntax, and whitespace validation.
 
-## Post-1.8 Public Submission Backlog
+## Post-Release Maintenance Backlog
 
-- [ ] Improve the public demo around the AI CLI workflow and the difference from zoxide/autojump.
+- [x] Improve the public demo around the AI CLI workflow and the difference from zoxide/autojump.
+- [x] Upgrade GitHub Actions dependencies to the current Node.js 24-compatible major versions.
 
 ## Verification Log
 
