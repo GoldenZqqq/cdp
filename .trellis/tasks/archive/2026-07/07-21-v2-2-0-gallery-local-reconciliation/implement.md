@@ -57,8 +57,16 @@ python ./.trellis/scripts/task.py validate
 
 ## Remaining boundary
 
-- Add the two new shell suites to `.github/workflows/test.yml` only after user
-  confirmation because CI is a protected root-level contract.
-- Commit only after user confirmation. Do not push, tag, or publish v2.3.0.
-- After the commit leaves the worktree clean, delete the audited backup/archive
-  refs, `stash@{0}`, and `C:\Learn\cdp-before-reconciliation-20260721.bundle`.
+- Native Windows PowerShell 5.1 hosted CI remains required before any v2.3.0
+  release. Do not push, tag, or publish v2.3.0 without separate authorization.
+
+## Cleanup evidence (2026-07-22)
+
+- Added both new shell suites to Ubuntu, macOS, and Bash 3.2 CI matrices after
+  explicit user confirmation; local YAML parsing and whitespace checks passed.
+- Created four local work commits: `b8bab4a`, `fd7eb7c`, `daa4075`, and
+  `d25b78f`. No commit was pushed.
+- Deleted `backup/local-main-20260721`, the three `archive/local-*` candidate
+  refs, `stash@{0}`, and
+  `C:\Learn\cdp-before-reconciliation-20260721.bundle` after verifying their
+  exact object IDs and the bundle SHA-256.

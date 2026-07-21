@@ -45,7 +45,7 @@
 - [x] frozen push、fetch timeout/cancel、脱敏错误、远端 identity 和 freshness 状态均有可重复测试。
 - [x] launcher safety focused tests 覆盖 direct/stored/workspace、特殊 argv、dry-run/WhatIf 和副作用前置拒绝；现有 PowerShell/shell V2 矩阵保持通过。
 - [x] Pester、PSScriptAnalyzer、shell bundle/syntax、Trellis validation、`git diff --check` 全部通过。
-- [ ] 清理后只保留 canonical `main`（以及用户明确保留的远端跟踪引用），无旧 stash/bundle/归档分支。
+- [x] 清理后只保留 canonical `main`（以及用户明确保留的远端跟踪引用），无旧 stash/bundle/归档分支。
 
 ## Out of Scope
 
