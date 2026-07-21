@@ -301,6 +301,7 @@ cdp() {
         fi
         local raw_project_path="$CDP_PROJECT_RAW_PATH"
         local project_path="$CDP_PROJECT_RESOLVED_PATH"
+        if [[ -n "$opener" ]] && ! resolve_workspace_launcher "$opener" >/dev/null; then return 2; fi
 
         # Check if path exists
         if [[ -d "$project_path" ]]; then

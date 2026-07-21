@@ -229,6 +229,10 @@ function Switch-Project {
         Write-Host "Project: $selectedProjectName; profile: $($resolution.Profile)" -ForegroundColor Gray
         return
     }
+    if (-not [string]::IsNullOrWhiteSpace($Open)) {
+        try { [void](Get-CdpWorkspaceLauncher -Open $Open) }
+        catch { Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red; return }
+    }
 
     if ($WSL -or (Test-Path -LiteralPath $resolution.ResolvedPath)) {
         if ($WSL) {
@@ -528,7 +532,15 @@ function Invoke-Cdp {
 
     switch ($invocation.Kind) {
         'exec' { Invoke-CdpExecInvocation -Invocation $invocation; return }
-        'status' { Invoke-CdpStatusInvocation -Invocation $invocation; return }
+        'status' {
+            $script:CdpLastStatusFetchFailedCount = 0
+            $script:CdpDeferStatusFetchError = $true
+            try { Invoke-CdpStatusInvocation -Invocation $invocation }
+            finally { $script:CdpDeferStatusFetchError = $false }
+            Write-CdpStatusFetchAggregateError `
+                -FailedCount $script:CdpLastStatusFetchFailedCount -Cmdlet $PSCmdlet
+            return
+        }
         'workspace' { Invoke-CdpWorkspaceInvocation -Invocation $invocation; return }
         'switch' {
             Switch-Project `

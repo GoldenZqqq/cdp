@@ -96,6 +96,13 @@ _cdp_completions() {
         return
     fi
 
+    if [[ "${COMP_WORDS[1]}" == status ]]; then
+        if [[ "$prev" == --fetch-jobs ]]; then COMPREPLY=($(compgen -W '1 2 4 8 16' -- "$cur")); return; fi
+        if [[ "$prev" == --fetch-timeout ]]; then COMPREPLY=($(compgen -W '5 15 30 60' -- "$cur")); return; fi
+        COMPREPLY=($(compgen -W '--dirty --fix --push --fetch --fetch-jobs --fetch-timeout --refresh --jobs --json --no-color --config --dry-run --yes' -- "$cur"))
+        return
+    fi
+
     if [[ "${COMP_WORDS[1]}" =~ ^(workspace|ws)$ ]]; then
         local workspace_actions="list show add edit remove validate open"
         local workspace_action="${COMP_WORDS[2]:-}"
@@ -170,6 +177,14 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
             local exec_projects=(${(f)"$(cdp_completion_project_names)"})
             local exec_tags=(${(f)"$(cdp_completion_tags)"})
             compadd -a exec_options; compadd -a exec_projects; compadd -a exec_tags
+            return
+        fi
+
+        if [[ "${completion_words[2]}" == status ]]; then
+            if [[ "$prev" == --fetch-jobs ]]; then local fetch_jobs=(1 2 4 8 16); compadd -a fetch_jobs; return; fi
+            if [[ "$prev" == --fetch-timeout ]]; then local fetch_timeouts=(5 15 30 60); compadd -a fetch_timeouts; return; fi
+            local status_options=(--dirty --fix --push --fetch --fetch-jobs --fetch-timeout --refresh --jobs --json --no-color --config --dry-run --yes)
+            compadd -a status_options
             return
         fi
 

@@ -9,7 +9,7 @@
 .NOTES
     Name: cdp
     Author: GoldenZqqq
-    Version: 2.2.0
+    Version: 2.3.0
     License: MIT
 #>
 
@@ -18,6 +18,8 @@ $script:CdpFzfCommand = $null
 $script:CdpStateFingerprint = 'missing'
 $script:CdpStateWritable = $true
 $script:CdpStatusCache = @{}
+$script:CdpLastStatusFetchFailedCount = 0
+$script:CdpDeferStatusFetchError = $false
 
 $domainRoot = Join-Path $PSScriptRoot 'PowerShell'
 $domainFiles = @(

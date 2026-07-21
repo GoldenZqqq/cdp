@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.2.0'
+ModuleVersion = '2.3.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,25 +107,17 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
-v2.2.0 - Automation and Multi-Repository Workflows
-- Added: cdp status --json and Show-CdpProjectStatus -Json emit stable schema version 1 for scripts, CI, and AI agents
-- Added: status --no-color and -NoColor provide ANSI-free human-readable output
-- Added: JSON status exit codes distinguish clean success, attention, partial scan failure, and fatal failure
-- Added: optional Windows, WSL, Linux, and macOS project path profiles with CDP_PATH_PROFILE override
-- Added: shared cross-runtime path-profile fixtures and path_profile_invalid automation diagnostics
-- Added: full workspace list/show/add/edit/remove/validate/fix/open lifecycle with stable raw-path references
-- Added: tabs and horizontal/vertical split layouts, per-project launchers, split sizes, and workspace completion
-- Added: safe cdp exec/run selectors, native argv execution, bounded concurrency/timeouts, dry-run/fail-fast, and schema version 1 JSON results
-- Added: deterministic frecency ranking keeps pinned projects first and favors frequent, recent visits across picker, list, and multi-match query candidates
-- Added: CDP_FRECENCY opt-out plus safe cdp recent reset and Reset-CdpRecentProjects preview/approval workflows
-- Improved: structured status keeps raw and resolved paths separate and exposes stable status, attention-reason, and redacted error codes
-- Improved: switching, status, workspace, doctor/repair, add/scan/init, picker/list, and recent paths share one resolver while rootPath remains backward compatible
-- Safety: repair and status fix preserve unavailable explicit platform mappings and mutate missing projects by name plus raw path identity
-- Safety: workspace migration preserves unknown/unresolved references, launch planning validates every target before native WT/tmux argv execution, and dry-run starts no process
-- Fixed: Windows PowerShell 5.1 normalizes JSON arrays consistently for path profiles, workspaces, and multi-repository exec
-- Fixed: Windows PowerShell 5.1 workspace size validation and native stderr capture no longer fail on edition-specific runtime behavior
-- Fixed: empty PowerShell JSON arrays and null entries remain stable across Windows PowerShell 5.1 and PowerShell 7
+v2.3.0 - Remote Status and Launcher Safety
+- Added: explicit status fetch with bounded jobs, per-repository timeouts, process cleanup, and freshness audit fields
+- Added: structured remote identity, redacted remote URLs, fetch outcomes, and immutable HEAD snapshots across PowerShell and bash/zsh
+- Safety: status push freezes the exact remote, refs/heads target, and local object ID before approval and execution
+- Safety: direct and workspace launchers accept only code, vscode, cursor, codex, claude, or gemini and validate before side effects
+- Improved: default status remains offline while --fetch/-Fetch performs an explicit refresh before rendering or action planning
+- Improved: Gallery publishing rejects oversized release notes and fails on native NuGet pack or push errors
+- Fixed: shell JSON rendering keeps fetch=false when invoked through the compatibility renderer boundary
+'@
 
+<# Historical release notes remain in CHANGELOG.md; Gallery only needs the current release notes.
 v2.1.0 - Engineering Foundation
 - Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks
 - Added: bounded JSON backups and explicit recovery helpers
@@ -312,7 +304,7 @@ v1.1.0 - Project Renamed to "cdp"
 - Auto-create default config file at ~/.cdp/projects.json on first use
 - Simplified configuration management workflow
 - Fixed: Aliases no longer conflict with system commands (ls, rm, add)
-'@
+#>
 
         # Prerelease string of this module
         # Prerelease = ''

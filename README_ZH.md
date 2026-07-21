@@ -188,6 +188,10 @@ cdp status --dirty '@work' E:\Projects\projects.json
 cdp status --jobs 8 --refresh
 Show-CdpProjectStatus -ThrottleLimit 8 -Refresh
 
+# 显式刷新 upstream ref；默认 status 绝不联网
+cdp status --fetch --fetch-jobs 4 --fetch-timeout 15
+Show-CdpProjectStatus -Fetch -FetchJobs 4 -FetchTimeoutSeconds 15
+
 # 为脚本、CI 和 AI Agent 输出稳定的 schema version 1
 cdp status --json
 Show-CdpProjectStatus -Json
@@ -302,7 +306,7 @@ git    git repo detected
 
 `rootPath` 是稳定身份，`name` 是可读提示。如果项目只改名、raw `rootPath` 不变，验证会报告 `renamed`，启动时安全使用当前项目；如果项目被删除，或旧名称被另一个 raw path 复用，cdp 会报告 `missing-project`，不会按名称错误绑定。旧字符串引用仍可读取；`workspace validate --fix` 会升级可解析字符串、刷新重命名提示，同时保留无法解析的引用与未知未来字段。
 
-Launcher 优先级为 CLI `--open`、项目级 `open`、workspace 级 `open`。split 的 `size` 必须是 10 到 90 的整数。Windows Terminal 接收 `new-tab` / `split-pane` argv，tmux 接收 `new-window` / `split-window` argv；cdp 不会执行拼接的 workspace 命令字符串。启动前会先完成所有引用与本机路径规划；某项失败后仍继续后续安全项目，但只要存在不安全目标，最终结果就失败。使用 PowerShell `-WhatIf` 或 shell `--dry-run` 可在不写入、不启动进程的情况下查看 workspace、layout、当前名称、raw/resolved path、launcher 和引用状态；shell 真正启动仍要求 `--yes`。
+Launcher 优先级为 CLI `--open`、项目级 `open`、workspace 级 `open`。launcher 仅允许 `code`、`cursor`、`codex`、`claude` 和 `gemini`（`vscode` 是 `code` 的别名）。split 的 `size` 必须是 10 到 90 的整数。Windows Terminal 接收 `new-tab` / `split-pane` argv，tmux 接收 `new-window` / `split-window` argv；cdp 不会执行拼接的 workspace 命令字符串。启动前会先完成所有引用与本机路径规划；某项失败后仍继续后续安全项目，但只要存在不安全目标，最终结果就失败。使用 PowerShell `-WhatIf` 或 shell `--dry-run` 可在不写入、不启动进程的情况下查看 workspace、layout、当前名称、raw/resolved path、launcher 和引用状态；shell 真正启动仍要求 `--yes`。
 
 ### 安全多仓库 Exec
 
@@ -558,7 +562,7 @@ $env:CDP_FZF_PATH = "C:\Users\you\AppData\Local\Microsoft\WinGet\Links\fzf.exe"
 
 `cdp status` 使用有限本地并发；对已有提交的仓库最多执行两次 Git 探测。可通过 `CDP_STATUS_CONCURRENCY`（1-16）或 `--jobs` / `-ThrottleLimit` 调整 worker 数量。`CDP_STATUS_TIMEOUT_SECONDS`（1-60，默认 10）限制单仓库扫描时间，避免一个慢仓库阻塞整个仪表盘。
 
-status 缓存默认关闭。将 `CDP_STATUS_CACHE_TTL` 设置为 1-60 秒可在当前 shell 或 PowerShell 会话中复用结果；需要最新数据时使用 `--refresh` / `-Refresh`。`status --fix` 与 `status --push` 始终绕过缓存。
+status 缓存默认关闭。将 `CDP_STATUS_CACHE_TTL` 设置为 1-60 秒可在当前 shell 或 PowerShell 会话中复用结果；使用 `--refresh` / `-Refresh` 可重新执行本地扫描。本地 tracking 数据标记为 `cached`，默认路径绝不联网。使用 `--fetch` / `-Fetch` 可显式执行有限刷新，worker 范围为 1-16，单仓库超时范围为 1-300 秒。fetch 错误会脱敏并隔离；push 只执行审批前冻结的 remote、目标 ref 和 HEAD OID。
 
 `cdp exec` 默认最多使用 4 个 worker，并为每个项目设置 300 秒超时。可在单次命令中用 `--jobs`、`--timeout` 覆盖，或设置 `CDP_EXEC_CONCURRENCY`（1-16）与 `CDP_EXEC_TIMEOUT_SECONDS`（1-3600）。
 

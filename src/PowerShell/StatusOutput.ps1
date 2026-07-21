@@ -24,6 +24,7 @@ function Get-CdpStatusAttentionReasons {
     if ($Info.DirtyCount -gt 0) { $reasons += 'dirty' }
     if ($Info.UntrackedCount -gt 0) { $reasons += 'untracked' }
     if ($Info.BehindCount -gt 0) { $reasons += 'behind' }
+    if ($Info.PSObject.Properties['Freshness'] -and $Info.Freshness -eq 'fetch-failed') { $reasons += 'fetch_failed' }
     @($reasons)
 }
 
@@ -36,6 +37,9 @@ function Get-CdpStatusError {
     if ($Info.StatusLabel -eq 'status failed') {
         return [PSCustomObject]@{ code = 'scan_failed'; message = 'Git status scan failed.' }
     }
+    if ($Info.PSObject.Properties['Freshness'] -and $Info.Freshness -eq 'fetch-failed') {
+        return [PSCustomObject]@{ code = 'fetch_failed'; message = [string]$Info.FetchMessage }
+    }
     $null
 }
 
@@ -45,6 +49,7 @@ function ConvertTo-CdpStatusProject {
     $branch = if ([string]::IsNullOrWhiteSpace([string]$Info.Branch)) { $null } else { [string]$Info.Branch }
     $lastCommit = if ([string]::IsNullOrWhiteSpace([string]$Info.LastCommitRelative)) { $null } else { [string]$Info.LastCommitRelative }
     $resolvedPath = if ($Info.PSObject.Properties['ResolvedPath']) { [string]$Info.ResolvedPath } else { [string]$Info.RootPath }
+    $freshness = if ($Info.PSObject.Properties['Freshness']) { [string]$Info.Freshness } else { 'not-applicable' }
     [PSCustomObject]@{
         name = [string]$Info.Name
         rawPath = [string]$Info.RootPath
@@ -62,6 +67,16 @@ function ConvertTo-CdpStatusProject {
             aheadCount = [int]$Info.AheadCount
             behindCount = [int]$Info.BehindCount
             lastCommitRelative = $lastCommit
+            upstream = if ($Info.PSObject.Properties['Upstream']) { [string]$Info.Upstream } else { '' }
+            remoteName = if ($Info.PSObject.Properties['RemoteName']) { [string]$Info.RemoteName } else { '' }
+            remoteRef = if ($Info.PSObject.Properties['RemoteRef']) { [string]$Info.RemoteRef } else { '' }
+            remoteUrl = if ($Info.PSObject.Properties['RemoteUrl']) { [string]$Info.RemoteUrl } else { '' }
+            headOid = if ($Info.PSObject.Properties['HeadOid']) { [string]$Info.HeadOid } else { '' }
+            freshness = $freshness
+            fetchAttempted = [bool]($Info.PSObject.Properties['FetchAttempted'] -and $Info.FetchAttempted)
+            fetchSucceeded = if ($Info.PSObject.Properties['FetchSucceeded']) { $Info.FetchSucceeded } else { $null }
+            fetchTimedOut = [bool]($Info.PSObject.Properties['FetchTimedOut'] -and $Info.FetchTimedOut)
+            fetchMessage = if ($Info.PSObject.Properties['FetchMessage']) { [string]$Info.FetchMessage } else { '' }
         }
     }
 }
@@ -81,7 +96,8 @@ function New-CdpStatusDocument {
         [Parameter(Mandatory = $true)][int]$DurationMs,
         [switch]$DirtyOnly,
         [string]$TagFilter,
-        [switch]$Refresh
+        [switch]$Refresh,
+        [switch]$Fetch
     )
 
     $projects = @($VisibleStatus | ForEach-Object { ConvertTo-CdpStatusProject -Info $_ })
@@ -94,6 +110,7 @@ function New-CdpStatusDocument {
             dirtyOnly = [bool]$DirtyOnly
             tag = if ([string]::IsNullOrWhiteSpace($TagFilter)) { $null } else { $TagFilter }
             refresh = [bool]$Refresh
+            fetch = [bool]$Fetch
         }
         summary = [PSCustomObject]@{
             total = $AllStatus.Count
@@ -130,6 +147,7 @@ function Get-CdpPlainStatusRow {
         Branch = if ($Info.IsGitRepo) { [string]$Info.Branch } else { '-' }
         Status = if ($Info.IsGitRepo) { [string]$Info.StatusLabel } else { [string]$Info.StatusLabel }
         Sync = $sync -join ' '
+        Source = if ($Info.PSObject.Properties['Freshness']) { [string]$Info.Freshness } else { 'not-applicable' }
     }
 }
 
@@ -149,18 +167,18 @@ function Write-CdpPlainStatusTable {
     $filter = if ($DirtyOnly) { ' (dirty only)' } elseif ($TagFilter) { " ($TagFilter)" } else { '' }
     Write-Host ""
     Write-Host "cdp project status ($($StatusList.Count) projects$filter)"
-    Write-Host ('-' * 110)
-    Write-Host ("  {0,-4} {1,-$nameWidth} {2,-$branchWidth} {3,-24} {4,-10} {5}" -f '#', 'Project', 'Branch', 'Status', 'Sync', 'Last Commit')
-    Write-Host ('-' * 110)
+    Write-Host ('-' * 126)
+    Write-Host ("  {0,-4} {1,-$nameWidth} {2,-$branchWidth} {3,-24} {4,-10} {5,-15} {6}" -f '#', 'Project', 'Branch', 'Status', 'Sync', 'Source', 'Last Commit')
+    Write-Host ('-' * 126)
     $index = 1
     foreach ($item in $StatusList) {
         $row = Get-CdpPlainStatusRow -Info $item
         $name = Pad-CdpText (Limit-CdpText -Text $item.Name -MaxLength $nameWidth) $nameWidth
         $branch = Pad-CdpText (Limit-CdpText -Text $row.Branch -MaxLength $branchWidth) $branchWidth
-        Write-Host ("  {0,-4} {1} {2} {3,-24} {4,-10} {5}" -f ("{0:00}" -f $index), $name, $branch, $row.Status, $row.Sync, $item.LastCommitRelative)
+        Write-Host ("  {0,-4} {1} {2} {3,-24} {4,-10} {5,-15} {6}" -f ("{0:00}" -f $index), $name, $branch, $row.Status, $row.Sync, $row.Source, $item.LastCommitRelative)
         $index++
     }
-    Write-Host ('-' * 110)
+    Write-Host ('-' * 126)
     $attention = @($StatusList | Where-Object { $_.NeedsAttention -and $_.IsGitRepo }).Count
     $missing = @($StatusList | Where-Object { -not $_.PathExists }).Count
     $parts = @()

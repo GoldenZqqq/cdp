@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.3.0
+
+### Added
+
+- Added explicit status fetch controls with bounded jobs, per-repository timeouts, process-tree cleanup, and fetch audit fields.
+- Added remote identity, redacted remote URLs, freshness states, and immutable HEAD snapshots to PowerShell and bash/zsh status results.
+
+### Changed
+
+- Status remains offline by default; `--fetch` / `-Fetch` performs an explicit refresh before rendering or action planning.
+- Status push now freezes the exact remote, `refs/heads/*` target, and local object ID before approval and execution.
+- Direct and workspace launchers now accept only `code`, `vscode`, `cursor`, `codex`, `claude`, or `gemini` and validate before side effects.
+- Gallery publishing now rejects oversized release notes and fails when native NuGet pack or push returns a nonzero exit code.
+
+### Fixed
+
+- Fixed shell compatibility rendering so a missing fetch context is serialized as `false` instead of invalid JSON.
+
 ## 2.2.0
 
 ### Added

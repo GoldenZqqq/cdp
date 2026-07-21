@@ -188,6 +188,10 @@ cdp status --dirty '@work' E:\Projects\projects.json
 cdp status --jobs 8 --refresh
 Show-CdpProjectStatus -ThrottleLimit 8 -Refresh
 
+# Explicitly refresh upstream refs; default status never accesses the network
+cdp status --fetch --fetch-jobs 4 --fetch-timeout 15
+Show-CdpProjectStatus -Fetch -FetchJobs 4 -FetchTimeoutSeconds 15
+
 # Emit stable schema version 1 for scripts, CI, and AI agents
 cdp status --json
 Show-CdpProjectStatus -Json
@@ -302,7 +306,7 @@ New definitions store stable project references instead of names alone:
 
 `rootPath` is the stable identity and `name` is a readable hint. If a project is renamed but keeps the same raw `rootPath`, validation reports `renamed` and launch uses the current project safely. If a project is deleted or its old name is reused for another raw path, cdp reports `missing-project` instead of binding by name. Legacy string references remain readable; `workspace validate --fix` upgrades resolvable strings and refreshes renamed hints while preserving unresolved references and unknown future fields.
 
-Launcher priority is CLI `--open`, then per-project `open`, then workspace `open`. Split sizes must be integers from 10 through 90. Windows Terminal receives `new-tab` / `split-pane` argv and tmux receives `new-window` / `split-window` argv—cdp never evaluates a concatenated workspace command string. Launch planning resolves every reference and local path before the first process, continues later safe projects after an item failure, and returns failure when any target is unsafe. Use PowerShell `-WhatIf` or shell `--dry-run` to inspect the workspace, layout, current name, raw/resolved path, launcher, and reference status without writing or launching; shell execution still requires `--yes`.
+Launcher priority is CLI `--open`, then per-project `open`, then workspace `open`. Launchers are restricted to `code`, `cursor`, `codex`, `claude`, and `gemini` (`vscode` aliases `code`). Split sizes must be integers from 10 through 90. Windows Terminal receives `new-tab` / `split-pane` argv and tmux receives `new-window` / `split-window` argv—cdp never evaluates a concatenated workspace command string. Launch planning resolves every reference and local path before the first process, continues later safe projects after an item failure, and returns failure when any target is unsafe. Use PowerShell `-WhatIf` or shell `--dry-run` to inspect the workspace, layout, current name, raw/resolved path, launcher, and reference status without writing or launching; shell execution still requires `--yes`.
 
 ### Safe Multi-Repository Exec
 
@@ -558,7 +562,7 @@ Set `CDP_FZF_PATH` to the actual path returned by `(Get-Command fzf).Path`. `cdp
 
 `cdp status` uses bounded local concurrency and at most two Git probes per committed repository. Use `CDP_STATUS_CONCURRENCY` (1-16) or `--jobs` / `-ThrottleLimit` to tune the worker count. `CDP_STATUS_TIMEOUT_SECONDS` (1-60, default 10) limits a repository scan so one slow repository does not block the full dashboard.
 
-The status cache is disabled by default. Set `CDP_STATUS_CACHE_TTL` to 1-60 seconds to reuse status results within the current shell or PowerShell session, and use `--refresh` / `-Refresh` when fresh data is required. `status --fix` and `status --push` always bypass the cache.
+The status cache is disabled by default. Set `CDP_STATUS_CACHE_TTL` to 1-60 seconds to reuse status results within the current shell or PowerShell session, and use `--refresh` / `-Refresh` for a fresh local scan. Local tracking data is labeled `cached`; the default path never accesses the network. Use `--fetch` / `-Fetch` for an explicit bounded refresh with 1-16 workers and a 1-300 second per-repository timeout. Fetch errors are redacted and isolated, and push executes the exact remote, target ref, and HEAD OID frozen before approval.
 
 `cdp exec` defaults to at most four workers and a 300-second per-project timeout. Override them per command with `--jobs` and `--timeout`, or set `CDP_EXEC_CONCURRENCY` (1-16) and `CDP_EXEC_TIMEOUT_SECONDS` (1-3600).
 

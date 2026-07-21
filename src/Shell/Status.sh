@@ -2,40 +2,6 @@
 # shellcheck shell=bash
 # Generated from the canonical cdp.sh source; do not source peer fragments.
 
-cdp_status_git_command() {
-    local timeout_seconds="$1"
-    shift
-    local git_command="${CDP_STATUS_GIT_COMMAND:-git}"
-    local timeout_exit=0
-    if command -v timeout >/dev/null 2>&1; then
-        timeout "$timeout_seconds" "$git_command" "$@" || timeout_exit=$?
-        [[ "$timeout_exit" -eq 143 ]] && return 124
-        return "$timeout_exit"
-    elif command -v gtimeout >/dev/null 2>&1; then
-        gtimeout "$timeout_seconds" "$git_command" "$@" || timeout_exit=$?
-        [[ "$timeout_exit" -eq 143 ]] && return 124
-        return "$timeout_exit"
-    else
-        "$git_command" "$@" &
-        local command_pid=$!
-        (sleep "$timeout_seconds"; kill -TERM "$command_pid" 2>/dev/null || true) &
-        local timer_pid=$!
-        local exit_code=0
-        wait "$command_pid" || exit_code=$?
-        if [[ "$exit_code" -eq 143 ]]; then
-            kill -TERM "$timer_pid" 2>/dev/null || true
-            wait "$timer_pid" 2>/dev/null || true
-            return 124
-        fi
-        if kill -TERM "$timer_pid" 2>/dev/null; then
-            wait "$timer_pid" 2>/dev/null || true
-            return "$exit_code"
-        fi
-        wait "$timer_pid" 2>/dev/null || true
-        return 124
-    fi
-}
-
 cdp_status_collect_record() {
     local repository_path="$1"
     local timeout_seconds="$2"
@@ -53,7 +19,7 @@ cdp_status_collect_record() {
     local last_commit=""
 
     if [[ ! -d "$repository_path" ]]; then
-        printf 'missing\034-\034\034\0340\0340\0340\0340\034\n'
+        printf 'missing\034-\034\034\0340\0340\0340\0340\034\034\n'
         return 0
     fi
     if porcelain=$(cdp_status_git_command "$timeout_seconds" -C "$repository_path" status --porcelain=v2 --branch --untracked-files=all 2>/dev/null); then
@@ -63,9 +29,9 @@ cdp_status_collect_record() {
     fi
     if [[ $exit_code -ne 0 ]]; then
         if [[ $exit_code -eq 124 ]]; then
-            printf 'timed-out\034-\034\034\0340\0340\0340\0340\034\n'
+            printf 'timed-out\034-\034\034\0340\0340\0340\0340\034\034\n'
         else
-            printf 'not-git\034-\034\034\0340\0340\0340\0340\034\n'
+            printf 'not-git\034-\034\034\0340\0340\0340\0340\034\034\n'
         fi
         return 0
     fi
@@ -95,8 +61,8 @@ cdp_status_collect_record() {
     if [[ "$oid" != "" && "$oid" != "(initial)" ]]; then
         last_commit=$(cdp_status_git_command "$timeout_seconds" -C "$repository_path" log -1 --format='%cr' 2>/dev/null || true)
     fi
-    printf 'git\034%s\034%s\034%s\034%s\034%s\034%s\034%s\034%s\n' \
-        "$branch" "$remote" "$upstream" "$dirty" "$untracked" "$ahead" "$behind" "$last_commit"
+    printf 'git\034%s\034%s\034%s\034%s\034%s\034%s\034%s\034%s\034%s\n' \
+        "$branch" "$remote" "$upstream" "$dirty" "$untracked" "$ahead" "$behind" "$last_commit" "$oid"
 }
 
 cdp-status() {
@@ -105,6 +71,10 @@ cdp-status() {
     local tag_filter=""
     local do_fix=false
     local do_push=false
+    local do_fetch=false
+    local fetch_jobs=4
+    local fetch_timeout=15
+    local fetch_tuning=false
     local dry_run=false
     local assume_yes=false
     local refresh=false
@@ -123,6 +93,17 @@ cdp-status() {
             --dirty|-d) dirty_only=true ;;
             --fix)      do_fix=true ;;
             --push)     do_push=true ;;
+            --fetch)    do_fetch=true ;;
+            --fetch-jobs)
+                [[ -z "${2:-}" ]] && { cdp_status_fail "$json_mode" 'missing value after --fetch-jobs.'; return $?; }
+                cdp_status_valid_integer "$2" 1 16 || { cdp_status_fail "$json_mode" '--fetch-jobs must be between 1 and 16.'; return $?; }
+                fetch_jobs="$2"; fetch_tuning=true; shift
+                ;;
+            --fetch-timeout)
+                [[ -z "${2:-}" ]] && { cdp_status_fail "$json_mode" 'missing value after --fetch-timeout.'; return $?; }
+                cdp_status_valid_integer "$2" 1 300 || { cdp_status_fail "$json_mode" '--fetch-timeout must be between 1 and 300.'; return $?; }
+                fetch_timeout="$2"; fetch_tuning=true; shift
+                ;;
             --json)     json_mode=true ;;
             --no-color) no_color=true ;;
             --dry-run)  dry_run=true ;;
@@ -159,6 +140,8 @@ cdp-status() {
     if $do_fix && $do_push; then
         cdp_status_fail "$json_mode" '--fix and --push cannot be used together.'; return $?
     fi
+    if $do_fetch && $do_fix; then cdp_status_fail "$json_mode" '--fetch and --fix cannot be used together.'; return $?; fi
+    if $fetch_tuning && ! $do_fetch; then cdp_status_fail "$json_mode" 'fetch tuning options require --fetch.'; return $?; fi
     if $dirty_only && { $do_fix || $do_push; }; then
         cdp_status_fail "$json_mode" '--dirty cannot be combined with status actions.'; return $?
     fi
@@ -231,6 +214,7 @@ cdp-status() {
     local -a names=() raw_paths=() paths=() path_profiles=() path_sources=() path_explicit=() branches=() remotes=() upstreams=() record_kinds=()
     local -a statuses=() status_colors=() syncs=() sync_colors=() last_commits=() needs_attention=()
     local -a dirty_counts=() untracked_counts=() ahead_counts=() behind_counts=()
+    local -a freshness=() fetch_messages=() remote_urls=() remote_names=() remote_refs=() head_oids=()
 
     while IFS= read -r project_json; do
         project_json="${project_json%$'\r'}"
@@ -260,7 +244,15 @@ cdp-status() {
     timeout_seconds=$(cdp_status_setting CDP_STATUS_TIMEOUT_SECONDS 10 1 60)
     local cache_ttl
     cache_ttl=$(cdp_status_setting CDP_STATUS_CACHE_TTL 0 0 60)
-    if $do_fix || $do_push; then refresh=true; fi
+    if $do_fix || $do_push || $do_fetch; then refresh=true; fi
+    if $do_fetch; then
+        local fetch_projects="" i
+        for ((i=0; i<total; i++)); do fetch_projects+="${names[$i]}"$'\t'"${paths[$i]}"$'\n'; done
+        fetch_projects="${fetch_projects%$'\n'}"
+        cdp_status_prepare_fetches "$fetch_projects" "$fetch_jobs" "$fetch_timeout" || {
+            cdp_status_fail "$json_mode" 'status fetch cancelled.'; return $?;
+        }
+    fi
     local scan_start_epoch
     scan_start_epoch=$(date +%s)
 
@@ -275,7 +267,7 @@ cdp-status() {
         for ((i=batch_start; i<batch_end; i++)); do
             local cached_record=""
             if [[ -z "${paths[$i]}" ]]; then
-                printf 'invalid-profile\034-\034\034\0340\0340\0340\0340\034\n' > "$result_dir/$i.record"
+                printf 'invalid-profile\034-\034\034\0340\0340\0340\0340\034\034\n' > "$result_dir/$i.record"
             elif cached_record=$(cdp_status_cache_get "${path_profiles[$i]}:${paths[$i]}" "$cache_ttl" "$refresh"); then
                 printf '%s\n' "$cached_record" > "$result_dir/$i.record"
             else
@@ -291,13 +283,13 @@ cdp-status() {
     done
 
     local proj_scanned=0
-    local record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit
+    local record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit head_oid
     for ((i=0; i<total; i++)); do
         local record=""
         [[ -f "$result_dir/$i.record" ]] && record=$(cat "$result_dir/$i.record")
-        [[ -n "$record" ]] || record=$'failed\034-\034\034\0340\0340\0340\0340\034'
+        [[ -n "$record" ]] || record=$'failed\034-\034\034\0340\0340\0340\0340\034\034'
         [[ -n "${paths[$i]}" ]] && cdp_status_cache_set "${path_profiles[$i]}:${paths[$i]}" "$record" "$cache_ttl"
-        IFS=$'\034' read -r record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit <<< "$record"
+        IFS=$'\034' read -r record_kind branch remote upstream dirty_count untracked_count ahead behind last_commit head_oid <<< "$record"
         record_kinds+=("$record_kind")
         branches+=("$branch")
         remotes+=("$remote")
@@ -307,6 +299,7 @@ cdp-status() {
         untracked_counts+=("$untracked_count")
         ahead_counts+=("$ahead")
         behind_counts+=("$behind")
+        cdp_status_append_remote_state "$i" "$record_kind" "$remote" "$upstream" "$head_oid" "$do_fetch" "$do_push"
 
         local sync_text=""
         local s_color="$GRAY"
@@ -351,6 +344,9 @@ cdp-status() {
                     attention_count=$((attention_count + 1))
                     needs_attention[${#needs_attention[@]}-1]=true
                 fi
+                if [[ "${freshness[$i]}" == fetch-failed ]]; then
+                    attention_count=$((attention_count + 1)); needs_attention[${#needs_attention[@]}-1]=true
+                fi
                 ;;
             *)
                 statuses+=("status failed"); status_colors+=("$RED"); needs_attention+=(true)
@@ -365,6 +361,10 @@ cdp-status() {
     rm -f "$result_dir"/*.record 2>/dev/null || true
     rmdir "$result_dir" 2>/dev/null || true
     $json_mode || printf "\r                                      \r" >&2
+    local fetch_failed_count=0
+    for ((i=0; i<total; i++)); do [[ "${freshness[$i]}" == fetch-failed ]] && fetch_failed_count=$((fetch_failed_count + 1)); done
+    unset CDP_STATUS_FETCH_STATES CDP_STATUS_FETCH_MESSAGES CDP_STATUS_FETCH_BATCH_PIDS
+    unset CDP_STATUS_FETCH_BATCH_INDICES CDP_STATUS_FETCH_BATCH_FILES CDP_STATUS_FETCH_CANCELLED
 
     # --fix: remove path-missing projects (skip table render)
     if $do_fix; then
@@ -432,34 +432,33 @@ cdp-status() {
     if $do_push; then
         local push_count=0
         for ((i=0; i<total; i++)); do
-            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
+            if cdp_status_push_eligible "$i"; then
                 push_count=$((push_count + 1))
             fi
         done
         if [[ $push_count -eq 0 ]]; then
-            echo -e "${GREEN}No repos ahead of remote.${NC}"
+            echo -e "${GREEN}No eligible repos ahead of their upstream.${NC}"
+            [[ $fetch_failed_count -gt 0 ]] && return 1
             return 0
         fi
 
         echo -e "\n${YELLOW}Repositories ahead of remote:${NC}"
         for ((i=0; i<total; i++)); do
-            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
-                local upstream_plan="configured upstream"
-                [[ -n "${upstreams[$i]}" ]] && upstream_plan="remote=${remotes[$i]}, upstream=${upstreams[$i]}"
-                echo -e "  ${GRAY}${names[$i]}  ${paths[$i]}  $upstream_plan${NC}"
+            if cdp_status_push_eligible "$i"; then
+                echo -e "  ${GRAY}${names[$i]} -> ${upstreams[$i]}  ${remote_urls[$i]}  ${head_oids[$i]}:${remote_refs[$i]}${NC}"
             fi
         done
         if $dry_run; then
             echo -e "\n${GRAY}Dry run: no repositories were pushed.${NC}"
             for ((i=0; i<total; i++)); do
-                [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]] && cdp_action_result status-push "${names[$i]}" preview false
+                cdp_status_push_eligible "$i" && cdp_action_result status-push "${names[$i]}" preview false
             done
             return 0
         fi
         if ! $assume_yes; then
             echo -e "\n${RED}Action requires explicit confirmation. Re-run with --yes or preview with --dry-run.${NC}"
             for ((i=0; i<total; i++)); do
-                [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]] && cdp_action_result status-push "${names[$i]}" canceled false
+                cdp_status_push_eligible "$i" && cdp_action_result status-push "${names[$i]}" canceled false
             done
             return 1
         fi
@@ -467,9 +466,9 @@ cdp-status() {
         local push_failed=false
         echo -e "\n${YELLOW}Pushing repositories:${NC}"
         for ((i=0; i<total; i++)); do
-            if [[ -n "${syncs[$i]}" && "${syncs[$i]}" == *"^"* && -d "${paths[$i]}" ]]; then
+            if cdp_status_push_eligible "$i"; then
                 printf "  %s... " "${names[$i]}"
-                if git -C "${paths[$i]}" push 2>/dev/null; then
+                if cdp_status_push_snapshot "${paths[$i]}" "${remote_names[$i]}" "${head_oids[$i]}" "${remote_refs[$i]}" >/dev/null 2>&1; then
                     echo -e "${GREEN}done${NC}"
                     cdp_action_result status-push "${names[$i]}" succeeded true
                 else
@@ -479,6 +478,7 @@ cdp-status() {
                 fi
             fi
         done
+        [[ $fetch_failed_count -gt 0 ]] && push_failed=true
         $push_failed && return 1
         return 0
     fi
@@ -512,7 +512,7 @@ cdp-status() {
     echo ""
     echo -e "${CYAN}cdp project status ${GRAY}(${shown_count} projects${filter_label})${NC}"
     printf '%.0s-' {1..110}; echo ""
-    printf "  %-4s %-${max_name_len}s %-${max_branch_len}s %-24s %-10s %s\n" "#" "Project" "Branch" "Status" "Sync" "Last Commit"
+    printf "  %-4s %-${max_name_len}s %-${max_branch_len}s %-24s %-10s %-15s %s\n" "#" "Project" "Branch" "Status" "Sync" "Source" "Last Commit"
     printf '%.0s-' {1..110}; echo ""
 
     local idx=1
@@ -530,8 +530,11 @@ cdp-status() {
         local num
         num=$(printf "%02d" $idx)
 
-        printf "  ${GRAY}%-4s${NC} ${GREEN}%s${NC} ${BOLD_CYAN}%s${NC} ${status_colors[$i]}%-24s${NC} ${sync_colors[$i]}%-10s${NC} ${GRAY}%s${NC}\n" \
-            "$num" "$(cdp_pad_text "$display_name" "$max_name_len")" "$(cdp_pad_text "$display_branch" "$max_branch_len")" "${statuses[$i]}" "${syncs[$i]}" "${last_commits[$i]}"
+        local source_color="$GRAY"
+        [[ "${freshness[$i]}" == refreshed ]] && source_color="$GREEN"
+        [[ "${freshness[$i]}" == fetch-failed ]] && source_color="$RED"
+        printf "  ${GRAY}%-4s${NC} ${GREEN}%s${NC} ${BOLD_CYAN}%s${NC} ${status_colors[$i]}%-24s${NC} ${sync_colors[$i]}%-10s${NC} ${source_color}%-15s${NC} ${GRAY}%s${NC}\n" \
+            "$num" "$(cdp_pad_text "$display_name" "$max_name_len")" "$(cdp_pad_text "$display_branch" "$max_branch_len")" "${statuses[$i]}" "${syncs[$i]}" "${freshness[$i]}" "${last_commits[$i]}"
 
         idx=$((idx + 1))
     done
@@ -560,5 +563,11 @@ cdp-status() {
         done
         [[ $ahead_count -gt 0 ]] && echo -e "${GRAY}  Tip: cdp status --push  Push $ahead_count repos ahead of remote${NC}"
     fi
+    if [[ $fetch_failed_count -gt 0 ]]; then
+        for ((i=0; i<total; i++)); do
+            [[ "${freshness[$i]}" == fetch-failed ]] && echo -e "${RED}  Fetch failed: ${names[$i]} (${fetch_messages[$i]})${NC}"
+        done
+    fi
+    [[ $fetch_failed_count -gt 0 ]] && return 1
     return 0
 }

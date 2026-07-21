@@ -21,6 +21,15 @@ function New-CdpGitProjectInfo {
         Branch = ""
         Remote = ""
         Upstream = ""
+        RemoteName = ""
+        RemoteRef = ""
+        RemoteUrl = ""
+        HeadOid = ""
+        Freshness = 'not-applicable'
+        FetchAttempted = $false
+        FetchSucceeded = $null
+        FetchTimedOut = $false
+        FetchMessage = ""
         DirtyCount = 0
         UntrackedCount = 0
         AheadCount = 0
@@ -45,7 +54,11 @@ function ConvertFrom-CdpGitStatusPorcelainV2 {
         if ($line -match '^# branch\.upstream (.+)$') {
             $Info.Upstream = $matches[1]
             $separator = $Info.Upstream.IndexOf('/')
-            if ($separator -gt 0) { $Info.Remote = $Info.Upstream.Substring(0, $separator) }
+            if ($separator -gt 0) {
+                $Info.Remote = $Info.Upstream.Substring(0, $separator)
+                $Info.RemoteName = $Info.Remote
+                $Info.RemoteRef = 'refs/heads/' + $Info.Upstream.Substring($separator + 1)
+            }
             continue
         }
         if ($line -match '^# branch\.ab \+(\d+) -(\d+)$') {
@@ -78,7 +91,8 @@ function Set-CdpGitProjectStatusLabel {
         $Info.StatusLabel = 'clean'
     }
     $Info.NeedsAttention = $Info.DirtyCount -gt 0 -or
-        $Info.UntrackedCount -gt 0 -or $Info.BehindCount -gt 0
+        $Info.UntrackedCount -gt 0 -or $Info.BehindCount -gt 0 -or
+        $Info.Freshness -eq 'fetch-failed'
 }
 
 function Get-CdpGitProjectInfo {
@@ -119,6 +133,8 @@ function Get-CdpGitProjectInfo {
     $info.IsGitRepo = $true
 
     $oid = ConvertFrom-CdpGitStatusPorcelainV2 -Lines $porcelain -Info $info
+    $info.HeadOid = $oid
+    $info.Freshness = if ($info.Upstream) { 'cached' } else { 'no-upstream' }
 
     if ($oid -notin @('', '(initial)')) { try {
         $info.LastCommitRelative = (& git -C $rootPath log -1 --format="%cr" 2>$null)
@@ -198,6 +214,17 @@ function Show-CdpProjectStatus {
         [switch]$Refresh,
 
         [Parameter(Mandatory = $false)]
+        [switch]$Fetch,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(1, 16)]
+        [int]$FetchJobs = 4,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(1, 300)]
+        [int]$FetchTimeoutSeconds = 15,
+
+        [Parameter(Mandatory = $false)]
         [int]$ThrottleLimit = 0,
 
         [Parameter(Mandatory = $false)]
@@ -212,6 +239,12 @@ function Show-CdpProjectStatus {
     if ($NoColor -and ($Fix -or $Push)) { Write-CdpStatusFatal -Message 'The -NoColor option is only valid for read-only status.'; return }
     if ($Json -and $PassThru) { Write-CdpStatusFatal -Message 'The -Json and -PassThru options cannot be used together.' -Json; return }
     if ($NoColor -and $PassThru) { Write-CdpStatusFatal -Message 'The -NoColor and -PassThru options cannot be used together.'; return }
+    if ($Fetch -and $Fix) { Write-CdpStatusFatal -Message 'The -Fetch and -Fix options cannot be used together.' -Json:$Json; return }
+    if (-not $Fetch -and ($PSBoundParameters.ContainsKey('FetchJobs') -or
+        $PSBoundParameters.ContainsKey('FetchTimeoutSeconds'))) {
+        Write-CdpStatusFatal -Message 'FetchJobs and FetchTimeoutSeconds require Fetch.' -Json:$Json
+        return
+    }
 
     try { [void](Get-CdpCurrentPathProfile) } catch {
         Write-CdpStatusFatal -Message $_.Exception.Message -Json:$Json
@@ -255,7 +288,7 @@ function Show-CdpProjectStatus {
 
     if ($enabledProjects.Count -eq 0) {
         if ($Json) {
-            $empty = New-CdpStatusDocument -AllStatus @() -VisibleStatus @() -DurationMs 0 -DirtyOnly:$DirtyOnly -TagFilter $TagFilter -Refresh:$Refresh
+            $empty = New-CdpStatusDocument -AllStatus @() -VisibleStatus @() -DurationMs 0 -DirtyOnly:$DirtyOnly -TagFilter $TagFilter -Refresh:$Refresh -Fetch:$Fetch
             Write-CdpStatusJson -Document $empty
         } elseif ($NoColor) { Write-Host 'No projects to check.' }
         else { Write-Host "No projects to check." -ForegroundColor Yellow }
@@ -263,7 +296,7 @@ function Show-CdpProjectStatus {
     }
 
     $total = $enabledProjects.Count
-    $forceRefresh = $Refresh -or $Fix -or $Push
+    $forceRefresh = $Refresh -or $Fetch -or $Fix -or $Push
     $workerCount = Resolve-CdpStatusThrottleLimit -Value $ThrottleLimit
     $scanWatch = [Diagnostics.Stopwatch]::StartNew()
     if (-not $Json) {
@@ -277,6 +310,19 @@ function Show-CdpProjectStatus {
         -CollectorScript { param($Project) Get-CdpGitProjectInfo -Project $Project })
     $scanWatch.Stop()
     if (-not $Json) { Write-Host "`r                              `r" -NoNewline }
+
+    $fetchFailedCount = 0
+    if ($Fetch -or $Push) {
+        foreach ($status in $statusList) {
+            if ($status.IsGitRepo) { Update-CdpStatusRemoteIdentity -Info $status }
+        }
+    }
+    if ($Fetch) {
+        $fetchResults = @(Invoke-CdpStatusFetchPlan -StatusList $statusList `
+            -Jobs $FetchJobs -TimeoutSeconds $FetchTimeoutSeconds)
+        $fetchFailedCount = Set-CdpStatusFetchResults -FetchResults $fetchResults
+        $script:CdpStatusCache = @{}
+    }
 
     if ($Fix) {
         $invalidPathProjects = @($statusList | Where-Object { $_.PathResolutionError })
@@ -351,42 +397,15 @@ function Show-CdpProjectStatus {
     }
 
     if ($Push) {
-        $aheadProjects = @($statusList | Where-Object { $_.AheadCount -gt 0 -and $_.IsGitRepo })
-        if ($aheadProjects.Count -eq 0) {
-            Write-Host "`nNo repos ahead of remote." -ForegroundColor Green
+        $pushPlan = @(Get-CdpStatusPushPlan -StatusList $statusList)
+        if ($pushPlan.Count -eq 0) {
+            Write-Host "`nNo eligible repos ahead of their upstream." -ForegroundColor Green
+            Write-CdpStatusFetchAggregateError -FailedCount $fetchFailedCount -Cmdlet $PSCmdlet
             if ($PassThru) { return @() }
             return
         }
-        Write-Host "`nPushing $($aheadProjects.Count) repos ahead of remote:" -ForegroundColor Yellow
-        $pushResults = @()
-        $pushFailed = $false
-        foreach ($proj in $aheadProjects) {
-            $upstreamLabel = if ($proj.Upstream) { "remote=$($proj.Remote), upstream=$($proj.Upstream)" } else { 'configured upstream' }
-            Write-Host "  $($proj.Name) (^$($proj.AheadCount), $upstreamLabel)" -ForegroundColor Cyan
-            if (-not $PSCmdlet.ShouldProcess("$($proj.Name) [$upstreamLabel]", 'Push commits to configured upstream')) {
-                $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
-                $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status $status -Changed $false -Details $proj
-                continue
-            }
-            Write-Host "    running... " -ForegroundColor DarkGray -NoNewline
-            try {
-                $pushOutput = @(& git -C $proj.ResolvedPath push --porcelain 2>&1)
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host "done" -ForegroundColor Green
-                    $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status 'succeeded' -Changed $true -Details $proj
-                } else {
-                    $failure = @($pushOutput | Select-Object -Last 1) -join ''
-                    Write-Host "failed: $failure" -ForegroundColor Red
-                    $pushFailed = $true
-                    $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status 'failed' -Changed $false -Error $failure -Details $proj
-                }
-            } catch {
-                Write-Host "failed: $($_.Exception.Message)" -ForegroundColor Red
-                $pushFailed = $true
-                $pushResults += New-CdpActionResult -Action 'status-push' -Target ([string]$proj.Name) -Status 'failed' -Changed $false -Error $_.Exception.Message -Details $proj
-            }
-        }
-        if ($pushFailed -and -not $PassThru) { $global:LASTEXITCODE = 1 }
+        $pushResults = @(Invoke-CdpStatusPushPlan -Cmdlet $PSCmdlet -PushPlan $pushPlan -PassThru:$PassThru)
+        Write-CdpStatusFetchAggregateError -FailedCount $fetchFailedCount -Cmdlet $PSCmdlet
         if ($PassThru) { return $pushResults }
         return
     }
@@ -396,7 +415,7 @@ function Show-CdpProjectStatus {
         try {
             $document = New-CdpStatusDocument -AllStatus $statusList -VisibleStatus $visibleStatus `
                 -DurationMs ([int][Math]::Round($scanWatch.Elapsed.TotalMilliseconds)) `
-                -DirtyOnly:$DirtyOnly -TagFilter $TagFilter -Refresh:$Refresh
+                -DirtyOnly:$DirtyOnly -TagFilter $TagFilter -Refresh:$Refresh -Fetch:$Fetch
             Write-CdpStatusJson -Document $document
         } catch {
             Write-CdpStatusFatal -Message 'Failed to build status JSON.' -Json
@@ -408,6 +427,7 @@ function Show-CdpProjectStatus {
         return
     }
     if ($PassThru) {
+        Write-CdpStatusFetchAggregateError -FailedCount $fetchFailedCount -Cmdlet $PSCmdlet
         if ($DirtyOnly) {
             return @($statusList | Where-Object { $_.NeedsAttention })
         }
@@ -435,15 +455,16 @@ function Show-CdpProjectStatus {
     $filterLabel = if ($DirtyOnly) { " (dirty only)" } elseif (-not [string]::IsNullOrWhiteSpace($TagFilter)) { " ($TagFilter)" } else { "" }
     Write-Host "`ncdp project status " -ForegroundColor Cyan -NoNewline
     Write-Host "($($statusList.Count) projects$filterLabel)" -ForegroundColor DarkGray
-    Write-Host ("-" * 110) -ForegroundColor DarkGray
+    Write-Host ("-" * 126) -ForegroundColor DarkGray
 
     Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
     Write-Host ("{0,-$nameWidth} " -f "Project") -ForegroundColor Cyan -NoNewline
     Write-Host ("{0,-$branchWidth} " -f "Branch") -ForegroundColor DarkGray -NoNewline
     Write-Host ("{0,-24} " -f "Status") -ForegroundColor DarkGray -NoNewline
     Write-Host ("{0,-10} " -f "Sync") -ForegroundColor DarkGray -NoNewline
+    Write-Host ("{0,-15} " -f "Source") -ForegroundColor DarkGray -NoNewline
     Write-Host "Last Commit" -ForegroundColor DarkGray
-    Write-Host ("-" * 110) -ForegroundColor DarkGray
+    Write-Host ("-" * 126) -ForegroundColor DarkGray
 
     $index = 1
     foreach ($item in $statusList) {
@@ -457,7 +478,9 @@ function Show-CdpProjectStatus {
         if (-not $item.IsGitRepo) {
             Write-Host "$(Pad-CdpText '-' $branchWidth) " -ForegroundColor DarkGray -NoNewline
             $labelColor = if ($item.PathExists) { "DarkGray" } else { "Red" }
-            Write-Host $item.StatusLabel -ForegroundColor $labelColor
+            Write-Host ("{0,-24} " -f $item.StatusLabel) -ForegroundColor $labelColor -NoNewline
+            Write-Host ("{0,-10} " -f '') -ForegroundColor DarkGray -NoNewline
+            Write-Host $item.Freshness -ForegroundColor DarkGray
             $index++
             continue
         }
@@ -476,11 +499,15 @@ function Show-CdpProjectStatus {
         $syncColor = if ($item.BehindCount -gt 0) { "Yellow" } elseif ($item.AheadCount -gt 0) { "Cyan" } else { "DarkGray" }
         Write-Host ("{0,-10} " -f $syncText) -ForegroundColor $syncColor -NoNewline
 
+        $sourceColor = if ($item.Freshness -eq 'fetch-failed') { 'Red' } `
+            elseif ($item.Freshness -eq 'refreshed') { 'Green' } else { 'DarkGray' }
+        Write-Host ("{0,-15} " -f $item.Freshness) -ForegroundColor $sourceColor -NoNewline
+
         Write-Host $item.LastCommitRelative -ForegroundColor DarkGray
         $index++
     }
 
-    Write-Host ("-" * 110) -ForegroundColor DarkGray
+    Write-Host ("-" * 126) -ForegroundColor DarkGray
 
     $attentionCount = @($statusList | Where-Object { $_.NeedsAttention -and $_.IsGitRepo }).Count
     $missingCount = @($statusList | Where-Object { -not $_.PathExists }).Count
@@ -504,6 +531,7 @@ function Show-CdpProjectStatus {
             Write-Host "  Tip: cdp status --push  Push $aheadCount repos ahead of remote" -ForegroundColor DarkGray
         }
     }
+    Write-CdpStatusFetchAggregateError -FailedCount $fetchFailedCount -Cmdlet $PSCmdlet
 }
 
 function Invoke-CdpStatusInvocation {
@@ -516,9 +544,14 @@ function Invoke-CdpStatusInvocation {
         Fix = $Invocation.Fix
         Push = $Invocation.Push
         Refresh = $Invocation.Refresh
+        Fetch = $Invocation.Fetch
         ThrottleLimit = $Invocation.ThrottleLimit
         Json = $Invocation.Json
         NoColor = $Invocation.NoColor
+    }
+    if ($Invocation.Fetch) {
+        $parameters.FetchJobs = $Invocation.FetchJobs
+        $parameters.FetchTimeoutSeconds = $Invocation.FetchTimeoutSeconds
     }
     if ($Invocation.DryRun) { $parameters.WhatIf = $true }
     if ($Invocation.Yes) { $parameters.Confirm = $false }

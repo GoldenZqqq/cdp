@@ -18,11 +18,33 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Latest verified GitHub release: v2.2.0 (verified 2026-07-21). Latest verified PowerShell Gallery release: v2.0.4.
+Latest verified GitHub release: v2.2.0 (verified 2026-07-21). Latest verified PowerShell Gallery release: v2.2.0 (verified 2026-07-21).
 
-Current release target: v2.2.0.
+Current release target: v2.3.0.
 
-Release status: v2.2.0 passed the complete local and hosted matrices and is published as the latest GitHub Release. Its retained, GitHub, and Scoop archives match byte-for-byte, and the tag-pinned shell installer passed a public download smoke. PowerShell Gallery remains at v2.0.4 because neither the local environment nor repository Actions secrets contain `PS_GALLERY_API_KEY`; this is the only external v2.2.0 blocker.
+Release status: v2.2.0 is published and verified on GitHub and PowerShell Gallery. v2.3.0 is a local release candidate for explicit remote status refresh, frozen push snapshots, and stricter launcher validation; it has not been tagged, published, or pushed.
+
+## 2.3.0 Remote Status and Launcher Safety Checklist
+
+- [x] Add explicit bounded fetch with freshness and fetch audit fields while keeping default status offline.
+- [x] Freeze the exact remote, branch ref, and local object ID before status push approval.
+- [x] Enforce the supported launcher whitelist before direct or workspace side effects.
+- [x] Add PowerShell and shell regressions for remote semantics and launcher safety.
+- [x] Complete the local PowerShell 7, bash/zsh, ShellCheck, Web, metadata, and deterministic package matrix.
+- [ ] Confirm the candidate in native Windows PowerShell 5.1 hosted CI and publish in a separate authorized release workflow.
+
+2.3.0 local verification: PowerShell 7.6.1 passed Pester `174/174`, command coverage
+`4079/5466` (`74.62%`), PSScriptAnalyzer, and release metadata. bash passed all
+16 shell suites; zsh passed the 9 applicable suites, including remote status and
+launcher safety. Shell bundle/syntax, ShellCheck 0.10.0, deterministic Scoop
+packaging, documentation/assets `11/11`, and Playwright Chromium `7/7` passed.
+The generated shell SHA-256 is
+`fb5ab36c0715a2994e2682bdb77e677a8e4a4c2ec558884061ac5d7d26dc6849`;
+the Scoop package SHA-256 is
+`49e73fa752df91f32b601e1e6999fc7e6d737873fd0709389c74c5197dda6769`.
+The Windows PowerShell compatibility session passed launcher safety `6/6` and
+status remote `9/11`; its two local-file fetch cases timed out only through the
+remoting host, so native Windows PowerShell 5.1 remains a hosted-CI release gate.
 
 ## 2.2.0 Automation and Multi-Repository Checklist
 
@@ -33,7 +55,7 @@ Release status: v2.2.0 passed the complete local and hosted matrices and is publ
 - [x] Add workspace lifecycle operations.
 - [x] Add safe multi-repository exec.
 - [x] Add frecency ranking.
-- [x] Complete and publish v2.2.0, with the missing Gallery credential recorded as the only external blocker.
+- [x] Complete and publish v2.2.0 to GitHub and PowerShell Gallery.
 
 Status JSON verification: the PowerShell 7.5.2 quality gate passed Pester `104/104`, command coverage `2311/3344` (`69.11%`), PSScriptAnalyzer, and release metadata. bash, zsh, and the fixed Bash 3.2 container passed the shared schema fixture plus existing status/safety/persistence regressions.
 
@@ -55,7 +77,7 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 - Annotated tag `v2.2.0` peels to the release commit; https://github.com/GoldenZqqq/cdp/releases/tag/v2.2.0 is public, latest, non-draft, and non-prerelease.
 - Retained, public GitHub, and Scoop `cdp-2.2.0.tar.gz` archives are each `141,245` bytes with 54 entries and SHA-256 `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`; an independent second build also matched byte-for-byte.
 - Temporary HOME local and tag-pinned remote shell installations plus an isolated PowerShell package installation all discovered v2.2.0 successfully.
-- Gallery verification enumerated the official feed, which still ends at v2.0.4. The versioned package endpoint redirects a missing v2.2.0 request to `cdp.2.0.4.nupkg`, so HTTP 200 alone was rejected as false evidence. No local or Actions API key is available for publication.
+- Gallery verification resolves exact package version 2.2.0 through PowerShellGet and https://www.powershellgallery.com/packages/cdp/2.2.0.
 
 ## 2.1.0 Engineering Foundation Checklist
 

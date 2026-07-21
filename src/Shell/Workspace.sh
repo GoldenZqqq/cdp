@@ -31,7 +31,8 @@ resolve_workspace_launcher() {
             printf 'gemini\034\034Gemini\n'
             ;;
         *)
-            printf '%s\034\034%s\n' "$opener" "$opener"
+            echo "Error: Unsupported launcher '$opener'. Use code, cursor, codex, claude, or gemini." >&2
+            return 1
             ;;
     esac
 }

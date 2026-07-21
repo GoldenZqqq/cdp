@@ -72,3 +72,100 @@ and release scripts may test whether a secret variable exists but never print it
 
 Trusted examples: `src/PowerShell/Commands.ps1`, `src/Shell/Commands.sh`,
 `tests/cdp.SafeMutations.Tests.*`, and `tests/cdp.Shell.V2.Tests.sh`.
+
+## Scenario: Preserve Aggregate Failure and Dependency Ordering
+
+### 1. Scope / Trigger
+
+Apply when a nested status/workspace function can finish useful per-item work
+but the public CLI still needs to report aggregate failure, or when a native
+terminal dependency is needed only after at least one launchable item exists.
+
+### 2. Signatures
+
+```text
+Invoke-Cdp status ... -Fetch
+cdp-status ... --fetch
+Invoke-CdpWorkspace <name> [-Open <launcher>] [-WhatIf]
+cdp-workspace open <name> [--open <launcher>] [--dry-run|--yes]
+```
+
+PowerShell status may defer the aggregate fetch error through module-owned
+state, but only the outer `Invoke-Cdp` boundary may call `$PSCmdlet` to emit it.
+Workspace planning returns zero or more launchable items before resolving
+`wt.exe` or checking tmux.
+
+### 3. Contracts
+
+- Per-repository fetch failure remains visible in the complete status result;
+  later safe repositories still run.
+- A public CLI invocation with one or more fetch failures leaves PowerShell
+  `$?` false and returns nonzero in shell, after rendering the aggregate result.
+- Internal helpers do not emit a non-terminating aggregate error against their
+  own cmdlet scope and then let the outer command appear successful.
+- Invalid direct, stored, or per-reference launchers make items non-launchable
+  during planning. When no launchable item remains, no `wt`, tmux, or launcher
+  lookup/process occurs.
+- `-WhatIf` / `--dry-run` preserves the same validation order and starts no
+  native process.
+
+### 4. Validation & Error Matrix
+
+- One fetch fails, later fetch succeeds -> complete output plus aggregate CLI
+  failure; successful rows remain usable.
+- Every fetch succeeds -> complete output and successful CLI status.
+- Stored launcher is invalid -> `invalid-launcher`; no terminal dependency
+  lookup and no process.
+- Mixed invalid and valid workspace items -> invalid rows are reported; terminal
+  lookup occurs only for the valid launch plan.
+- Zero launchable items -> return the workspace validation result without
+  approval, tmux checks, `wt.exe` lookup, or native launch.
+
+### 5. Good / Base / Bad Cases
+
+- Good: two repositories are scanned, one fetch fails, both rows render, and
+  the outer command reports aggregate failure.
+- Base: a workspace with one valid launcher reaches preview/approval without
+  starting a process in dry-run mode.
+- Bad: a nested helper calls `Write-Error`, catches/returns, and the outer CLI
+  leaves `$?` true; or an invalid-only workspace queries `wt.exe` first.
+
+### 6. Tests Required
+
+- PowerShell invokes the exported `cdp status --fetch` route and asserts `$?`
+  is false after an aggregate fetch failure, not only that a helper wrote text.
+- Bash/zsh assert nonzero status while later safe repositories still finish.
+- PowerShell and shell launcher tests install a failing terminal lookup shim and
+  assert invalid-only workspaces reject before that shim is called.
+- Direct, stored, mixed-item, and dry-run/WhatIf paths assert no unexpected
+  native process marker is created.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```powershell
+Show-CdpProjectStatus -Fetch
+Write-Error 'One or more fetches failed' # nested scope can be masked by Invoke-Cdp
+```
+
+Correct:
+
+```powershell
+Show-CdpProjectStatus -Fetch
+if ($script:CdpLastStatusFetchFailedCount -gt 0) {
+    $PSCmdlet.WriteError($aggregateError) # outer Invoke-Cdp boundary
+}
+```
+
+Wrong:
+
+```text
+resolve terminal dependency -> discover all items have invalid launchers
+```
+
+Correct:
+
+```text
+parse -> validate all launchers -> build launchable plan -> resolve terminal dependency
+```

@@ -71,6 +71,21 @@ function Get-CdpExecCompletionValues {
     $options + @(Get-CdpProjectCompletionNames) + @(Get-CdpTagCompletionValues)
 }
 
+function Get-CdpStatusCompletionValues {
+    param([object]$CommandAst)
+
+    $tokens = @($CommandAst.CommandElements | ForEach-Object { $_.Extent.Text.Trim("'`"") })
+    $statusIndex = [Array]::IndexOf($tokens, 'status')
+    if ($statusIndex -lt 0) { return @() }
+    $arguments = @($tokens | Select-Object -Skip ($statusIndex + 1))
+    $previous = if ($arguments.Count -gt 1) { $arguments[-2] } else { '' }
+    if ($previous -eq '--fetch-jobs') { return @('1','2','4','8','16') }
+    if ($previous -eq '--fetch-timeout') { return @('5','15','30','60') }
+    @('--dirty','--fix','--push','--fetch','--fetch-jobs','--fetch-timeout',
+        '--refresh','--jobs','--json','--no-color','--config','--dry-run','--yes') +
+        @(Get-CdpTagCompletionValues)
+}
+
 function Get-CdpRecentCompletionValues {
     param([object]$CommandAst, [string]$WordToComplete)
 
@@ -120,6 +135,9 @@ $argumentCompleter = {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $values = @(Get-CdpExecCompletionValues -CommandAst $commandAst -WordToComplete $wordToComplete)
+    if ($values.Count -eq 0) {
+        $values = @(Get-CdpStatusCompletionValues -CommandAst $commandAst)
+    }
     if ($values.Count -eq 0) {
         $values = @(Get-CdpRecentCompletionValues -CommandAst $commandAst -WordToComplete $wordToComplete)
     }

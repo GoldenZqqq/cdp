@@ -103,4 +103,13 @@ Describe 'cdp PowerShell module compatibility' {
         $publishAltScript | Should -Match '(?s)Copy-Item.*"src".*-Recurse'
         $scoopScript | Should -Match 'cp -R "\$repo_root/src/\." "\$package_root/src/"'
     }
+
+    It 'guards Gallery release notes and native NuGet failures' {
+        $publishAltScript = Get-Content (Join-Path $script:RepoRoot 'Publish-ToGallery-Alt.ps1') -Raw
+
+        $script:Manifest.ReleaseNotes.Length | Should -BeLessOrEqual 10600
+        $publishAltScript | Should -Match 'ReleaseNotes\.Length\s+-gt\s+10600'
+        $publishAltScript | Should -Match '\$packExitCode\s+-ne\s+0'
+        $publishAltScript | Should -Match '\$pushExitCode\s+-ne\s+0'
+    }
 }

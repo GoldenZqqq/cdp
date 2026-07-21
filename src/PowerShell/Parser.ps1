@@ -3,7 +3,6 @@
 
 function New-CdpInvocation {
     param([string]$Kind)
-
     [PSCustomObject]@{
         Kind = $Kind
         Command = $Kind
@@ -19,6 +18,9 @@ function New-CdpInvocation {
         NoColor = $false
         Refresh = $false
         ThrottleLimit = 0
+        Fetch = $false
+        FetchJobs = 4
+        FetchTimeoutSeconds = 15
         DryRun = $false
         Yes = $false
         TagFilter = $null
@@ -49,7 +51,6 @@ function New-CdpInvocation {
 
 function Get-CdpInvocationTokens {
     param([string]$Command, [string]$ConfigPath, [string[]]$RemainingArgs)
-
     $tokens = @()
     if (-not [string]::IsNullOrWhiteSpace($Command)) { $tokens += $Command }
     if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { $tokens += $ConfigPath }
@@ -264,6 +265,19 @@ function ConvertFrom-CdpStatusTokens {
         if ($token -in @('--json', '-json')) { $result.Json = $true; continue }
         if ($token -in @('--no-color', '-no-color')) { $result.NoColor = $true; continue }
         if ($token -in @('--refresh', '-refresh')) { $result.Refresh = $true; continue }
+        if ($token -in @('--fetch', '-fetch')) { $result.Fetch = $true; continue }
+        if ($token -in @('--fetch-jobs', '-fetch-jobs')) {
+            if ($i + 1 -ge $Tokens.Count) { throw 'Missing value after --fetch-jobs.' }
+            $fetchJobs = 0
+            if (-not [int]::TryParse($Tokens[++$i], [ref]$fetchJobs) -or $fetchJobs -lt 1 -or $fetchJobs -gt 16) { throw 'Fetch jobs must be an integer between 1 and 16.' }
+            $result.FetchJobs = $fetchJobs; continue
+        }
+        if ($token -in @('--fetch-timeout', '-fetch-timeout')) {
+            if ($i + 1 -ge $Tokens.Count) { throw 'Missing value after --fetch-timeout.' }
+            $fetchTimeout = 0
+            if (-not [int]::TryParse($Tokens[++$i], [ref]$fetchTimeout) -or $fetchTimeout -lt 1 -or $fetchTimeout -gt 300) { throw 'Fetch timeout must be an integer between 1 and 300.' }
+            $result.FetchTimeoutSeconds = $fetchTimeout; continue
+        }
         if ($token -in @('--jobs', '-jobs', '--concurrency')) {
             if ($i + 1 -ge $Tokens.Count) { throw "Missing value after --jobs." }
             $jobs = 0
@@ -285,6 +299,11 @@ function ConvertFrom-CdpStatusTokens {
         $result.ConfigPath = $token
     }
     if ($result.Fix -and $result.Push) { throw "The --fix and --push actions cannot be used together." }
+    if ($result.Fetch -and $result.Fix) { throw 'The --fetch and --fix options cannot be used together.' }
+    if (-not $result.Fetch -and ($Tokens -contains '--fetch-jobs' -or $Tokens -contains '-fetch-jobs' -or
+        $Tokens -contains '--fetch-timeout' -or $Tokens -contains '-fetch-timeout')) {
+        throw 'Fetch tuning options require --fetch.'
+    }
     if ($result.DirtyOnly -and ($result.Fix -or $result.Push)) { throw "The --dirty filter and status actions cannot be used together." }
     if ($result.Json -and $result.NoColor) { throw "The --json and --no-color options cannot be used together." }
     if ($result.Json -and ($result.Fix -or $result.Push)) { throw "The --json option is only valid for read-only status." }

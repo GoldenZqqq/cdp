@@ -7,7 +7,7 @@ function Get-CdpWorkspaceLauncher {
         [string]$Open
     )
 
-    $launcherName = $Open.Trim()
+    $launcherName = $Open
     if ($launcherName -notmatch '^[A-Za-z0-9._:/\\-]+$') {
         throw 'Launcher must be a single executable name or safe path without arguments.'
     }
@@ -30,10 +30,11 @@ function Get-CdpWorkspaceLauncher {
         'codex' { $label = 'Codex' }
         'claude' { $label = 'Claude' }
         'gemini' { $label = 'Gemini' }
+        default { throw "Unsupported launcher '$Open'. Use code, cursor, codex, claude, or gemini." }
     }
 
     [PSCustomObject]@{
-        Name = $launcherName
+        Name = $command
         Label = $label
         Command = $command
         Arguments = $arguments
@@ -125,7 +126,9 @@ function Invoke-CdpWorkspaceLaunch {
     if (-not $Layout) { $Layout = [PSCustomObject]@{ mode = 'tabs' } }
     if (-not $Plan) { $Plan = @(New-CdpLegacyWorkspaceLaunchPlan -Projects $Projects -ProjectNames $ProjectNames -Launcher $Launcher) }
     $nativePlan = @(New-CdpWindowsTerminalLaunchPlan -Plan $Plan -Layout $Layout)
-    $hasWt = $null -ne (Get-Command wt.exe -ErrorAction SilentlyContinue)
+    $launchable = @($nativePlan | Where-Object { $_.Item.Status -in @('ok', 'legacy', 'renamed') })
+    $hasWt = $launchable.Count -eq 0 -or $WhatIfPreference
+    if (-not $hasWt) { $hasWt = $null -ne (Get-Command wt.exe -ErrorAction SilentlyContinue) }
     $results = @()
     $first = $true
     foreach ($nativeItem in $nativePlan) {

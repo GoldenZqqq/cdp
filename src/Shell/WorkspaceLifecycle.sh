@@ -200,7 +200,7 @@ cdp_workspace_validate_display() {
     if [[ -n "$workspace_open" ]] && ! resolve_workspace_launcher "$workspace_open" >/dev/null 2>&1; then echo "  $workspace_name: invalid-launcher"; aggregate_status=1; fi
     if [[ "$(jq -r '(.projects|type) == "array" and (.projects|length) > 0' <<< "$workspace_json")" != true ]]; then echo "  $workspace_name: invalid-reference"; return 1; fi
     plan=$(cdp_workspace_build_plan "$workspace_json" "$projects_json") || return 1
-    local result result_status
+    local result result_status launchable_count
     while IFS= read -r result <&3; do
         result_status=$(jq -r '.status' <<< "$result")
         jq -r '"  \(.name): \(.status)"' <<< "$result"
@@ -379,6 +379,8 @@ cdp_workspace_launch_action() {
         result_status=$(jq -r '.status' <<< "$result")
         case "$result_status" in ok|legacy|renamed) ;; *) cdp_action_result launch-workspace-project "$(jq -r '.name' <<< "$result")" failed false "$result_status"; workspace_failed=true ;; esac
     done 3< <(jq -c '.[]' <<< "$plan")
+    launchable_count=$(jq '[.[] | select(.status == "ok" or .status == "legacy" or .status == "renamed")] | length' <<< "$plan")
+    [[ "$launchable_count" -gt 0 ]] || return 1
     cdp_require_high_risk_approval "workspace '$workspace_name' launch" || approval=$?
     if [[ $approval -eq 2 ]]; then
         while IFS= read -r result <&3; do case "$(jq -r '.status' <<< "$result")" in ok|legacy|renamed) cdp_action_result launch-workspace-project "$(jq -r '.name' <<< "$result")" preview false ;; esac; done 3< <(jq -c '.[]' <<< "$plan")

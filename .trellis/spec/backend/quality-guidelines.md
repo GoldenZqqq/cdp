@@ -474,13 +474,16 @@ PowerShell status collection returns a normalized object:
 Get-CdpGitProjectInfo -Project <project>
 # Name, RootPath, PathExists, IsGitRepo, Branch,
 # DirtyCount, UntrackedCount, AheadCount, BehindCount,
-# LastCommitRelative, StatusLabel, NeedsAttention
+# LastCommitRelative, StatusLabel, NeedsAttention,
+# RemoteName, RemoteRef, RemoteUrl, HeadOid, Freshness,
+# FetchAttempted, FetchSucceeded, FetchTimedOut, FetchMessage
 ```
 
 The shell boundary is:
 
 ```text
-cdp-status [--dirty] [@tag] [--fix|--push] [--config <projects.json>]
+cdp-status [--dirty] [@tag] [--fetch] [--fetch-jobs <1..16>]
+    [--fetch-timeout <1..300>] [--fix|--push] [--config <projects.json>]
 convert_windows_to_wsl <raw-rootPath> -> <resolved-local-path>
 ```
 
@@ -493,11 +496,14 @@ convert_windows_to_wsl <raw-rootPath> -> <resolved-local-path>
 - Report tracked and untracked changes independently. If both exist, the label contains both counts.
 - `NeedsAttention` is true for tracked changes, untracked files, or a positive behind count. A dirty-only header reports the number actually rendered.
 - Derive ahead/behind only from a successful upstream query. Detached and no-upstream repositories remain at zero.
+- Default status never starts a network process and labels tracking data `cached`.
+  Explicit fetch uses bounded non-interactive workers, monotonic per-item deadlines,
+  process-tree cleanup, and redacted `refreshed|fetch-failed|no-upstream` audit fields.
 - `--fix` removes only enabled, non-explicit fallback missing entries selected by
   the current scan. Disabled entries and unavailable explicit profile mappings
   remain even when they share the same raw path. Mutation identity is project
   name plus raw `rootPath`, not raw path alone.
-- `--push` targets only scanned Git repositories with a positive upstream-derived ahead count and reports the native push exit code accurately.
+- `--push` targets only scanned Git repositories with a positive upstream-derived ahead count. Approval freezes exact remote, `refs/heads/*` target, and HEAD OID; execution uses that exact refspec and reports the native exit code accurately.
 - Preserve input order while using bounded workers. `CDP_STATUS_CONCURRENCY` and `--jobs`/`-ThrottleLimit` are clamped to 1-16; the default is at most four workers.
 - Keep status caching disabled unless `CDP_STATUS_CACHE_TTL` is a positive value from 1-60 seconds. PowerShell keys include normalized path plus project identity; shell records contain only Git-derived fields and key by normalized path. `--refresh` bypasses the entry.
 - Enforce `CDP_STATUS_TIMEOUT_SECONDS` from 1-60 per repository. A timeout is visible as `status timed out`, needs attention, and must not prevent other repositories from completing.
@@ -511,6 +517,8 @@ convert_windows_to_wsl <raw-rootPath> -> <resolved-local-path>
 - Behind-only repository -> needs attention and cannot produce an all-clean summary.
 - `--fix` with no previewed missing entries -> no config write.
 - Native `git push` nonzero exit -> render failure, never `done`.
+- Fetch failure -> retain cached counts, mark attention, exclude the repository from push, and continue safe repositories without exposing native stderr.
+- Fetch timeout/cancel -> terminate active Git and transport descendants before returning.
 - Porcelain/status process failure -> `status failed` or `not a git repo` according to the collector boundary; never hang the full scan.
 - Expired cache entries are replaced in place; sparse array indexing must not drop later cache entries under Bash 3.2 or zsh.
 
@@ -729,6 +737,8 @@ use `--dry-run`, and external launch requires `--yes`.
 - `validate --fix` upgrades resolvable strings, refreshes renamed hints, preserves
   unresolved references and every unknown field, and skips byte writes if unchanged.
 - Effective launcher precedence is CLI, reference `open`, workspace `open`.
+- Launchers are limited to `code`/`vscode`, `cursor`, `codex`, `claude`, and
+  `gemini`; project names, paths, and launcher argv remain separate native arguments.
 - Layouts are tabs, horizontal split, or vertical split. Reference `size` is an
   integer 10-90 and applies only when creating a later split pane.
 - `show` and preview expose name, status, raw/resolved path, launcher, and layout.
