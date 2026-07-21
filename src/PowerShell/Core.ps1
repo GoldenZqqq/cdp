@@ -34,12 +34,13 @@ function New-CdpActionResult {
 function ConvertTo-CdpJsonArrayValue {
     param([Parameter(Mandatory = $false)][AllowNull()][object]$Value)
 
-    $items = if ($null -eq $Value) {
-        [object[]]@()
-    } elseif ($Value -is [System.Array]) {
-        [object[]]$Value.Clone()
-    } else {
-        [object[]]@($Value)
+    $items = [object[]]::new(0)
+    if ($Value -is [System.Array]) {
+        $items = [object[]]::new($Value.Count)
+        [Array]::Copy($Value, $items, $Value.Count)
+    } elseif ($null -ne $Value) {
+        $items = [object[]]::new(1)
+        $items[0] = $Value
     }
     [PSCustomObject]@{ Value = $items }
 }

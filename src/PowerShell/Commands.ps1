@@ -373,7 +373,10 @@ function Invoke-CdpManagementInvocation {
             else { Test-ProjectHealth -ConfigPath $Invocation.ConfigPath }
         }
         'about' { Show-CdpAbout -ConfigPath $Invocation.ConfigPath }
-        'recent' { Get-CdpRecentProjects -Count $Invocation.Count }
+        'recent' {
+            if ($Invocation.RecentAction -eq 'reset') { Reset-CdpRecentProjects @safety }
+            else { Get-CdpRecentProjects -Count $Invocation.Count }
+        }
         'config' { Set-ProjectConfig @safety -Selection $Invocation.Count }
         'add' { Add-Project @safety -Name $Invocation.Name -Path $Invocation.RootPath -ConfigPath $Invocation.ConfigPath }
         'remove' { Remove-Project @safety -Name $Invocation.Name -ConfigPath $Invocation.ConfigPath }
@@ -403,6 +406,7 @@ function Test-CdpInvocationMutation {
             ($Invocation.WorkspaceAction -eq 'validate' -and $Invocation.Fix)
     }
     if ($Invocation.Kind -eq 'hook') { return $Invocation.HookAction -in @('trust', 'revoke') }
+    if ($Invocation.Kind -eq 'recent') { return $Invocation.RecentAction -eq 'reset' }
     if ($Invocation.Kind -eq 'doctor') { return $Invocation.Fix }
     $Invocation.Kind -in @('add', 'remove', 'pin', 'unpin', 'alias', 'unalias', 'tag', 'untag', 'clean', 'init', 'scan', 'config')
 }

@@ -26,7 +26,8 @@ Use the existing concern boundaries:
 - `Core.ps1`: shared formatting, paths, action results, and JSON primitives.
 - `Paths.ps1`: runtime profile detection, raw/resolved project path selection,
   and backward-compatible new-entry path maps.
-- `Config.ps1` / `State.ps1`: config discovery/cache and recent state.
+- `Config.ps1` / `State.ps1` / `Frecency.ps1`: config discovery/cache,
+  recent state/reset, and deterministic display ranking.
 - `Parser.ps1` / `Commands.ps1`: raw CLI normalization then dispatch.
 - `Projects.ps1` / `ProjectMetadata.ps1` / `Scan.ps1`: project mutations.
 - `Status.ps1` / `StatusOutput.ps1` / `StatusBatch.ps1`: Git collection,
@@ -55,7 +56,8 @@ Fragments use bash/zsh-compatible functions and must retain Bash 3.2 support.
 Do not let a domain source peer fragments; the generated runtime provides the
 shared scope.
 
-Keep `Paths.sh` as the single project-path resolver, `WorkspaceLifecycle.sh` as
+Keep `Paths.sh` as the single project-path resolver, `Frecency.sh` as the
+picker/list/query ranking owner, `WorkspaceLifecycle.sh` as
 the workspace schema/CRUD/plan owner, and `StatusBatch.sh` as the status
 cache/settings owner. Callers must not reintroduce local Windows-to-WSL
 conversion branches or duplicate stable-reference resolution in `Workspace.sh`.

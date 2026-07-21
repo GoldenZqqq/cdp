@@ -1,0 +1,30 @@
+{
+  "nowEpoch": 1767225600,
+  "projects": [
+    {"name":"PinnedOld","rootPath":"/fixture/pinned-old","enabled":true,"pinned":true},
+    {"name":"UnpinnedOld","rootPath":"/fixture/unpinned-old","enabled":true,"pinned":false,"aliases":["shared"],"tags":["group"]},
+    {"name":"PinnedCurrent","rootPath":"/fixture/pinned-current","enabled":true,"pinned":true},
+    {"name":"UnpinnedCurrent","rootPath":"/fixture/unpinned-current","enabled":true,"pinned":false,"aliases":["shared"],"tags":["group"]},
+    {"name":"Future","rootPath":"/fixture/future","enabled":true,"pinned":false},
+    {"name":"Zero","rootPath":"/fixture/zero","enabled":true,"pinned":false},
+    {"name":"InvalidTime","rootPath":"/fixture/invalid-time","enabled":true,"pinned":false},
+    {"name":"Negative","rootPath":"/fixture/negative","enabled":true,"pinned":false},
+    {"name":"Duplicate","rootPath":"/fixture/duplicate","enabled":true,"pinned":false},
+    {"name":"CaseMismatch","rootPath":"/fixture/casemismatch","enabled":true,"pinned":false}
+  ],
+  "recentProjects": [
+    {"name":"PinnedOld","rootPath":"/fixture/pinned-old","lastVisitedAt":"2025-12-28T00:00:00Z","visitCount":10},
+    {"name":"UnpinnedOld","rootPath":"/fixture/unpinned-old","lastVisitedAt":"2025-12-28T00:00:00+00:00","visitCount":10},
+    {"name":"PinnedCurrent","rootPath":"/fixture/pinned-current","lastVisitedAt":"2026-01-01T00:00:00Z","visitCount":2},
+    {"name":"UnpinnedCurrent","rootPath":"/fixture/unpinned-current","lastVisitedAt":"2026-01-01T00:00:00+00:00","visitCount":2},
+    {"name":"Future","rootPath":"/fixture/future","lastVisitedAt":"2026-01-03T00:00:00Z","visitCount":1},
+    {"name":"Zero","rootPath":"/fixture/zero","lastVisitedAt":"2026-01-01T00:00:00Z","visitCount":0},
+    {"name":"InvalidTime","rootPath":"/fixture/invalid-time","lastVisitedAt":"not-a-time","visitCount":99},
+    {"name":"Negative","rootPath":"/fixture/negative","lastVisitedAt":"2026-01-01T00:00:00Z","visitCount":-1},
+    {"name":"Duplicate","rootPath":"/fixture/duplicate","lastVisitedAt":"2025-12-28T00:00:00Z","visitCount":100},
+    {"name":"Duplicate","rootPath":"/fixture/duplicate","lastVisitedAt":"2025-12-31T00:00:00+00:00","visitCount":1},
+    {"name":"CaseMismatch","rootPath":"/fixture/CASEMISMATCH","lastVisitedAt":"2026-01-01T00:00:00Z","visitCount":100}
+  ],
+  "expected": ["PinnedCurrent","PinnedOld","UnpinnedCurrent","UnpinnedOld","Future","Zero","Duplicate","InvalidTime","Negative","CaseMismatch"],
+  "disabledExpected": ["PinnedOld","PinnedCurrent","UnpinnedOld","UnpinnedCurrent","Future","Zero","InvalidTime","Negative","Duplicate","CaseMismatch"]
+}

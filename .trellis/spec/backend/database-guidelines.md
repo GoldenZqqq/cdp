@@ -42,6 +42,9 @@ active state is read-only until explicitly restored; never silently reset it.
   identity and old-client fallback. Preserve unknown project fields and unknown
   future profile keys through every mutation.
 - Recent state is an object with `recentProjects`; it is not a project array.
+  Entries use exact raw `rootPath` identity. `recent reset` preserves unknown
+  top-level fields, replaces only `recentProjects`, refuses invalid active JSON,
+  and does not write or create a backup when history is already empty.
 - Workspace entries contain a non-empty `name`, a `projects` array, optional
   default `open`, and optional `layout`. New project references are objects with
   non-empty `name` and exact raw `rootPath`; optional reference `open` overrides
@@ -60,7 +63,10 @@ PowerShell JSON arrays must pass through `ConvertTo-CdpJsonArrayValue` after
 non-enumerated pipeline object, so wrapping `Get-Content | ConvertFrom-Json`
 inside `@(...)` is not a portable array boundary. The helper returns a stable
 container whose `.Value` owns the actual array, avoiding another enumeration at
-the function boundary. Preserve empty arrays and top-level null entries.
+the function boundary. Preserve empty arrays and top-level null entries. Build
+the helper's internal array with an explicit `[object[]]` allocation: assigning
+an empty array from an `if` expression can collapse it to null before the
+container is constructed.
 
 Workspace migration resolves legacy strings by one exact current project name
 and object references by one exact raw `rootPath`. A renamed object updates only

@@ -67,7 +67,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Set-ProjectPin', 'Clear-ProjectPin', 'Repair-ProjectConfig', 'Initialize-Cdp', 'Add-ProjectAlias', 'Remove-ProjectAlias', 'Add-ProjectTag', 'Remove-ProjectTag', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects', 'Show-CdpProjectStatus', 'Invoke-CdpWorkspace')
+FunctionsToExport = @('Invoke-Cdp', 'Switch-Project', 'Get-ProjectList', 'Add-Project', 'Set-ProjectPin', 'Clear-ProjectPin', 'Repair-ProjectConfig', 'Initialize-Cdp', 'Add-ProjectAlias', 'Remove-ProjectAlias', 'Add-ProjectTag', 'Remove-ProjectTag', 'Import-GitProjects', 'Remove-Project', 'Edit-ProjectConfig', 'Set-ProjectConfig', 'Test-ProjectHealth', 'Show-CdpAbout', 'Get-CdpRecentProjects', 'Reset-CdpRecentProjects', 'Show-CdpProjectStatus', 'Invoke-CdpWorkspace')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -116,12 +116,15 @@ v2.2.0 - Automation and Multi-Repository Workflows
 - Added: full workspace list/show/add/edit/remove/validate/fix/open lifecycle with stable raw-path references
 - Added: tabs and horizontal/vertical split layouts, per-project launchers, split sizes, and workspace completion
 - Added: safe cdp exec/run selectors, native argv execution, bounded concurrency/timeouts, dry-run/fail-fast, and schema version 1 JSON results
+- Added: deterministic frecency ranking keeps pinned projects first and favors frequent, recent visits across picker, list, and multi-match query candidates
+- Added: CDP_FRECENCY opt-out plus safe cdp recent reset and Reset-CdpRecentProjects preview/approval workflows
 - Improved: structured status keeps raw and resolved paths separate and exposes stable status, attention-reason, and redacted error codes
 - Improved: switching, status, workspace, doctor/repair, add/scan/init, picker/list, and recent paths share one resolver while rootPath remains backward compatible
 - Safety: repair and status fix preserve unavailable explicit platform mappings and mutate missing projects by name plus raw path identity
 - Safety: workspace migration preserves unknown/unresolved references, launch planning validates every target before native WT/tmux argv execution, and dry-run starts no process
 - Fixed: Windows PowerShell 5.1 normalizes JSON arrays consistently for path profiles, workspaces, and multi-repository exec
 - Fixed: Windows PowerShell 5.1 workspace size validation and native stderr capture no longer fail on edition-specific runtime behavior
+- Fixed: empty PowerShell JSON arrays and null entries remain stable across Windows PowerShell 5.1 and PowerShell 7
 
 v2.1.0 - Engineering Foundation
 - Added: atomic JSON persistence with SHA-256 conflict detection and sibling locks

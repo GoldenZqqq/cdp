@@ -25,6 +25,7 @@ $domainFiles = @(
     'Config.ps1',
     'Paths.ps1',
     'State.ps1',
+    'Frecency.ps1',
     'Picker.ps1',
     'Hooks.ps1',
     'Parser.ps1',
@@ -75,5 +76,5 @@ Set-Alias -Name cdp-tag -Value Add-ProjectTag
 Set-Alias -Name cdp-untag -Value Remove-ProjectTag
 
 Export-ModuleMember `
-    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects, Show-CdpProjectStatus, Invoke-CdpWorkspace `
+    -Function Invoke-Cdp, Switch-Project, Get-ProjectList, Add-Project, Set-ProjectPin, Clear-ProjectPin, Repair-ProjectConfig, Initialize-Cdp, Add-ProjectAlias, Remove-ProjectAlias, Add-ProjectTag, Remove-ProjectTag, Import-GitProjects, Remove-Project, Edit-ProjectConfig, Set-ProjectConfig, Test-ProjectHealth, Show-CdpAbout, Get-CdpRecentProjects, Reset-CdpRecentProjects, Show-CdpProjectStatus, Invoke-CdpWorkspace `
     -Alias cdp, cdp-add, cdp-rm, cdp-ls, cdp-edit, cdp-config, cdp-doctor, cdp-scan, cdp-recent, cdp-pin, cdp-unpin, cdp-clean, cdp-init, cdp-alias, cdp-unalias, cdp-tag, cdp-untag, cdp-status

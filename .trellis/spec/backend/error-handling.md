@@ -19,6 +19,9 @@ Follow `parse -> validate -> plan -> approve/preview -> execute -> aggregate`.
   writing JSON, pushing Git, or launching external tools.
 - `-WhatIf` / `--dry-run` performs no writes or native side effects.
 - High-impact shell actions require `--yes`; never read approval from stdin.
+- `recent reset` is high impact in shell and uses `--dry-run` / `--yes`;
+  PowerShell uses `ShouldProcess`. Missing or empty history is a no-op before
+  approval, while invalid state fails without changing bytes.
 
 ## Partial Failure
 

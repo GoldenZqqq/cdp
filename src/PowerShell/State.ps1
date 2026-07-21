@@ -37,7 +37,13 @@ function Get-CdpState {
             $state | Add-Member -MemberType NoteProperty -Name recentProjects -Value @()
         }
 
-        $state.recentProjects = @($state.recentProjects)
+        if ($null -ne $state.recentProjects -and $state.recentProjects -isnot [System.Array]) {
+            $script:CdpStateFingerprint = $document.Fingerprint
+            $script:CdpStateWritable = $false
+            return New-CdpState
+        }
+
+        $state.recentProjects = (ConvertTo-CdpJsonArrayValue -Value $state.recentProjects).Value
         $script:CdpStateFingerprint = $document.Fingerprint
         $script:CdpStateWritable = $true
         return $state
@@ -83,11 +89,11 @@ function Add-CdpRecentProject {
         $state = Get-CdpState
         $recentProjects = @($state.recentProjects)
         $existing = @($recentProjects | Where-Object {
-            [string]::Equals([string]$_.rootPath, $rootPath, [StringComparison]::OrdinalIgnoreCase)
+            [string]::Equals([string]$_.rootPath, $rootPath, [StringComparison]::Ordinal)
         }) | Select-Object -First 1
 
         $visitCount = 1
-        if ($existing -and $null -ne $existing.visitCount) {
+        if ($null -ne $existing -and $null -ne $existing.visitCount) {
             $visitCount = [int]$existing.visitCount + 1
         }
 
@@ -103,7 +109,7 @@ function Add-CdpRecentProject {
 
         $state.recentProjects = @(
             @($recentProjects | Where-Object {
-                -not [string]::Equals([string]$_.rootPath, $rootPath, [StringComparison]::OrdinalIgnoreCase)
+                -not [string]::Equals([string]$_.rootPath, $rootPath, [StringComparison]::Ordinal)
             }) + $newEntry |
                 Sort-Object -Property @{
                     Expression = {
@@ -215,4 +221,48 @@ function Get-CdpRecentProjects {
 
     Write-Host ("-" * 110) -ForegroundColor DarkGray
     Write-Host "state: $(Get-CdpStatePath)" -ForegroundColor DarkGray
+}
+
+function Reset-CdpRecentProjects {
+    <#
+    .SYNOPSIS
+        Clear cdp recent-project history.
+
+    .DESCRIPTION
+        Replaces only recentProjects in the cdp state document while preserving
+        unknown top-level fields. Invalid state is never overwritten.
+
+    .EXAMPLE
+        Reset-CdpRecentProjects -WhatIf
+        # Previews clearing recent-project history
+    #>
+
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+    param()
+
+    $statePath = Get-CdpStatePath
+    $state = Get-CdpState
+    if (-not $script:CdpStateWritable) {
+        return New-CdpActionResult -Action 'recent-reset' -Target $statePath `
+            -Status 'failed' -Changed $false -Error 'invalid-state'
+    }
+    $recent = (ConvertTo-CdpJsonArrayValue -Value $state.recentProjects).Value
+    if ($recent.Count -eq 0) {
+        return New-CdpActionResult -Action 'recent-reset' -Target $statePath `
+            -Status 'skipped' -Changed $false
+    }
+    if (-not $PSCmdlet.ShouldProcess($statePath, 'Clear recent project history')) {
+        $status = if ($WhatIfPreference) { 'preview' } else { 'canceled' }
+        return New-CdpActionResult -Action 'recent-reset' -Target $statePath `
+            -Status $status -Changed $false
+    }
+    try {
+        $state.recentProjects = [object[]]@()
+        Save-CdpState -State $state
+        New-CdpActionResult -Action 'recent-reset' -Target $statePath `
+            -Status 'succeeded' -Changed $true
+    } catch {
+        New-CdpActionResult -Action 'recent-reset' -Target $statePath `
+            -Status 'failed' -Changed $false -Error $_.Exception.Message
+    }
 }

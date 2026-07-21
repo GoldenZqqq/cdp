@@ -121,25 +121,6 @@ function Get-CdpProjectStringList {
     @($property.Value | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
 }
 
-function Sort-CdpProjectsForDisplay {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object[]]$Projects
-    )
-
-    $indexedProjects = for ($i = 0; $i -lt $Projects.Count; $i++) {
-        [PSCustomObject]@{
-            Project = $Projects[$i]
-            Index = $i
-            PinRank = if (Test-CdpProjectPinned -Project $Projects[$i]) { 0 } else { 1 }
-        }
-    }
-
-    @($indexedProjects |
-        Sort-Object -Property PinRank, Index |
-        ForEach-Object { $_.Project })
-}
-
 function New-CdpPickerLine {
     param(
         [Parameter(Mandatory = $true)]

@@ -4,6 +4,19 @@ BeforeAll {
 }
 
 Describe 'cdp atomic JSON persistence' {
+    It 'keeps empty arrays and null entries at the normalization boundary' {
+        InModuleScope cdp {
+            $empty = ConvertTo-CdpJsonArrayValue -Value ([object[]]@())
+            $withNull = ConvertTo-CdpJsonArrayValue -Value ([object[]]@($null, 'value'))
+
+            $empty.Value.GetType() | Should -Be ([object[]])
+            $empty.Value.Count | Should -Be 0
+            $withNull.Value.Count | Should -Be 2
+            $withNull.Value[0] | Should -BeNullOrEmpty
+            $withNull.Value[1] | Should -Be 'value'
+        }
+    }
+
     It 'writes atomically, keeps three backups, and rejects stale fingerprints' {
         InModuleScope cdp {
             $path = Join-Path $TestDrive 'projects.json'

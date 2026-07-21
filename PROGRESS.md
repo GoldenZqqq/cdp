@@ -22,7 +22,7 @@ Latest verified GitHub release: v2.1.0 (verified 2026-07-19). Latest verified Po
 
 Current release target: v2.2.0.
 
-Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development has completed the machine-readable status contract, cross-platform path profiles, workspace lifecycle, and safe multi-repository exec; frecency ranking is next.
+Release status: v2.1.0 passed the complete hosted matrix and is published on GitHub with its Scoop asset verified byte-for-byte. PowerShell Gallery remains at v2.0.4 because no Gallery API key is available locally; this is the only external v2.1.0 blocker. v2.2.0 development has completed the machine-readable status contract, cross-platform path profiles, workspace lifecycle, safe multi-repository exec, and frecency ranking; final release validation is next.
 
 ## 2.2.0 Automation and Multi-Repository Checklist
 
@@ -32,7 +32,7 @@ Release status: v2.1.0 passed the complete hosted matrix and is published on Git
 - [x] Add cross-platform path profiles.
 - [x] Add workspace lifecycle operations.
 - [x] Add safe multi-repository exec.
-- [ ] Add frecency ranking.
+- [x] Add frecency ranking.
 - [ ] Complete and publish v2.2.0.
 
 Status JSON verification: the PowerShell 7.5.2 quality gate passed Pester `104/104`, command coverage `2311/3344` (`69.11%`), PSScriptAnalyzer, and release metadata. bash, zsh, and the fixed Bash 3.2 container passed the shared schema fixture plus existing status/safety/persistence regressions.
@@ -42,6 +42,8 @@ Path profile verification: PowerShell 7.5.2 passed Pester `117/117`, command cov
 Workspace lifecycle verification: PowerShell and shell now share stable raw-path references, legacy migration, rename/delete/name-reuse diagnostics, unknown-field preservation, no-op fix behavior, launcher precedence, tabs/split layouts, exact WT/tmux argv, partial failure, dry-run, and completion contracts. The full PowerShell 7.5.2 gate passed `129/129` with `72.30%` command coverage (`3088/4271`) and no PSScriptAnalyzer errors. bash, zsh, and the fixed Bash 3.2 image passed lifecycle, CLI, status JSON, path-profile, safe-mutation, shell-v2, persistence, modularization, ShellCheck, documentation, installer, and deterministic Scoop gates. Generated shell SHA-256: `33fbf6c5b2e0cf003943269b715c34c6e9a24276b023360ea82fce261cce514b`; Scoop draft SHA-256: `b1dc4e5925e66f5180c978d7f3c1f9035fe793d901adc341d81ec9c28996e771`.
 
 Multi-repository exec verification: PowerShell, bash, zsh, and Bash 3.2 cover explicit/tag/workspace/`--all` selection, exact raw-identity deduplication, path-profile and stable-reference failures, mandatory `--` argv isolation, bounded workers, timeouts, continue/fail-fast cancellation, dry-run/approval safety, deterministic human/JSON output, and exit codes 0-3. The full PowerShell 7.5.2 gate passed `146/146` with `73.49%` command coverage (`3629/4938`) and no PSScriptAnalyzer errors. Bash, zsh, and the fixed Bash 3.2 matrix passed exec plus the existing modularization, CLI, status, path-profile, workspace, safety, shell-v2, and persistence suites. Generated shell SHA-256: `8a42caa197e3ca54d8c827b4847447d2526b45b03961630e4e4efd38c5af83e2`; deterministic Scoop draft SHA-256: `1124cbd3da5a75f021fde969174d94ac22467eb53bcd0b32708e2eafb9ad6b08`.
+
+Frecency verification: one fixed-time fixture now covers pin groups, integer frequency/decay, future and invalid timestamps, visit-count clamping, duplicate history, exact raw-path identity, opt-out fallback, and original config order across PowerShell, bash, zsh, and Bash 3.2. `cdp recent reset` also covers preview/approval, unknown-field preservation, invalid-state refusal, and empty no-op behavior. The full PowerShell 7.5.2 gate passed `156/156` with `73.98%` command coverage (`3795/5130`) and no PSScriptAnalyzer errors. ShellCheck, documentation, installer, deterministic package, release metadata, and affected shell regressions passed. Generated shell SHA-256: `ada96effe4b5b23b49530d8576898a369f60dcf6eb9d67821b1d5ef7cb80d463`; deterministic Scoop draft SHA-256: `87130587dd8028666e84f0e0beb9726374c2767c43f65222bf787323430c5e9a`.
 
 ## 2.1.0 Engineering Foundation Checklist
 

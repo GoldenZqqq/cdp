@@ -201,40 +201,38 @@ line_count() {
 find_project_matches() {
     local config_path="$1"
     local query="$2"
+    local now_epoch="${3:-}"
     local exact_matches
 
     if [[ "$query" == @* ]]; then
         local tag_query="${query#@}"
-        jq -r --arg query "$tag_query" '
+        cdp_frecency_ranked_project_json "$config_path" "$now_epoch" | jq -s -r --arg query "$tag_query" '
             ($query | ascii_downcase) as $needle |
             .[] |
-            select(.enabled == true) |
             select(((.tags // []) | map(ascii_downcase) | index($needle)) != null) |
             .name
-        ' "$config_path" 2>/dev/null
+        ' 2>/dev/null
         return
     fi
 
-    exact_matches=$(jq -r --arg query "$query" '
+    exact_matches=$(cdp_frecency_ranked_project_json "$config_path" "$now_epoch" | jq -s -r --arg query "$query" '
         ($query | ascii_downcase) as $needle |
         .[] |
-        select(.enabled == true) |
         select(
             ((.name // "") | ascii_downcase) == $needle or
             (((.aliases // []) | map(ascii_downcase) | index($needle)) != null)
         ) |
         .name
-    ' "$config_path" 2>/dev/null)
+    ' 2>/dev/null)
 
     if [[ -n "$exact_matches" ]]; then
         printf '%s\n' "$exact_matches"
         return
     fi
 
-    jq -r --arg query "$query" '
+    cdp_frecency_ranked_project_json "$config_path" "$now_epoch" | jq -s -r --arg query "$query" '
         ($query | ascii_downcase) as $needle |
         .[] |
-        select(.enabled == true) |
         select(
             ((.name // "") | ascii_downcase | contains($needle)) or
             ((.rootPath // "") | ascii_downcase | contains($needle)) or
@@ -245,33 +243,8 @@ find_project_matches() {
             (((.tags // []) | map(ascii_downcase) | map(contains($needle)) | any))
         ) |
         .name
-    ' "$config_path" 2>/dev/null
+    ' 2>/dev/null
 }
-
-sorted_enabled_project_names() {
-    local config_path="$1"
-
-    jq -r '
-        to_entries
-        | map(select(.value.enabled == true))
-        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
-        | .[].value.name
-    ' "$config_path" 2>/dev/null
-}
-
-sorted_enabled_project_rows() {
-    local config_path="$1"
-
-    jq -r '
-        to_entries
-        | map(select(.value.enabled == true))
-        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
-        | .[]
-        | [.value.name, ((.value.pinned == true) | tostring), .value.rootPath]
-        | @tsv
-    ' "$config_path" 2>/dev/null
-}
-
 
 cdp-config() {
     cdp_parse_safety_options "$@" || return 1

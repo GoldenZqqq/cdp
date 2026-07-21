@@ -42,6 +42,7 @@ function New-CdpInvocation {
         RootPath = $null
         MaxDepth = 4
         Count = 10
+        RecentAction = 'list'
         HookAction = $null
     }
 }
@@ -447,13 +448,18 @@ function ConvertFrom-CdpManagementTokens {
             $result.Count = 0
         }
     } elseif ($Kind -eq 'recent') {
-        if ($Tokens.Count -gt 1) { throw "Recent count must be a positive integer." }
-        if ($Tokens.Count -eq 1) {
+        if ($Tokens.Count -eq 1 -and $Tokens[0].ToLowerInvariant() -eq 'reset') {
+            $result.RecentAction = 'reset'
+        } elseif ($Tokens.Count -gt 1) {
+            throw "Recent accepts a positive count or reset."
+        } elseif ($Tokens.Count -eq 1) {
             $recentCount = 0
             if (-not [int]::TryParse($Tokens[0], [ref]$recentCount)) { throw "Recent count must be a positive integer." }
             $result.Count = $recentCount
         }
-        if ($result.Count -le 0) { throw "Recent count must be a positive integer." }
+        if ($result.RecentAction -eq 'list' -and $result.Count -le 0) {
+            throw "Recent count must be a positive integer."
+        }
     } elseif ($Kind -in @('pin', 'unpin', 'remove')) {
         Set-CdpTrailingConfigPath -Result $result -Arguments $Tokens -RequiredCount 1
         $result.Name = $Tokens[0]
@@ -477,6 +483,7 @@ function ConvertFrom-CdpManagementTokens {
     $isMutation = $Kind -in @('clean', 'add', 'remove', 'pin', 'unpin', 'alias', 'unalias', 'tag', 'untag', 'init', 'scan', 'config')
     if ($Kind -eq 'doctor') { $isMutation = $result.Fix }
     if ($Kind -eq 'hook') { $isMutation = $result.HookAction -in @('trust', 'revoke') }
+    if ($Kind -eq 'recent') { $isMutation = $result.RecentAction -eq 'reset' }
     if (($DryRun -or $Yes) -and -not $isMutation) {
         throw "Safety options are only valid for mutating commands."
     }

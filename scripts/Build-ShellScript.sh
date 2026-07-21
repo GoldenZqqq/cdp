@@ -20,6 +20,7 @@ fragments=(
     Config.sh
     Paths.sh
     State.sh
+    Frecency.sh
     Picker.sh
     Hooks.sh
     Health.sh

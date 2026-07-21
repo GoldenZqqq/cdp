@@ -107,6 +107,7 @@ function requiredReadmeTokens() {
     "--dry-run", "--yes", "--jobs", "--refresh", "-PassThru", "-WhatIf",
     "-Confirm", "-AllowHook", "--allow-hook", "--no-hook",
     "CDP_STATUS_CONCURRENCY", "CDP_STATUS_CACHE_TTL", "CDP_STATUS_TIMEOUT_SECONDS",
+    "CDP_FRECENCY", "cdp recent reset",
     "~/.cdp/config", "~/.cdp/state.json", "workspaces.json", "~/.cdp/hook-trust.json",
     "Invoke-PowerShellQualityGate.ps1", "Build-ShellScript.sh --check",
     "Test-ScoopPackage.sh", "Test-Documentation.mjs", "pnpm --dir tests/web test",

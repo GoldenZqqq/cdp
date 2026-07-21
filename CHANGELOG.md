@@ -13,6 +13,9 @@
 - Added tabs, horizontal/vertical split layouts, per-project launcher overrides, 10-90 split sizes, and workspace-aware completion.
 - Added `cdp exec` / `cdp run` for explicit projects, one tag, one workspace, or explicit `--all` selection with a mandatory command boundary.
 - Added bounded 1-16 concurrency, 1-3600 second per-project timeouts, continue/fail-fast policies, dry-run/approval safety, isolated stdout/stderr, and schema version 1 exec JSON.
+- Added deterministic frecency ranking for picker, project-list, and multi-match query candidates with pinned projects as the highest-priority group.
+- Added `CDP_FRECENCY` opt-out controls and `cdp recent reset` / `Reset-CdpRecentProjects` with preview, approval, invalid-state, and no-op safety.
+- Added one shared fixed-time PowerShell/bash/zsh frecency fixture covering frequency, decay, future/invalid timestamps, exact raw identity, duplicates, and tie-breakers.
 
 ### Changed
 
@@ -25,11 +28,13 @@
 - Workspace launch planning now resolves schema, stable identity, path profile, launcher precedence, and native WT/tmux argv before starting processes; unsafe items fail without blocking later safe targets.
 - Workspace edits and migration preserve unknown fields, avoid same-name fallback after deletion, and skip persistence when `validate --fix` has no semantic change.
 - Multi-repository exec now resolves the complete selection/path/executable plan before approval, invokes only native executable + argv without `eval`, preserves selection order, and returns stable exit codes 0-3.
+- Frecency uses integer scoring and exact configured `rootPath` identity; missing, invalid, disabled, or unmatched history retains pin + original configuration order.
 
 ### Fixed
 
 - Fixed Windows PowerShell 5.1 JSON-array normalization so path profiles, workspace lifecycle, and workspace-backed exec receive individual records instead of one wrapped array.
 - Fixed Windows PowerShell 5.1 workspace size type checks and native stderr handling, and made Windows/macOS regression fixtures independent of edition-specific command parsing and physical temporary-path aliases.
+- Fixed the PowerShell JSON-array normalization boundary so empty arrays and null entries remain stable values instead of collapsing to null.
 
 ## 2.1.0
 

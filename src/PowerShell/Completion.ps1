@@ -71,6 +71,18 @@ function Get-CdpExecCompletionValues {
     $options + @(Get-CdpProjectCompletionNames) + @(Get-CdpTagCompletionValues)
 }
 
+function Get-CdpRecentCompletionValues {
+    param([object]$CommandAst, [string]$WordToComplete)
+
+    $tokens = @($CommandAst.CommandElements | ForEach-Object { $_.Extent.Text.Trim("'`"") })
+    $recentIndex = [Array]::IndexOf($tokens, 'recent')
+    if ($recentIndex -lt 0) { return @() }
+    $arguments = @($tokens | Select-Object -Skip ($recentIndex + 1))
+    if ($arguments.Count -le 1) { return @('reset', '1', '5', '10') }
+    if ($arguments[0] -eq 'reset') { return @('--dry-run', '--yes') }
+    @()
+}
+
 Register-ArgumentCompleter -CommandName Invoke-Cdp -ParameterName Command -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
@@ -108,6 +120,9 @@ $argumentCompleter = {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
     $values = @(Get-CdpExecCompletionValues -CommandAst $commandAst -WordToComplete $wordToComplete)
+    if ($values.Count -eq 0) {
+        $values = @(Get-CdpRecentCompletionValues -CommandAst $commandAst -WordToComplete $wordToComplete)
+    }
     if ($values.Count -eq 0) {
         $values = @(Get-CdpWorkspaceCompletionValues -CommandAst $commandAst -WordToComplete $wordToComplete)
     }

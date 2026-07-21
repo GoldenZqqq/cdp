@@ -385,6 +385,81 @@ project object -> shared resolver -> {raw,resolved,profile,source}
 raw -> identity/mutation; resolved -> filesystem/Git/launcher
 ```
 
+## Scenario: Rank Projects with Deterministic Frecency
+
+### 1. Scope / Trigger
+
+Apply whenever picker, project-list, multi-match query, recent-state recording,
+or recent-history lifecycle changes. Status, exec, and workspace selection keep
+their own explicit ordering contracts and must not consume this display rank.
+
+### 2. Signatures
+
+```text
+score = floor(clamp(visitCount, 1, 1000) * 1000000 / (ageDays + 1))
+ageDays = floor(max(0, nowEpoch - lastVisitedEpoch) / 86400)
+CDP_FRECENCY=0|false|off|no
+cdp recent reset [--dry-run|--yes]
+Reset-CdpRecentProjects [-WhatIf] [-Confirm]
+```
+
+Internal fixed-time entry points are `Sort-CdpProjectsForDisplay -NowEpoch` and
+`cdp_frecency_ranked_project_json <config> [now-epoch]`.
+
+### 3. Contracts
+
+- Match history by exact configured raw `rootPath`; never by name, resolved
+  path, or case-insensitive comparison.
+- Sort by pin rank ascending, score descending, last epoch descending, clamped
+  visits descending, then original config index ascending.
+- Parse the UTC `YYYY-MM-DDTHH:MM:SS` prefix. PowerShell 7 may deserialize ISO
+  JSON values as `DateTime`, so normalization accepts string, `DateTime`, and
+  `DateTimeOffset`; PowerShell 5.1 string behavior remains equivalent.
+- Invalid/unmatched history gets zero metrics. Future time clamps to age zero.
+  At most 10,000 recent entries are normalized; duplicate identities keep the
+  newest valid timestamp, then greater visits.
+- Missing `date` command in a minimal shell environment falls back to pin + config
+  order instead of adding a new hard dependency.
+- Reset preserves unknown state fields and uses the shared atomic writer.
+
+### 4. Validation & Error Matrix
+
+- Missing/invalid state or non-array recent history -> rank by pin + config.
+- Invalid time, nonnumeric/fractional/negative visits -> zero metrics.
+- `CDP_FRECENCY` disabled -> pin + config without changing match sets.
+- Reset missing/empty state -> `skipped`, no write or backup.
+- Reset invalid active state -> `failed` / nonzero, original bytes unchanged.
+- Shell reset without `--yes` -> canceled; `--dry-run` -> preview only.
+
+### 5. Good / Base / Bad Cases
+
+- Good: a frequently used project rises within its pin group on every runtime.
+- Base: no history retains the exact configured order inside each pin group.
+- Bad: use floating-point decay, local timezone parsing, case-folded paths, or
+  route status/exec/workspace through the display sorter.
+
+### 6. Tests Required
+
+- Run one shared fixed-now fixture in PowerShell, bash, zsh, and Bash 3.2.
+- Assert pins, frequency, decay, future/invalid time, zero/negative visits,
+  duplicate state, case mismatch, opt-out, and original-index fallback.
+- Assert fuzzy, exact-alias, and tag query sets remain unchanged and ranked.
+- Assert reset preview/approval, unknown fields, invalid bytes, and empty no-op.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```text
+sort by project name or Date.now()-based floating score in each caller
+```
+
+Correct:
+
+```text
+exact raw rootPath -> one normalized integer metric -> shared display sorter
+```
+
 ## Scenario: Inspect and Mutate Project Status with Stable Path Identity
 
 ### 1. Scope / Trigger

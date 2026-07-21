@@ -68,6 +68,11 @@ _cdp_completions() {
         return
     fi
 
+    if [[ "${COMP_WORDS[1]}" =~ ^(recent|recents|history)$ ]]; then
+        if [[ "$COMP_CWORD" -eq 2 ]]; then COMPREPLY=($(compgen -W 'reset 1 5 10' -- "$cur")); return; fi
+        if [[ "${COMP_WORDS[2]}" == reset ]]; then COMPREPLY=($(compgen -W '--dry-run --yes' -- "$cur")); return; fi
+    fi
+
     if [[ $COMP_CWORD -eq 1 ]]; then
         local projects=""
         local config_path
@@ -136,6 +141,11 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
         if [[ "$prev" == "--layout" ]]; then
             compadd -a layouts
             return
+        fi
+
+        if [[ "${completion_words[2]}" =~ ^(recent|recents|history)$ ]]; then
+            if [[ $completion_current -eq 3 ]]; then compadd reset 1 5 10; return; fi
+            if [[ "${completion_words[3]}" == reset ]]; then compadd -- --dry-run --yes; return; fi
         fi
 
         if [[ $completion_current -eq 2 ]]; then

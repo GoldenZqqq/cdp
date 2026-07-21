@@ -169,6 +169,10 @@ cdp version
 # Show recently visited projects
 cdp recent
 
+# Preview, then clear recent-project history
+cdp recent reset --dry-run
+cdp recent reset --yes
+
 # See all repo statuses at a glance
 cdp status
 
@@ -341,7 +345,8 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 - **Project Manager compatible**: reads VS Code/Cursor Project Manager configs
 - **Project management commands**: `cdp-add`, `cdp-rm`, `cdp-ls`, `cdp-config`
 - **Bulk Git scanning**: `cdp-scan` imports Git repositories under a directory into your config
-- **Recent projects**: `cdp recent` / `cdp-recent` lists projects ordered by last visit
+- **Frecency project ranking**: pinned projects stay first, then picker/list/query results favor frequent and recent visits; set `CDP_FRECENCY=off` to retain pin + config order
+- **Recent projects**: `cdp recent` / `cdp-recent` lists visit history and `cdp recent reset` clears it safely
 - **Pinned / favorite projects**: `cdp pin api` keeps frequent projects at the top of pickers and lists
 - **Tags and short aliases**: `cdp alias api backend` adds a short alias; after `cdp tag api work`, PowerShell can query it with `cdp '@work'`
 - **Health checks and repair**: `cdp doctor` checks dependencies, JSON, duplicates, and missing paths; `cdp clean` safely repairs project config
@@ -376,6 +381,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | `Remove-ProjectTag` | `cdp untag`, `cdp-untag` | Removes a project tag |
 | `Show-CdpAbout` | `cdp about`, `cdp version` | Shows the cdp logo, version, config path, project count, and upgrade command |
 | `Get-CdpRecentProjects` | `cdp recent`, `cdp-recent` | Lists recently visited projects |
+| `Reset-CdpRecentProjects` | `cdp recent reset` | Clears recent history with native `-WhatIf` / `-Confirm` safety |
 | `Set-ProjectPin` | `cdp pin`, `cdp-pin` | Keeps a project at the top of pickers and lists |
 | `Clear-ProjectPin` | `cdp unpin`, `cdp-unpin` | Removes a project pin |
 | `Add-Project` | `cdp add`, `cdp-add` | Adds the current directory or a specific path |
@@ -403,6 +409,7 @@ Built-in bash/zsh launcher presets keep editor arguments separate from no-argume
 | `cdp tag api work` / `cdp-tag api work` | Adds a project tag; query with `cdp @work` in bash/zsh |
 | `cdp about` / `cdp version` | Shows the version, config path, project count, and upgrade command |
 | `cdp recent` / `cdp-recent` | Lists recently visited projects |
+| `cdp recent reset --dry-run` / `cdp recent reset --yes` | Previews or confirms clearing recent history while preserving other state fields |
 | `cdp pin api` / `cdp-pin api` | Keeps a project at the top of pickers and lists |
 | `cdp unpin api` / `cdp-unpin api` | Removes a project pin |
 | `cdp add` / `cdp-add` | Adds the current directory or a specific path |
@@ -504,7 +511,7 @@ Structured environment values are applied when a project is entered. Environment
 
 Command hooks are skipped by default. Authorize one switch with `cdp api -AllowHook` in PowerShell or `cdp api --allow-hook` in bash/zsh. For persistent project-scoped authorization, review the active config and run `cdp hook trust api`; inspect status with `cdp hook list` and remove it with `cdp hook revoke api` or `cdp hook revoke --all`. Trust is bound to the normalized config path, config-content SHA-256, project identity, and command SHA-256, so moving or changing the config requires new trust. `~/.cdp/hook-trust.json` contains fingerprints and timestamps only—never command text, config content, or environment values—and is permission-restricted. `--no-hook` skips both structured environment values and commands for one switch.
 
-Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file.
+Recent visits are stored in a separate state file at `~/.cdp/state.json`, so `projects.json` stays compatible with Project Manager. Automation or tests can point `CDP_STATE_PATH` to a temporary state file. Picker, `cdp-ls`, `Get-ProjectList`, and multi-match query candidates keep pinned projects in the highest-priority group, then sort matching exact raw `rootPath` history by `floor(clamp(visitCount, 1, 1000) * 1000000 / (ageDays + 1))`. Ties use last-visit time, visit count, then original config index. Missing or invalid state falls back to pin + config order; future timestamps use age zero. Set `CDP_FRECENCY=0`, `false`, `off`, or `no` to disable the score layer.
 
 cdp persists project, recent-state, and workspace JSON through same-directory atomic replacement. Concurrent changes are rejected instead of overwritten, and the three newest `*.cdp-backup.*` files are retained for explicit recovery. `cdp doctor` reports when a damaged project config has a valid backup.
 
@@ -514,7 +521,7 @@ PowerShell mutation functions support native `-WhatIf` and `-Confirm`; use `-Pas
 
 `cdp clean` and `cdp status --fix` keep an unavailable explicit platform path instead of deleting or disabling the shared project entry. Legacy fallback paths retain the existing repair behavior. This prevents a missing mount or machine-local checkout from damaging paths that remain valid on another platform.
 
-`cdp config` / `cdp-config` accepts a numbered selection from the displayed list. In shell automation, provide the number as an argument, for example `cdp config 1 --yes`. PowerShell can use `Set-ProjectConfig -Selection 1 -Confirm:$false`.
+`cdp config` / `cdp-config` accepts a numbered selection from the displayed list. In shell automation, provide the number as an argument, for example `cdp config 1 --yes`. PowerShell can use `Set-ProjectConfig -Selection 1 -Confirm:$false`. Clear only `recentProjects` with `cdp recent reset --dry-run` / `--yes`, or `Reset-CdpRecentProjects -WhatIf` / `-Confirm:$false`; invalid state is never overwritten and an already-empty reset performs no write or backup.
 
 ### Status automation contract
 
@@ -685,6 +692,7 @@ CI covers:
 - [x] `cdp doctor` diagnostics
 - [x] GitHub Actions baseline CI
 - [x] Recent projects
+- [x] Cross-platform frecency ranking with safe recent-history reset
 - [x] Pinned / favorite projects
 - [x] `cdp <query>` non-interactive matching
 - [x] Bulk scan Git repositories into config

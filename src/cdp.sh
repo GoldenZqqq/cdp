@@ -467,40 +467,38 @@ line_count() {
 find_project_matches() {
     local config_path="$1"
     local query="$2"
+    local now_epoch="${3:-}"
     local exact_matches
 
     if [[ "$query" == @* ]]; then
         local tag_query="${query#@}"
-        jq -r --arg query "$tag_query" '
+        cdp_frecency_ranked_project_json "$config_path" "$now_epoch" | jq -s -r --arg query "$tag_query" '
             ($query | ascii_downcase) as $needle |
             .[] |
-            select(.enabled == true) |
             select(((.tags // []) | map(ascii_downcase) | index($needle)) != null) |
             .name
-        ' "$config_path" 2>/dev/null
+        ' 2>/dev/null
         return
     fi
 
-    exact_matches=$(jq -r --arg query "$query" '
+    exact_matches=$(cdp_frecency_ranked_project_json "$config_path" "$now_epoch" | jq -s -r --arg query "$query" '
         ($query | ascii_downcase) as $needle |
         .[] |
-        select(.enabled == true) |
         select(
             ((.name // "") | ascii_downcase) == $needle or
             (((.aliases // []) | map(ascii_downcase) | index($needle)) != null)
         ) |
         .name
-    ' "$config_path" 2>/dev/null)
+    ' 2>/dev/null)
 
     if [[ -n "$exact_matches" ]]; then
         printf '%s\n' "$exact_matches"
         return
     fi
 
-    jq -r --arg query "$query" '
+    cdp_frecency_ranked_project_json "$config_path" "$now_epoch" | jq -s -r --arg query "$query" '
         ($query | ascii_downcase) as $needle |
         .[] |
-        select(.enabled == true) |
         select(
             ((.name // "") | ascii_downcase | contains($needle)) or
             ((.rootPath // "") | ascii_downcase | contains($needle)) or
@@ -511,33 +509,8 @@ find_project_matches() {
             (((.tags // []) | map(ascii_downcase) | map(contains($needle)) | any))
         ) |
         .name
-    ' "$config_path" 2>/dev/null
+    ' 2>/dev/null
 }
-
-sorted_enabled_project_names() {
-    local config_path="$1"
-
-    jq -r '
-        to_entries
-        | map(select(.value.enabled == true))
-        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
-        | .[].value.name
-    ' "$config_path" 2>/dev/null
-}
-
-sorted_enabled_project_rows() {
-    local config_path="$1"
-
-    jq -r '
-        to_entries
-        | map(select(.value.enabled == true))
-        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
-        | .[]
-        | [.value.name, ((.value.pinned == true) | tostring), .value.rootPath]
-        | @tsv
-    ' "$config_path" 2>/dev/null
-}
-
 
 cdp-config() {
     cdp_parse_safety_options "$@" || return 1
@@ -808,7 +781,7 @@ cdp_new_project_json() {
 # Generated from the canonical cdp.sh source; do not source peer fragments.
 
 cdp_state_path() {
-    if [[ -n "$CDP_STATE_PATH" ]]; then
+    if [[ -n "${CDP_STATE_PATH:-}" ]]; then
         echo "$CDP_STATE_PATH"
     else
         echo "$HOME/.cdp/state.json"
@@ -871,28 +844,55 @@ cdp_record_recent() {
 
 # Function to find all available config files
 
-cdp-recent() {
-    local count="${1:-10}"
-
-    if ! command -v jq &> /dev/null; then
-        echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"
-        return 1
-    fi
-
-    if ! [[ "$count" =~ ^[0-9]+$ ]] || [[ "$count" -le 0 ]]; then
-        count=10
-    fi
-
+cdp_reset_recent() {
     local state_path
+    local expected_fingerprint
+    local temp_file
+    local approval_status
     state_path=$(cdp_state_path)
 
     if [[ ! -f "$state_path" ]]; then
-        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
+        cdp_action_result recent-reset "$state_path" skipped false
         return 0
     fi
+    if ! jq -e 'type == "object" and
+        (.recentProjects == null or (.recentProjects | type) == "array")' \
+        "$state_path" >/dev/null 2>&1; then
+        cdp_action_result recent-reset "$state_path" failed false invalid-state
+        return 1
+    fi
+    if [[ "$(jq '(.recentProjects // []) | length' "$state_path")" -eq 0 ]]; then
+        cdp_action_result recent-reset "$state_path" skipped false
+        return 0
+    fi
+    if cdp_require_high_risk_approval 'clear recent project history'; then
+        approval_status=0
+    else
+        approval_status=$?
+    fi
+    if [[ "$approval_status" -eq 2 ]]; then
+        cdp_action_result recent-reset "$state_path" preview false
+        return 0
+    elif [[ "$approval_status" -ne 0 ]]; then
+        cdp_action_result recent-reset "$state_path" canceled false
+        return 1
+    fi
 
-    local recent_projects
-    recent_projects=$(jq -r --argjson count "$count" '
+    expected_fingerprint=$(cdp_json_fingerprint "$state_path")
+    temp_file=$(cdp_json_temp_file "$state_path") || return 1
+    if jq '.recentProjects = []' "$state_path" > "$temp_file" &&
+        cdp_commit_json_file "$state_path" "$temp_file" "$expected_fingerprint"; then
+        rm -f -- "$temp_file"
+        cdp_action_result recent-reset "$state_path" succeeded true
+        return 0
+    fi
+    rm -f -- "$temp_file"
+    cdp_action_result recent-reset "$state_path" failed false write-failed
+    return 1
+}
+
+cdp_recent_rows() {
+    jq -r --argjson count "$2" '
         (.recentProjects // [])
         | sort_by(.lastVisitedAt)
         | reverse
@@ -900,40 +900,34 @@ cdp-recent() {
         | .[]
         | [.name, .lastVisitedAt, ((.visitCount // 1) | tostring), .rootPath]
         | @tsv
-    ' "$state_path" 2>/dev/null)
+    ' "$1" 2>/dev/null
+}
 
-    if [[ -z "$recent_projects" ]]; then
-        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
-        return 0
-    fi
-
+cdp_recent_name_width() {
+    local recent_projects="$1"
     local name_width=14
-    local name
-    local last_used
-    local visits
-    local project_path
-    while IFS=$'\t' read -r name last_used visits project_path; do
-        if (( ${#name} > name_width )); then
-            name_width=${#name}
-        fi
+    local name ignored
+    while IFS=$'\t' read -r name ignored; do
+        if (( ${#name} > name_width )); then name_width=${#name}; fi
     done <<< "$recent_projects"
-    if (( name_width > 30 )); then
-        name_width=30
-    fi
+    if (( name_width > 30 )); then name_width=30; fi
+    printf '%s\n' "$name_width"
+}
 
+cdp_render_recent() {
+    local recent_projects="$1"
+    local state_path="$2"
+    local name_width
+    local name last_used visits project_path display_name display_last display_path recent_json
+    local index=1
+    name_width=$(cdp_recent_name_width "$recent_projects")
     echo -e "\n${CYAN}cdp recent${NC} ${GRAY}($(line_count "$recent_projects") shown)${NC}"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
     printf "  ${GRAY}%-4s${NC} ${CYAN}%-*s${NC} ${GRAY}%-24s %-7s %s${NC}\n" "#" "$name_width" "Project" "Last used" "Visits" "Path"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
-
-    local index=1
     while IFS=$'\t' read -r name last_used visits project_path; do
-        local display_name
-        local display_last
-        local display_path
         display_name=$(truncate_text "$name" "$name_width")
         display_last=$(truncate_text "$last_used" 24)
-        local recent_json
         recent_json=$(jq -c --arg name "$name" --arg root "$project_path" \
             '.recentProjects[] | select(.name == $name and .rootPath == $root)' "$state_path" | head -n1)
         if cdp_resolve_project_json "$recent_json"; then
@@ -949,7 +943,133 @@ cdp-recent() {
     echo -e "${GRAY}state: $state_path${NC}"
 }
 
+cdp-recent() {
+    cdp_parse_safety_options "$@" || return 1
+    set -- "${CDP_SAFETY_ARGS[@]}"
+    if [[ "${1:-}" == reset ]]; then
+        [[ $# -eq 1 ]] || { echo "Error: recent reset accepts no other arguments." >&2; return 1; }
+        cdp_reset_recent
+        return
+    fi
+    if $CDP_SAFETY_DRY_RUN || $CDP_SAFETY_YES; then
+        echo "Error: recent safety options require the reset action." >&2
+        return 1
+    fi
+    [[ $# -le 1 ]] || { echo "Error: recent accepts a positive count or reset." >&2; return 1; }
+    local count="${1:-10}"
+    local state_path recent_projects
+    command -v jq &>/dev/null || { echo -e "${RED}Error: 'jq' command not found. Please install jq.${NC}"; return 1; }
+    if ! [[ "$count" =~ ^[0-9]+$ ]] || [[ "$count" -le 0 ]]; then count=10; fi
+    state_path=$(cdp_state_path)
+    if [[ ! -f "$state_path" ]]; then
+        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
+        return 0
+    fi
+    recent_projects=$(cdp_recent_rows "$state_path" "$count")
+    if [[ -z "$recent_projects" ]]; then
+        echo -e "${YELLOW}No recent projects yet. Switch with cdp first.${NC}"
+        return 0
+    fi
+    cdp_render_recent "$recent_projects" "$state_path"
+}
+
 # Function to add current directory as a project
+
+# cdp shell domain: Frecency.sh
+# shellcheck shell=bash
+# Generated from the canonical cdp.sh source; do not source peer fragments.
+
+cdp_frecency_enabled() {
+    case "${CDP_FRECENCY:-}" in
+        0|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|[Nn][Oo]) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+cdp_frecency_jq_filter() {
+    printf '%s\n' '
+def parsed_epoch:
+    if (type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")) then
+        try (capture("^(?<stamp>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})")
+            | .stamp | strptime("%Y-%m-%dT%H:%M:%S") | mktime) catch null
+    else null end;
+def parsed_visits:
+    if (type == "number" and . >= 0 and . == floor) then
+        ([1, ., 1000] | sort | .[1])
+    else null end;
+def metric:
+    (.lastVisitedAt | parsed_epoch) as $last |
+    (.visitCount | parsed_visits) as $visits |
+    if ($last == null or $visits == null) then {last:0, visits:0, score:0}
+    else
+        (($now - $last) | if . < 0 then 0 else . end | ./86400 | floor) as $age |
+        {last:$last, visits:$visits, score:(($visits * 1000000 / ($age + 1)) | floor)}
+    end;
+((($state[0].recentProjects // []))[:10000]
+    | map(select((.rootPath | type) == "string") | {rootPath:.rootPath, metric:metric})
+    | reduce .[] as $entry ({};
+        if (has($entry.rootPath) | not) then .[$entry.rootPath] = $entry.metric
+        elif ($entry.metric.last > .[$entry.rootPath].last or
+            ($entry.metric.last == .[$entry.rootPath].last and
+                $entry.metric.visits > .[$entry.rootPath].visits)) then
+            .[$entry.rootPath] = $entry.metric
+        else . end)) as $history
+| to_entries
+| map(select(.value.enabled == true) |
+    (.value.rootPath as $root |
+        ($history[$root] // {last:0, visits:0, score:0}) as $metric |
+        . + {pinRank:(if .value.pinned == true then 0 else 1 end),
+            score:$metric.score, last:$metric.last, visits:$metric.visits}))
+| sort_by(.pinRank, -.score, -.last, -.visits, .key)
+| .[].value
+'
+}
+
+cdp_frecency_config_order_json() {
+    jq -c '
+        to_entries
+        | map(select(.value.enabled == true))
+        | sort_by(if .value.pinned == true then 0 else 1 end, .key)
+        | .[].value
+    ' "$1" 2>/dev/null
+}
+
+cdp_frecency_ranked_project_json() {
+    local config_path="$1"
+    local now_epoch="${2:-}"
+    local state_path
+    local state_input='/dev/null'
+    local jq_filter
+
+    [[ -f "$config_path" ]] || return 1
+    if ! [[ "$now_epoch" =~ ^[0-9]+$ ]]; then
+        if command -v date >/dev/null 2>&1; then now_epoch=$(date -u +%s)
+        else cdp_frecency_config_order_json "$config_path"; return; fi
+    fi
+    state_path=$(cdp_state_path)
+    if [[ -f "$state_path" ]] && jq -e '
+        type == "object" and (.recentProjects == null or (.recentProjects | type) == "array")
+    ' "$state_path" >/dev/null 2>&1; then
+        state_input="$state_path"
+    fi
+
+    if ! cdp_frecency_enabled; then
+        cdp_frecency_config_order_json "$config_path"
+        return
+    fi
+
+    jq_filter=$(cdp_frecency_jq_filter)
+    jq -c --argjson now "$now_epoch" --slurpfile state "$state_input" \
+        "$jq_filter" "$config_path" 2>/dev/null
+}
+
+sorted_enabled_project_names() {
+    cdp_frecency_ranked_project_json "$1" "${2:-}" | jq -r '.name'
+}
+
+sorted_enabled_project_rows() {
+    cdp_frecency_ranked_project_json "$1" "${2:-}" | jq -r '[.name, ((.pinned == true) | tostring), .rootPath] | @tsv'
+}
 
 # cdp shell domain: Picker.sh
 # shellcheck shell=bash
@@ -4512,6 +4632,11 @@ _cdp_completions() {
         return
     fi
 
+    if [[ "${COMP_WORDS[1]}" =~ ^(recent|recents|history)$ ]]; then
+        if [[ "$COMP_CWORD" -eq 2 ]]; then COMPREPLY=($(compgen -W 'reset 1 5 10' -- "$cur")); return; fi
+        if [[ "${COMP_WORDS[2]}" == reset ]]; then COMPREPLY=($(compgen -W '--dry-run --yes' -- "$cur")); return; fi
+    fi
+
     if [[ $COMP_CWORD -eq 1 ]]; then
         local projects=""
         local config_path
@@ -4580,6 +4705,11 @@ elif [[ -n "${ZSH_VERSION:-}" ]]; then
         if [[ "$prev" == "--layout" ]]; then
             compadd -a layouts
             return
+        fi
+
+        if [[ "${completion_words[2]}" =~ ^(recent|recents|history)$ ]]; then
+            if [[ $completion_current -eq 3 ]]; then compadd reset 1 5 10; return; fi
+            if [[ "${completion_words[3]}" == reset ]]; then compadd -- --dry-run --yes; return; fi
         fi
 
         if [[ $completion_current -eq 2 ]]; then
