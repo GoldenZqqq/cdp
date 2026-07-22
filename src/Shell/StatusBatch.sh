@@ -104,12 +104,10 @@ cdp_status_redact_remote_url() {
 
 cdp_status_process_children() {
     local process_id="$1" children=""
-    if command -v pgrep >/dev/null 2>&1; then
+    children=$(ps -A -o pid= -o ppid= 2>/dev/null |
+        awk -v parent="$process_id" '$2 == parent { print $1 }')
+    if [[ -z "$children" ]] && command -v pgrep >/dev/null 2>&1; then
         children=$(pgrep -P "$process_id" 2>/dev/null || true)
-    fi
-    if [[ -z "$children" ]]; then
-        children=$(ps -eo pid=,ppid= 2>/dev/null |
-            awk -v parent="$process_id" '$2 == parent { print $1 }')
     fi
     printf '%s\n' "$children"
 }
