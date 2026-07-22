@@ -102,9 +102,21 @@ cdp_status_redact_remote_url() {
     esac
 }
 
+cdp_status_process_children() {
+    local process_id="$1" children=""
+    if command -v pgrep >/dev/null 2>&1; then
+        children=$(pgrep -P "$process_id" 2>/dev/null || true)
+    fi
+    if [[ -z "$children" ]]; then
+        children=$(ps -eo pid=,ppid= 2>/dev/null |
+            awk -v parent="$process_id" '$2 == parent { print $1 }')
+    fi
+    printf '%s\n' "$children"
+}
+
 cdp_status_kill_tree() {
     local process_id="$1" child_id children=""
-    children=$(ps -eo pid=,ppid= 2>/dev/null | awk -v parent="$process_id" '$2 == parent { print $1 }')
+    children=$(cdp_status_process_children "$process_id")
     for child_id in $children; do cdp_status_kill_tree "$child_id"; done
     if [[ "$(uname -s 2>/dev/null || true)" == MINGW* ]] && command -v taskkill.exe >/dev/null 2>&1; then
         local windows_pid=""
@@ -125,7 +137,7 @@ cdp_status_track_process_tree() {
         [[ "$tracked_id" == "$process_id" ]] && found=true
     done
     $found || CDP_STATUS_TRACKED_PIDS+=("$process_id")
-    children=$(ps -eo pid=,ppid= 2>/dev/null | awk -v parent="$process_id" '$2 == parent { print $1 }')
+    children=$(cdp_status_process_children "$process_id")
     for child_id in $children; do cdp_status_track_process_tree "$child_id"; done
 }
 

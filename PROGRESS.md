@@ -39,9 +39,9 @@ Release status: v2.2.0 is published and verified on GitHub and PowerShell Galler
 launcher safety. Shell bundle/syntax, ShellCheck 0.10.0, deterministic Scoop
 packaging, documentation/assets `11/11`, and Playwright Chromium `7/7` passed.
 The generated shell SHA-256 is
-`fb5ab36c0715a2994e2682bdb77e677a8e4a4c2ec558884061ac5d7d26dc6849`;
+`a4e56e040c217410e082adf138c28f06f35b187e621653a58ea1abe6695fd429`;
 the Scoop package SHA-256 is
-`49e73fa752df91f32b601e1e6999fc7e6d737873fd0709389c74c5197dda6769`.
+`50f26585be3368e837105c7d72aa55e7b280abb14ffa82cf5be2f3145de3f4e5`.
 The Windows PowerShell compatibility session passed launcher safety `6/6` and
 status remote `9/11`; its two local-file fetch cases timed out only through the
 remoting host, so native Windows PowerShell 5.1 remains a hosted-CI release gate.
