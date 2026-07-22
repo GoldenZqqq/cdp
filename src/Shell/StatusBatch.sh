@@ -151,7 +151,6 @@ cdp_status_stop_fetch_processes() {
         kill -TERM -- "-$CDP_STATUS_FETCH_GROUP_PID" 2>/dev/null || true
         sleep 0.1
         kill -KILL -- "-$CDP_STATUS_FETCH_GROUP_PID" 2>/dev/null || true
-        return
     fi
     cdp_status_stop_tracked_processes
 }
