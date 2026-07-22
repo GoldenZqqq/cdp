@@ -2057,6 +2057,18 @@ cdp_status_valid_integer() {
     [[ "$value" =~ ^[0-9]+$ ]] && (( value >= minimum && value <= maximum ))
 }
 
+cdp_status_timeout_command() {
+    local candidate
+    for candidate in timeout gtimeout; do
+        if command -v "$candidate" >/dev/null 2>&1 &&
+            "$candidate" --help 2>&1 | grep -q -- '--kill-after'; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 cdp_status_redact_remote_url() {
     local remote_url="$1"
     case "$remote_url" in
@@ -2129,9 +2141,19 @@ cdp_status_stop_fetch_processes() {
 
 cdp_status_fetch_worker() {
     local project_path="$1" timeout_seconds="$2" result_file="$3"
-    local fetch_pid deadline=$((SECONDS + timeout_seconds))
+    local fetch_pid fetch_exit timeout_command="" managed_timeout=false
+    local deadline=$((SECONDS + timeout_seconds))
     CDP_STATUS_TRACKED_PIDS=(); CDP_STATUS_FETCH_GROUP_PID=''
-    if command -v setsid >/dev/null 2>&1; then
+    timeout_command=$(cdp_status_timeout_command 2>/dev/null || true)
+    if [[ -n "$timeout_command" ]]; then
+        managed_timeout=true
+        deadline=$((deadline + 2))
+        GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never SSH_ASKPASS_REQUIRE=never \
+            "$timeout_command" --signal=TERM --kill-after=1s "${timeout_seconds}s" \
+            git -C "$project_path" fetch --quiet --prune --no-tags --no-recurse-submodules \
+            >/dev/null 2>&1 &
+        CDP_STATUS_FETCH_GROUP_PID=$!
+    elif command -v setsid >/dev/null 2>&1; then
         GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never SSH_ASKPASS_REQUIRE=never \
             setsid git -C "$project_path" fetch --quiet --prune --no-tags --no-recurse-submodules \
             >/dev/null 2>&1 &
@@ -2158,8 +2180,13 @@ cdp_status_fetch_worker() {
     if wait "$fetch_pid" 2>/dev/null; then
         printf 'refreshed\tfetch completed\n' > "$result_file"
     else
-        local fetch_exit=$?
-        printf 'fetch-failed\tfetch failed (exit %s)\n' "$fetch_exit" > "$result_file"
+        fetch_exit=$?
+        if $managed_timeout && [[ $fetch_exit -eq 124 || $fetch_exit -eq 137 ]]; then
+            cdp_status_stop_fetch_processes
+            printf 'fetch-failed\ttimeout after %s seconds\n' "$timeout_seconds" > "$result_file"
+        else
+            printf 'fetch-failed\tfetch failed (exit %s)\n' "$fetch_exit" > "$result_file"
+        fi
     fi
     trap - INT TERM
 }
