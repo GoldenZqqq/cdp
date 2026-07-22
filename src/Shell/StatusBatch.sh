@@ -93,7 +93,7 @@ cdp_status_valid_integer() {
 
 cdp_status_timeout_command() {
     local candidate
-    for candidate in timeout gtimeout; do
+    for candidate in gtimeout timeout; do
         if command -v "$candidate" >/dev/null 2>&1 &&
             "$candidate" --help 2>&1 | grep -q -- '--kill-after'; then
             printf '%s\n' "$candidate"
