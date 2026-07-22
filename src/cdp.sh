@@ -2114,8 +2114,14 @@ cdp_status_stop_tracked_processes() {
 
 cdp_status_stop_fetch_processes() {
     if [[ -n "${CDP_STATUS_FETCH_GROUP_PID:-}" ]]; then
+        if command -v pkill >/dev/null 2>&1; then
+            pkill -TERM -g "$CDP_STATUS_FETCH_GROUP_PID" 2>/dev/null || true
+        fi
         kill -TERM -- "-$CDP_STATUS_FETCH_GROUP_PID" 2>/dev/null || true
         sleep 0.1
+        if command -v pkill >/dev/null 2>&1; then
+            pkill -KILL -g "$CDP_STATUS_FETCH_GROUP_PID" 2>/dev/null || true
+        fi
         kill -KILL -- "-$CDP_STATUS_FETCH_GROUP_PID" 2>/dev/null || true
     fi
     cdp_status_stop_tracked_processes
