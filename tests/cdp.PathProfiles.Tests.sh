@@ -31,6 +31,14 @@ assert_resolution "$mapped" macos '/Users/dev/api'
 assert_resolution "$legacy" linux 'D:/Code/legacy'
 assert_resolution "$legacy" wsl '/mnt/d/Code/legacy'
 
+project_manager_empty="$(jq -c '.[3]' "$fixture")"
+project_manager_array="$(jq -c '.[4]' "$fixture")"
+
+assert_resolution "$project_manager_empty" linux 'E:/Work/pm-empty'
+assert_resolution "$project_manager_empty" wsl '/mnt/e/Work/pm-empty'
+assert_resolution "$project_manager_array" linux 'E:/Work/pm-array'
+assert_resolution "$project_manager_array" macos 'E:/Work/pm-array'
+
 set +e
 cdp_resolve_project_json "$invalid" linux >/dev/null 2>&1
 invalid_code=$?
@@ -114,6 +122,33 @@ jq -e '.projects[0].status == "path_profile_invalid" and
   "$test_root/invalid-profile-status.json" >/dev/null
 CDP_PATH_PROFILE=linux cdp-status --fix --yes "$test_root/invalid-profile.json" >/dev/null
 jq -e 'length == 1' "$test_root/invalid-profile.json" >/dev/null
+
+cat > "$test_root/project-manager.json" <<JSON
+[
+  {"name":"Editor","rootPath":"$test_root/added","enabled":true,"paths":[],"tags":["vscode"],"profile":""},
+  {"name":"EditorMulti","rootPath":"$test_root/resolved","enabled":true,"paths":["$test_root/added","$test_root/resolved"],"tags":[],"profile":""}
+]
+JSON
+set +e
+CDP_PATH_PROFILE=linux cdp-status --json "$test_root/project-manager.json" > "$test_root/project-manager-status.json"
+project_manager_status=$?
+set -e
+[[ $project_manager_status -eq 0 ]]
+jq -e --arg editor "$test_root/added" --arg multi "$test_root/resolved" '
+  (.projects | length) == 2 and
+  .projects[0].status == "not_git" and
+  .projects[0].rawPath == $editor and .projects[0].resolvedPath == $editor and
+  .projects[1].resolvedPath == $multi
+' "$test_root/project-manager-status.json" >/dev/null
+
+CDP_PATH_PROFILE=linux cdp-tag Editor pm-shared "$test_root/project-manager.json" >/dev/null
+CDP_PATH_PROFILE=linux cdp-clean --yes "$test_root/project-manager.json" >/dev/null
+jq -e --arg editor "$test_root/added" --arg multi "$test_root/resolved" '
+  length == 2 and
+  (.[0].paths | length) == 0 and .[0].profile == "" and
+  (.[0].tags | index("vscode") != null) and (.[0].tags | index("pm-shared") != null) and
+  .[1].paths == [$editor, $multi] and .[1].rootPath == $multi and .[1].profile == ""
+' "$test_root/project-manager.json" >/dev/null
 
 set +e
 CDP_PATH_PROFILE=solaris cdp-status --json "$test_root/resolved.json" \

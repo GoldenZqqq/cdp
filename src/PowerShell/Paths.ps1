@@ -118,25 +118,26 @@ function Resolve-CdpProjectPath {
         $paths = $pathsProperty.Value
         $isObject = $null -ne $paths -and
             ($paths -is [System.Collections.IDictionary] -or $paths -is [PSCustomObject])
-        if (-not $isObject) {
-            return New-CdpPathResolution -RawPath $rawPath -ResolvedPath '' `
-                -Profile $selectedProfile -Source "paths.$selectedProfile" -IsExplicit $true `
-                -ErrorCode 'path_profile_invalid' -ErrorMessage 'Project paths must be a JSON object.'
-        }
 
-        $invalidProfile = Get-CdpInvalidKnownPathProfile -Paths $paths
-        if ($invalidProfile) {
-            return New-CdpPathResolution -RawPath $rawPath -ResolvedPath '' `
-                -Profile $selectedProfile -Source "paths.$invalidProfile" `
-                -IsExplicit ($invalidProfile -eq $selectedProfile) `
-                -ErrorCode 'path_profile_invalid' `
-                -ErrorMessage "Project paths.$invalidProfile must be a non-empty string."
-        }
+        # Project Manager persists `paths` as a plain string array (`[]` or the
+        # additional folder list). Only a JSON object can carry per-profile
+        # mappings, so any other shape means "no mapping" and falls through to the
+        # rootPath fallback below instead of failing the whole project.
+        if ($isObject) {
+            $invalidProfile = Get-CdpInvalidKnownPathProfile -Paths $paths
+            if ($invalidProfile) {
+                return New-CdpPathResolution -RawPath $rawPath -ResolvedPath '' `
+                    -Profile $selectedProfile -Source "paths.$invalidProfile" `
+                    -IsExplicit ($invalidProfile -eq $selectedProfile) `
+                    -ErrorCode 'path_profile_invalid' `
+                    -ErrorMessage "Project paths.$invalidProfile must be a non-empty string."
+            }
 
-        $selected = Get-CdpProjectPathProperty -Paths $paths -Profile $selectedProfile
-        if ($selected) {
-            return New-CdpPathResolution -RawPath $rawPath -ResolvedPath ([string]$selected.Value) `
-                -Profile $selectedProfile -Source "paths.$selectedProfile" -IsExplicit $true
+            $selected = Get-CdpProjectPathProperty -Paths $paths -Profile $selectedProfile
+            if ($selected) {
+                return New-CdpPathResolution -RawPath $rawPath -ResolvedPath ([string]$selected.Value) `
+                    -Profile $selectedProfile -Source "paths.$selectedProfile" -IsExplicit $true
+            }
         }
     }
 
