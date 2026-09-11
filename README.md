@@ -475,13 +475,13 @@ Custom config format:
 ]
 ```
 
-`paths`, `pinned`, `aliases`, and `tags` are optional. Old configs continue to use `rootPath` unchanged. New `cdp add`, `cdp scan`, and `cdp init` entries write both `rootPath` and the detected current-platform mapping; older cdp versions and Project Manager ignore the additive `paths` object and keep reading `rootPath`. Using `/` in JSON paths avoids escaping Windows backslashes.
+`paths`, `pinned`, `aliases`, and `tags` are optional. Old configs continue to use `rootPath` unchanged. New `cdp add`, `cdp scan`, and `cdp init` entries write both `rootPath` and the detected current-platform mapping; older cdp versions and Project Manager ignore the additive `paths` object and keep reading `rootPath`. Project Manager may instead save `paths` as a plain string array (for example `[]` or its additional folder list); cdp ignores any non-object `paths` value and falls back to `rootPath`, so a config shared with the extension keeps working. Using `/` in JSON paths avoids escaping Windows backslashes.
 
 Path selection order is deterministic:
 
 1. An explicit `paths.<current-profile>` value.
 2. On WSL only, automatic conversion of a Windows `rootPath` when `paths.wsl` is absent.
-3. The original `rootPath` fallback for legacy configs.
+3. The original `rootPath` fallback for legacy configs and for `paths` values that are not JSON objects.
 
 Allowed profiles are `windows`, `wsl`, `linux`, and `macos`. Declared values must be non-empty strings. Unknown project fields and future `paths` keys are preserved by cdp mutations. To force a profile, set `$env:CDP_PATH_PROFILE = 'wsl'` in PowerShell or `export CDP_PATH_PROFILE=wsl` in bash/zsh; invalid values fail instead of falling back silently.
 

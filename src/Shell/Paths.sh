@@ -90,10 +90,11 @@ cdp_resolve_project_json() {
                 ((($project.paths[$candidate] | type) != "string") or (($project.paths[$candidate] | length) == 0))
             )
         ) | .[0]) as $invalidProfile |
+        # Project Manager persists `paths` as a plain string array (`[]` or the
+        # additional folder list). Only a JSON object can carry per-profile
+        # mappings, so any other shape falls back to rootPath below.
         if ((.rootPath | type) != "string") or ((.rootPath | length) == 0) then
             ["invalid", (.rootPath // ""), "", "rootPath", "false", "Project rootPath must be a non-empty string."]
-        elif has("paths") and ((.paths | type) != "object") then
-            ["invalid", .rootPath, "", ("paths." + $profile), "true", "Project paths must be a JSON object."]
         elif $invalidProfile != null then
             ["invalid", .rootPath, "", ("paths." + $invalidProfile), ($invalidProfile == $profile | tostring), ("Project paths." + $invalidProfile + " must be a non-empty string.")]
         elif ((.paths | type) == "object") and (.paths | has($profile)) then

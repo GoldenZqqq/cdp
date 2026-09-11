@@ -475,13 +475,13 @@ cdp-scan E:\Projects --yes
 ]
 ```
 
-`paths`、`pinned`、`aliases`、`tags` 都是可选字段。旧配置会继续原样使用 `rootPath`。新的 `cdp add`、`cdp scan`、`cdp init` 项会同时写入 `rootPath` 和自动检测到的当前平台映射；旧版 cdp 与 Project Manager 会忽略新增的 `paths` 对象并继续读取 `rootPath`。建议在 JSON 中使用 `/`，避免 Windows 反斜杠转义。
+`paths`、`pinned`、`aliases`、`tags` 都是可选字段。旧配置会继续原样使用 `rootPath`。新的 `cdp add`、`cdp scan`、`cdp init` 项会同时写入 `rootPath` 和自动检测到的当前平台映射；旧版 cdp 与 Project Manager 会忽略新增的 `paths` 对象并继续读取 `rootPath`。Project Manager 保存项目时也可能把 `paths` 写成纯字符串数组（例如 `[]` 或它的附加目录列表）；cdp 会忽略任何非对象的 `paths` 值并回退到 `rootPath`，因此与扩展共用的配置仍然可用。建议在 JSON 中使用 `/`，避免 Windows 反斜杠转义。
 
 路径选择顺序是确定的：
 
 1. 显式 `paths.<current-profile>` 值。
 2. 仅在 WSL 中，未配置 `paths.wsl` 时自动转换 Windows `rootPath`。
-3. 旧配置使用原始 `rootPath` fallback。
+3. 旧配置以及 `paths` 不是 JSON 对象时的原始 `rootPath` fallback。
 
 允许的 profile 为 `windows`、`wsl`、`linux`、`macos`，已声明的值必须是非空字符串。cdp mutation 会保留未知项目字段和未来新增的 `paths` 键。需要强制 profile 时，PowerShell 设置 `$env:CDP_PATH_PROFILE = 'wsl'`，bash/zsh 设置 `export CDP_PATH_PROFILE=wsl`；非法值会直接失败，不会静默 fallback。
 

@@ -38,6 +38,21 @@ Describe 'cdp path profile resolver' {
         }
     }
 
+    It 'falls back to rootPath when Project Manager stores paths as an array' {
+        $projects = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $script:FixturePath -Raw -Encoding UTF8)
+        InModuleScope cdp -Parameters @{ Empty = $projects[3]; Populated = $projects[4] } {
+            foreach ($project in @($Empty, $Populated)) {
+                $linux = Resolve-CdpProjectPath -Project $project -Profile linux
+                $linux.ErrorCode | Should -BeNullOrEmpty
+                $linux.Source | Should -Be 'rootPath'
+                $linux.IsExplicit | Should -BeFalse
+                $linux.ResolvedPath | Should -Be $project.rootPath
+            }
+
+            (Resolve-CdpProjectPath -Project $Empty -Profile wsl).ResolvedPath | Should -Be '/mnt/e/Work/pm-empty'
+        }
+    }
+
     It 'supports a case-insensitive environment override and rejects invalid values' {
         InModuleScope cdp {
             $original = $env:CDP_PATH_PROFILE
@@ -198,5 +213,39 @@ Describe 'cdp path profile integrations' {
 
         Show-CdpProjectStatus -ConfigPath $configPath -Fix -Confirm:$false 6>&1 | Out-Null
         @(ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)).Count | Should -Be 1
+    }
+
+    It 'keeps Project Manager array paths working through status and mutations' {
+        $configPath = Join-Path $TestDrive 'project-manager.json'
+        $editor = (Join-Path $TestDrive 'editor').Replace('\', '/')
+        $editorMulti = (Join-Path $TestDrive 'editor-multi').Replace('\', '/')
+        $shared = (Join-Path $TestDrive 'shared').Replace('\', '/')
+        New-Item -ItemType Directory -Path $editor, $editorMulti, $shared | Out-Null
+
+        $json = @"
+[
+  {"name":"Editor","rootPath":"$editor","enabled":true,"paths":[],"tags":["vscode"],"profile":""},
+  {"name":"EditorMulti","rootPath":"$editorMulti","enabled":true,"paths":["$shared","$editor"],"tags":[],"profile":""}
+]
+"@
+        Set-Content -LiteralPath $configPath -Value $json -Encoding UTF8
+
+        $document = (Show-CdpProjectStatus -ConfigPath $configPath -Json | Out-String) | ConvertFrom-Json
+        @($document.projects).Count | Should -Be 2
+        $document.projects[0].status | Should -Be 'not_git'
+        $document.projects[0].rawPath | Should -Be $editor
+        $document.projects[0].resolvedPath | Should -Be $editor
+        $document.projects[1].resolvedPath | Should -Be $editorMulti
+
+        Add-ProjectTag -Name Editor -Tag pm-shared -ConfigPath $configPath -Confirm:$false | Out-Null
+        Repair-ProjectConfig -ConfigPath $configPath -Confirm:$false | Out-Null
+
+        $projects = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $configPath -Raw -Encoding UTF8)
+        $projects.Count | Should -Be 2
+        @($projects[0].paths).Count | Should -Be 0
+        $projects[0].profile | Should -Be ''
+        @($projects[0].tags) | Should -Contain 'vscode'
+        @($projects[0].tags) | Should -Contain 'pm-shared'
+        @($projects[1].paths) | Should -Be @($shared, $editor)
     }
 }

@@ -22,5 +22,21 @@
     "rootPath": "C:/Work/invalid",
     "enabled": true,
     "paths": { "linux": "" }
+  },
+  {
+    "name": "ProjectManagerEmpty",
+    "rootPath": "E:/Work/pm-empty",
+    "enabled": true,
+    "paths": [],
+    "tags": ["vscode"],
+    "profile": ""
+  },
+  {
+    "name": "ProjectManagerArray",
+    "rootPath": "E:/Work/pm-array",
+    "enabled": true,
+    "paths": ["E:/Work/pm-extra", "E:/Work/pm-shared"],
+    "tags": ["vscode"],
+    "profile": ""
   }
 ]
