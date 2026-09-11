@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.3.0'
+ModuleVersion = '2.3.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,14 +107,13 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
-v2.3.0 - Remote Status and Launcher Safety
-- Added: explicit status fetch with bounded jobs, per-repository timeouts, process cleanup, and freshness audit fields
-- Added: structured remote identity, redacted remote URLs, fetch outcomes, and immutable HEAD snapshots across PowerShell and bash/zsh
-- Safety: status push freezes the exact remote, refs/heads target, and local object ID before approval and execution
-- Safety: direct and workspace launchers accept only code, vscode, cursor, codex, claude, or gemini and validate before side effects
-- Improved: default status remains offline while --fetch/-Fetch performs an explicit refresh before rendering or action planning
-- Improved: Gallery publishing rejects oversized release notes and fails on native NuGet pack or push errors
-- Fixed: shell JSON rendering keeps fetch=false when invoked through the compatibility renderer boundary
+v2.3.1 - Project Manager Path Interop
+- Fixed: Project Manager string-array paths values no longer fail path resolution; cdp falls back to rootPath
+- Fixed: repair and cdp-clean keep working for project configs shared with the VS Code/Cursor Project Manager extension
+- Improved: invalid declared profile values still report path_profile_invalid instead of falling back silently
+- Added: PowerShell and shell regressions cover empty and populated Project Manager paths arrays
+- Docs: README.md and README_ZH.md document the shared-config paths behavior
+- Metadata: installer script digest and Scoop package hash are synchronized for v2.3.1
 '@
 
 <# Historical release notes remain in CHANGELOG.md; Gallery only needs the current release notes.

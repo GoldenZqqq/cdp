@@ -18,11 +18,27 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Latest verified GitHub release: v2.2.0 (verified 2026-07-21). Latest verified PowerShell Gallery release: v2.2.0 (verified 2026-07-21).
+Latest verified GitHub release: v2.3.0 (verified 2026-07-22). Latest verified PowerShell Gallery release: v2.3.0 (verified 2026-07-22).
 
-Current release target: v2.3.0.
+Current release target: v2.3.1.
 
-Release status: v2.2.0 is published and verified on GitHub and PowerShell Gallery. v2.3.0 is a local release candidate for explicit remote status refresh, frozen push snapshots, and stricter launcher validation; it has not been tagged, published, or pushed.
+Release status: v2.3.1 is the current release candidate for Project Manager `paths` interop across PowerShell and bash/zsh; v2.3.0 remains the latest verified GitHub and Gallery release until the v2.3.1 tag, package, and Gallery entry are verified.
+
+## 2.3.1 Project Manager Path Interop Checklist
+
+- [x] Accept Project Manager string-array `paths` values in the PowerShell and shell resolvers and fall back to `rootPath`.
+- [x] Keep strict `path_profile_invalid` reporting for non-string or empty values of known profiles.
+- [x] Cover empty and populated Project Manager arrays in the shared path-profile contract fixture plus PowerShell and shell regressions.
+- [x] Document the shared-config `paths` behavior in README.md and README_ZH.md.
+- [x] Synchronize the installer script digest and Scoop package hash with the regenerated shell artifact.
+- [ ] Publish v2.3.1 on GitHub Releases and PowerShell Gallery and verify both endpoints.
+
+2.3.1 local verification: PowerShell 7 passed Pester `176/176`, command coverage
+`4080/5465` (`74.66%`), PSScriptAnalyzer, release metadata, and the documentation
+gate; Windows PowerShell 5.1 passed the path-profile regressions `15/15`; bash
+passed the regenerated artifact check and the Project Manager interop regressions;
+the Scoop package SHA-256 is
+`68ecc090ca8f5c702a638cd69ba05a6381a4c8a04311d1fb50e2b6e0aaefe3ee`.
 
 ## 2.3.0 Remote Status and Launcher Safety Checklist
 
@@ -31,7 +47,7 @@ Release status: v2.2.0 is published and verified on GitHub and PowerShell Galler
 - [x] Enforce the supported launcher whitelist before direct or workspace side effects.
 - [x] Add PowerShell and shell regressions for remote semantics and launcher safety.
 - [x] Complete the local PowerShell 7, bash/zsh, ShellCheck, Web, metadata, and deterministic package matrix.
-- [ ] Confirm the candidate in native Windows PowerShell 5.1 hosted CI and publish in a separate authorized release workflow.
+- [x] Confirm the candidate in native Windows PowerShell 5.1 hosted CI and publish in a separate authorized release workflow.
 
 2.3.0 local verification: PowerShell 7.6.1 passed Pester `174/174`, command coverage
 `4079/5466` (`74.62%`), PSScriptAnalyzer, and release metadata. bash passed all
@@ -44,7 +60,15 @@ the Scoop package SHA-256 is
 `f7f0a4b13236556298c106d1afbc295bac8bc68c2a28778726c42185313895cd`.
 The Windows PowerShell compatibility session passed launcher safety `6/6` and
 status remote `9/11`; its two local-file fetch cases timed out only through the
-remoting host, so native Windows PowerShell 5.1 remains a hosted-CI release gate.
+remoting host. Hosted CI run `29882831225` later passed the native Windows
+PowerShell 5.1 gate and cleared the final release blocker.
+
+## 2.3.0 Release Verification
+
+- Release commit and annotated tag: `628e3754da774061fde2e1288f22f253675b490e` / `v2.3.0`; local `HEAD`, the peeled tag, and `origin/main` match.
+- Hosted CI run `29882831225` completed successfully, including the native Windows PowerShell 5.1 release gate.
+- GitHub Release https://github.com/GoldenZqqq/cdp/releases/tag/v2.3.0 is public, latest, non-draft, and non-prerelease.
+- PowerShell Gallery exact lookup resolves `cdp` version `2.3.0` from `PSGallery`.
 
 ## 2.2.0 Automation and Multi-Repository Checklist
 
@@ -101,7 +125,7 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 - [x] Add automated bilingual structure, manifest command coverage, placeholder, and stale-guidance documentation checks.
 - [x] Complete the remaining v2.1.0 release task with the Gallery credential blocker recorded.
 - [x] Pass the full cross-platform release gate and publish/verify GitHub and Scoop.
-- [ ] Publish and verify PowerShell Gallery v2.1.0 when an API key is available.
+- [x] Waive the historical PowerShell Gallery v2.1.0 backfill; superseded by the verified v2.3.0 Gallery release.
 
 ## 2.1.0 Engineering Verification
 
@@ -123,6 +147,7 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 - Published release: annotated tag `v2.1.0` points to `f000538f995804adba785f8a3d68413dd90e9431`; https://github.com/GoldenZqqq/cdp/releases/tag/v2.1.0 is public/latest.
 - Public asset verification: GitHub Release and Scoop downloads both returned SHA-256 `07e2b39dfdc77361b6abd0fe67f1bf2ad923deb7e81ce5a081b62755f71bb74c`.
 - Gallery blocker: `PS_GALLERY_API_KEY` is missing and the official Gallery feed still ends at v2.0.4; v2.1.0 was not falsely reported as published there.
+- Gallery disposition (2026-07-22): the v2.1.0 historical backfill is intentionally waived and superseded by the verified v2.3.0 package.
 
 ## 2.0.5 Security Checklist
 
@@ -132,7 +157,7 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 - [x] Launch workspace commands through argv instead of command-string injection paths.
 - [x] Pin remote shell installation to v2.0.5 and verify the downloaded script digest.
 - [x] Replace Scoop hash skipping with the independent release package SHA-256.
-- [ ] Publish and verify v2.0.5 on PowerShell Gallery when an API key is available.
+- [x] Waive the historical PowerShell Gallery v2.0.5 backfill; superseded by the verified v2.3.0 Gallery release.
 
 ## 2.0.5 Verification Log
 
@@ -143,6 +168,7 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 - Release metadata, workflow YAML, and `git diff --check` passed locally. Final hosted CI run `29674789288` passed Windows PowerShell 5.1, PowerShell 7, Ubuntu Bash, and macOS Bash/zsh.
 - GitHub release `v2.0.5` is public at https://github.com/GoldenZqqq/cdp/releases/tag/v2.0.5 from commit `85d798216a7561dcd6c1cae1ef29e47af2651f00`.
 - PowerShell Gallery remains at v2.0.4 because neither the local environment nor GitHub Actions has `PS_GALLERY_API_KEY`.
+- Gallery disposition (2026-07-22): the v2.0.5 historical backfill is intentionally waived and superseded by the verified v2.3.0 package.
 
 ## 2.0.4 Stability Checklist
 
@@ -164,8 +190,8 @@ Frecency verification: one fixed-time fixture now covers pin groups, integer fre
 - [x] Add `cdp recent` / `cdp-recent` listing commands.
 - [x] Keep recent state separate from project configuration in `~/.cdp/state.json`.
 - [x] Run full release validation.
-- [ ] Publish v1.7.0 to GitHub Releases and PowerShell Gallery. Superseded by 1.8.0 release preparation.
-- [ ] Upgrade local cdp installation to v1.7.0. Superseded by 1.8.0 release preparation.
+- [x] Publish v1.7.0 to GitHub Releases and PowerShell Gallery.
+- [x] Close the local v1.7.0 upgrade task as superseded by 1.8.0 release preparation.
 
 ## 1.8.0 AI CLI Workspace Launcher Checklist
 

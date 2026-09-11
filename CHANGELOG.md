@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.1
+
+### Fixed
+
+- Project Manager string-array `paths` values no longer fail path resolution: cdp ignores any non-object `paths` value and falls back to `rootPath`, so a `projects.json` shared with the VS Code/Cursor Project Manager extension keeps working.
+- `Repair-ProjectConfig` / `cdp-clean` and `status --fix` now complete on configs the extension rewrote instead of throwing `Project paths must be a JSON object.`
+- Installer script digest and Scoop package hash are synchronized with the regenerated shell artifact.
+
+### Documentation
+
+- README.md and README_ZH.md document the shared-config `paths` behavior and the updated fallback order.
+
 ## 2.3.0
 
 ### Added
