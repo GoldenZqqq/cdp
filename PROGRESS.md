@@ -18,11 +18,11 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 ## Current Focus
 
-Latest verified GitHub release: v2.3.0 (verified 2026-07-22). Latest verified PowerShell Gallery release: v2.3.0 (verified 2026-07-22).
+Latest verified GitHub release: v2.3.1 (verified 2026-09-11). Latest verified PowerShell Gallery release: v2.3.1 (verified 2026-09-11).
 
 Current release target: v2.3.1.
 
-Release status: v2.3.1 is the current release candidate for Project Manager `paths` interop across PowerShell and bash/zsh; v2.3.0 remains the latest verified GitHub and Gallery release until the v2.3.1 tag, package, and Gallery entry are verified.
+Release status: v2.3.1 is published and verified on GitHub and PowerShell Gallery. The release tag, `origin/main`, and local `HEAD` all resolve to `0575b5bd77686a7f664d9bce1144928095142a85`.
 
 ## 2.3.1 Project Manager Path Interop Checklist
 
@@ -31,7 +31,7 @@ Release status: v2.3.1 is the current release candidate for Project Manager `pat
 - [x] Cover empty and populated Project Manager arrays in the shared path-profile contract fixture plus PowerShell and shell regressions.
 - [x] Document the shared-config `paths` behavior in README.md and README_ZH.md.
 - [x] Synchronize the installer script digest and Scoop package hash with the regenerated shell artifact.
-- [ ] Publish v2.3.1 on GitHub Releases and PowerShell Gallery and verify both endpoints.
+- [x] Publish v2.3.1 on GitHub Releases and PowerShell Gallery and verify both endpoints.
 
 2.3.1 local verification: PowerShell 7 passed Pester `176/176`, command coverage
 `4080/5465` (`74.66%`), PSScriptAnalyzer, release metadata, and the documentation
@@ -39,6 +39,14 @@ gate; Windows PowerShell 5.1 passed the path-profile regressions `15/15`; bash
 passed the regenerated artifact check and the Project Manager interop regressions;
 the Scoop package SHA-256 is
 `68ecc090ca8f5c702a638cd69ba05a6381a4c8a04311d1fb50e2b6e0aaefe3ee`.
+
+## 2.3.1 Release Verification
+
+- Release commit and annotated tag: `0575b5bd77686a7f664d9bce1144928095142a85` / `v2.3.1`; local `HEAD`, the peeled tag, and `origin/main` match.
+- Hosted CI run `34581210109` completed successfully, including the native Windows PowerShell 5.1, Bash smoke, macOS smoke, and web smoke gates.
+- GitHub Release https://github.com/GoldenZqqq/cdp/releases/tag/v2.3.1 is public, latest, non-draft, and non-prerelease; the re-downloaded `cdp-2.3.1.tar.gz` asset matches SHA-256 `68ecc090ca8f5c702a638cd69ba05a6381a4c8a04311d1fb50e2b6e0aaefe3ee` and `scoop/cdp.json`.
+- PowerShell Gallery exact lookup resolves `cdp` version `2.3.1` from `PSGallery`, and https://www.powershellgallery.com/packages/cdp/2.3.1 returns HTTP 200.
+- Local module upgraded to 2.3.1 from `PSGallery`; a Project Manager-shaped copy of the active config (`paths: []`) resolves all 54 projects without `path_profile_invalid`.
 
 ## 2.3.0 Remote Status and Launcher Safety Checklist
 
