@@ -10,7 +10,7 @@
 RootModule = 'src\cdp.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.3.1'
+ModuleVersion = '2.3.2'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -107,13 +107,11 @@ PrivateData = @{
 
         # ReleaseNotes of this module
 ReleaseNotes = @'
-v2.3.1 - Project Manager Path Interop
-- Fixed: Project Manager string-array paths values no longer fail path resolution; cdp falls back to rootPath
-- Fixed: repair and cdp-clean keep working for project configs shared with the VS Code/Cursor Project Manager extension
-- Improved: invalid declared profile values still report path_profile_invalid instead of falling back silently
-- Added: PowerShell and shell regressions cover empty and populated Project Manager paths arrays
-- Docs: README.md and README_ZH.md document the shared-config paths behavior
-- Metadata: installer script digest and Scoop package hash are synchronized for v2.3.1
+v2.3.2 - Wide Character Table Alignment
+- Fixed: cdp-ls / Get-ProjectList and cdp-recent keep the path column aligned when project names contain CJK or fullwidth characters
+- Improved: project list and recent tables measure and pad columns by terminal display width instead of character count
+- Improved: over-long wide project names are truncated by display width so the path column stays aligned
+- Added: PowerShell and bash/zsh regressions assert one path column for wide project names
 '@
 
 <# Historical release notes remain in CHANGELOG.md; Gallery only needs the current release notes.

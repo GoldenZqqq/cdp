@@ -298,6 +298,38 @@ assert_contains "$status_output" "HookProject"
 assert_contains "$status_output" "not a git repo"
 echo "  lifecycle, hooks, and status: ok"
 
+# Wide (CJK) glyphs occupy two terminal columns, so the listing must measure and
+# pad by display width: every path must start in the same column.
+cjk_config="$test_root/cjk-projects.json"
+cat > "$cjk_config" <<'JSON'
+[
+  {"name":"ehs-tobacco-web","rootPath":"/cdp-cjk/ehs-tobacco-web","enabled":true},
+  {"name":"中央在沪国有企业在线考","rootPath":"/cdp-cjk/ehs-examine-web","enabled":true},
+  {"name":"大屏","rootPath":"/cdp-cjk/largescreen","enabled":true},
+  {"name":"超长中文项目名称用于测试截断对齐效果验证","rootPath":"/cdp-cjk/long-name","enabled":true}
+]
+JSON
+
+cjk_list="$(cdp-ls "$cjk_config" 2>&1 | sed $'s/\033\\[[0-9;]*[A-Za-z]//g')"
+assert_contains "$cjk_list" "中央在沪国有企业在线考"
+assert_contains "$cjk_list" "超长中文项目名称用于测试截..."
+
+cjk_header="$(printf '%s\n' "$cjk_list" | awk '/Path$/ { print; exit }')"
+[[ -n "$cjk_header" ]] || fail "cdp-ls printed no Path header"
+cjk_expected_column="$(cdp_display_width "${cjk_header%Path}")"
+cjk_rows=0
+while IFS= read -r cjk_line; do
+    case "$cjk_line" in
+        *"/cdp-cjk/"*) ;;
+        *) continue ;;
+    esac
+    cjk_prefix="${cjk_line%%/cdp-cjk/*}"
+    assert_equals "$cjk_expected_column" "$(cdp_display_width "$cjk_prefix")"
+    cjk_rows=$((cjk_rows + 1))
+done <<< "$cjk_list"
+(( cjk_rows == 4 )) || fail "expected 4 CJK project rows, saw $cjk_rows"
+echo "  wide character alignment: ok"
+
 workspace_path="$test_root/workspaces.json"
 jq --arg missing_path "$test_root/missing-project" \
     '. + [{name:"MissingProject",rootPath:$missing_path,enabled:true,pinned:false,aliases:[],tags:[]}]' \

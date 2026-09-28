@@ -372,10 +372,13 @@ cdp-ls() {
 
     # Count projects
     local count=$(line_count "$enabled_projects")
+    # Width must be measured in terminal columns: CJK and fullwidth glyphs occupy two.
     local name_width=14
+    local name_display_width
     while IFS=$'\t' read -r name pinned project_path; do
-        if (( ${#name} > name_width )); then
-            name_width=${#name}
+        name_display_width=$(cdp_display_width "$name")
+        if (( name_display_width > name_width )); then
+            name_width=$name_display_width
         fi
     done <<< "$enabled_projects"
     if (( name_width > 30 )); then
@@ -384,7 +387,7 @@ cdp-ls() {
 
     echo -e "\n${CYAN}cdp projects${NC} ${GRAY}($count enabled)${NC}"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
-    printf "  ${GRAY}%-4s${NC} ${GRAY}%-5s${NC} ${CYAN}%-*s${NC} ${GRAY}%s${NC}\n" "#" "Pin" "$name_width" "Project" "Path"
+    printf "  ${GRAY}%-4s${NC} ${GRAY}%-5s${NC} ${CYAN}%s${NC} ${GRAY}%s${NC}\n" "#" "Pin" "$(cdp_pad_text "Project" "$name_width")" "Path"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..96})${NC}"
 
     local index=1
@@ -399,11 +402,11 @@ cdp-ls() {
         else
             display_path="<invalid ${CDP_PROJECT_PATH_SOURCE:-path profile}>"
         fi
-        display_name=$(truncate_text "$name" "$name_width")
+        display_name=$(cdp_limit_text "$name" "$name_width")
         if [[ "$pinned" == "true" ]]; then
             pin_text="*"
         fi
-        printf "  ${GRAY}%02d  ${NC} ${YELLOW}%-5s${NC} ${GREEN}%-*s${NC} ${GRAY}%s${NC}\n" "$index" "$pin_text" "$name_width" "$display_name" "$display_path"
+        printf "  ${GRAY}%02d  ${NC} ${YELLOW}%-5s${NC} ${GREEN}%s${NC} ${GRAY}%s${NC}\n" "$index" "$pin_text" "$(cdp_pad_text "$display_name" "$name_width")" "$display_path"
         ((index++))
     done <<< "$enabled_projects"
 

@@ -9,10 +9,10 @@
 # Shares the same configuration files as the PowerShell version.
 #
 # Author: GoldenZqqq
-# Version: 2.3.1
+# Version: 2.3.2
 # License: MIT
 
-CDP_VERSION="2.3.1"
+CDP_VERSION="2.3.2"
 
 # zsh compatibility: use bash-like array indexing and regex matching
 if [[ -n "${ZSH_VERSION:-}" ]]; then

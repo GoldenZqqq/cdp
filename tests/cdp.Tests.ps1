@@ -45,7 +45,7 @@ Describe 'cdp module manifest' {
         $manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
 
         $manifest.Name | Should -Be 'cdp'
-        $manifest.Version.ToString() | Should -Be '2.3.1'
+        $manifest.Version.ToString() | Should -Be '2.3.2'
     }
 }
 
@@ -397,7 +397,7 @@ Describe 'project configuration helpers' {
 
         $about = Show-CdpAbout -ConfigPath $configPath -PassThru
         $about.Name | Should -Be 'cdp'
-        $about.Version | Should -Be '2.3.1'
+        $about.Version | Should -Be '2.3.2'
         $about.ConfigPath | Should -Be $configPath
         $about.ProjectCount | Should -Be 1
         $about.EnabledProjectCount | Should -Be 1
@@ -985,5 +985,118 @@ Describe 'cdp project status correctness' {
         $plainStatus.StatusLabel | Should -Be 'not a git repo'
         $missingStatus.PathExists | Should -BeFalse
         $missingStatus.StatusLabel | Should -Be 'path missing'
+    }
+}
+
+Describe 'cdp table alignment with wide characters' {
+    BeforeAll {
+        # Wide (CJK) glyphs occupy two terminal columns, so tables must measure
+        # and pad by display width instead of by character count.
+        $script:CdpModule = Get-Module cdp |
+            Where-Object { $_.ModuleBase -eq (Split-Path -Parent $script:ManifestPath) } |
+            Select-Object -First 1
+        if ($null -eq $script:CdpModule) {
+            $script:CdpModule = Get-Module cdp | Select-Object -First 1
+        }
+
+        function Get-TestDisplayWidth {
+            param([AllowNull()][string]$Text)
+
+            if ($null -eq $Text) { return 0 }
+            & $script:CdpModule { param($value) Get-CdpDisplayWidth $value } $Text
+        }
+
+        function New-TestWideName {
+            param([Parameter(Mandatory = $true)][int[]]$CodePoint)
+
+            # Built from code points so the expectation survives any script encoding.
+            -join (@($CodePoint) | ForEach-Object { [char]$_ })
+        }
+
+        function Get-TestTablePathColumns {
+            param(
+                [Parameter(Mandatory = $true)][string[]]$Records,
+                [Parameter(Mandatory = $true)][string]$PathMarker
+            )
+
+            $headerIndex = [array]::IndexOf($Records, 'Path')
+            if ($headerIndex -lt 0) {
+                throw "table header 'Path' not found in: $($Records -join ' | ')"
+            }
+
+            $headerPrefix = ''
+            for ($index = $headerIndex - 1; $index -ge 0; $index--) {
+                if ($Records[$index] -match '^-+$') { break }
+                $headerPrefix = $Records[$index] + $headerPrefix
+            }
+
+            $columns = @(Get-TestDisplayWidth $headerPrefix)
+            $rowStart = $headerIndex + 1
+            for ($index = $headerIndex + 1; $index -lt $Records.Count; $index++) {
+                if ($Records[$index] -notlike "*$PathMarker*") { continue }
+                $prefix = ''
+                if ($index -gt $rowStart) {
+                    $prefix = (@($Records[$rowStart..($index - 1)] | Where-Object { $_ -notmatch '^-+$' }) -join '')
+                }
+                $columns += Get-TestDisplayWidth $prefix
+                $rowStart = $index + 1
+            }
+
+            return , $columns
+        }
+    }
+
+    It 'aligns the cdp-ls path column when project names are wide' {
+        # ehs-tobacco-web, "中央在沪国有企业在线考" as code points 4E2D 592E ...,
+        # "大屏" as 5927 5C4F, and a name long enough to require truncation.
+        $wideName = New-TestWideName 0x4E2D, 0x592E, 0x5728, 0x6CAA, 0x56FD, 0x6709, 0x4F01, 0x4E1A, 0x5728, 0x7EBF, 0x8003
+        $shortName = New-TestWideName 0x5927, 0x5C4F
+        $longName = New-TestWideName 0x8D85, 0x957F, 0x4E2D, 0x6587, 0x9879, 0x76EE, 0x540D, 0x79F0, 0x7528, 0x4E8E,
+            0x6D4B, 0x8BD5, 0x622A, 0x65AD, 0x5BF9, 0x9F50, 0x6548, 0x679C, 0x9A8C, 0x8BC1
+
+        $configPath = Join-Path $TestDrive 'cjk-ls-projects.json'
+        @(
+            [PSCustomObject]@{ name = 'ehs-tobacco-web'; rootPath = 'C:/cdp-cjk/ehs-tobacco-web'; enabled = $true },
+            [PSCustomObject]@{ name = $wideName; rootPath = 'C:/cdp-cjk/ehs-examine-web'; enabled = $true },
+            [PSCustomObject]@{ name = $shortName; rootPath = 'C:/cdp-cjk/largescreen'; enabled = $true },
+            [PSCustomObject]@{ name = $longName; rootPath = 'C:/cdp-cjk/long-name'; enabled = $true }
+        ) | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath -Encoding UTF8
+
+        $records = @(& { Get-ProjectList -ConfigPath $configPath } 6>&1 | ForEach-Object { $_.ToString() })
+        $columns = Get-TestTablePathColumns -Records $records -PathMarker 'cdp-cjk'
+
+        $columns.Count | Should -Be 5
+        ($columns | Select-Object -Unique).Count | Should -Be 1
+
+        $expectedTruncated = (New-TestWideName 0x8D85, 0x957F, 0x4E2D, 0x6587, 0x9879, 0x76EE, 0x540D, 0x79F0, 0x7528,
+            0x4E8E, 0x6D4B, 0x8BD5, 0x622A) + '...'
+        ($records -join "`n") | Should -BeLike "*$expectedTruncated*"
+    }
+
+    It 'aligns the cdp-recent path column when project names are wide' {
+        $wideName = New-TestWideName 0x4E2D, 0x592E, 0x5728, 0x6CAA, 0x56FD, 0x6709, 0x4F01, 0x4E1A, 0x5728, 0x7EBF, 0x8003
+        $shortName = New-TestWideName 0x5927, 0x5C4F
+
+        $statePath = Join-Path $TestDrive 'cjk-recent-state.json'
+        [PSCustomObject]@{
+            recentProjects = @(
+                [PSCustomObject]@{ name = 'ehs-tobacco-web'; rootPath = 'C:/cdp-cjk/ehs-tobacco-web'; lastVisitedAt = '2026-01-01T10:00:00Z'; visitCount = 5 },
+                [PSCustomObject]@{ name = $wideName; rootPath = 'C:/cdp-cjk/ehs-examine-web'; lastVisitedAt = '2026-01-02T10:00:00Z'; visitCount = 3 },
+                [PSCustomObject]@{ name = $shortName; rootPath = 'C:/cdp-cjk/largescreen'; lastVisitedAt = '2026-01-03T10:00:00Z'; visitCount = 2 }
+            )
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding UTF8
+
+        $previousStatePath = $env:CDP_STATE_PATH
+        $env:CDP_STATE_PATH = $statePath
+        try {
+            $records = @(& { Get-CdpRecentProjects } 6>&1 | ForEach-Object { $_.ToString() })
+        } finally {
+            $env:CDP_STATE_PATH = $previousStatePath
+        }
+
+        $columns = Get-TestTablePathColumns -Records $records -PathMarker 'cdp-cjk'
+
+        $columns.Count | Should -Be 4
+        ($columns | Select-Object -Unique).Count | Should -Be 1
     }
 }

@@ -325,10 +325,11 @@ function Get-ProjectList {
             return
         }
 
+        # Width must be measured in terminal columns: CJK and fullwidth glyphs occupy two.
         $nameWidth = 14
         foreach ($project in $enabledProjects) {
             $projectName = [string]$project.name
-            $nameWidth = [Math]::Max($nameWidth, $projectName.Length)
+            $nameWidth = [Math]::Max($nameWidth, (Get-CdpDisplayWidth $projectName))
         }
         $nameWidth = [Math]::Min($nameWidth, 30)
 
@@ -337,7 +338,7 @@ function Get-ProjectList {
         Write-Host ("-" * 104) -ForegroundColor DarkGray
         Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
         Write-Host ("{0,-5} " -f "Pin") -ForegroundColor DarkGray -NoNewline
-        Write-Host (("{0,-$nameWidth} " -f "Project")) -ForegroundColor Cyan -NoNewline
+        Write-Host "$(Pad-CdpText 'Project' $nameWidth) " -ForegroundColor Cyan -NoNewline
         Write-Host "Path" -ForegroundColor DarkGray
         Write-Host ("-" * 104) -ForegroundColor DarkGray
 
@@ -348,7 +349,7 @@ function Get-ProjectList {
             $pinText = if (Test-CdpProjectPinned -Project $project) { "*" } else { "" }
             Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
             Write-Host ("{0,-5} " -f $pinText) -ForegroundColor Yellow -NoNewline
-            Write-Host (("{0,-$nameWidth} " -f $projectName)) -ForegroundColor Green -NoNewline
+            Write-Host "$(Pad-CdpText $projectName $nameWidth) " -ForegroundColor Green -NoNewline
             $resolution = Resolve-CdpProjectPath -Project $project
             $pathText = if ($resolution.ErrorCode) { "<invalid $($resolution.Source)>" } else { $resolution.ResolvedPath }
             Write-Host $pathText -ForegroundColor DarkGray

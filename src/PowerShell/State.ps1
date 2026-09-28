@@ -185,10 +185,11 @@ function Get-CdpRecentProjects {
         return
     }
 
+    # Width must be measured in terminal columns: CJK and fullwidth glyphs occupy two.
     $nameWidth = 14
     foreach ($project in $recentProjects) {
         $projectName = [string]$project.name
-        $nameWidth = [Math]::Max($nameWidth, $projectName.Length)
+        $nameWidth = [Math]::Max($nameWidth, (Get-CdpDisplayWidth $projectName))
     }
     $nameWidth = [Math]::Min($nameWidth, 30)
 
@@ -196,8 +197,8 @@ function Get-CdpRecentProjects {
     Write-Host "($($recentProjects.Count) shown)" -ForegroundColor DarkGray
     Write-Host ("-" * 110) -ForegroundColor DarkGray
     Write-Host ("  {0,-4} " -f "#") -ForegroundColor DarkGray -NoNewline
-    Write-Host (("{0,-$nameWidth} " -f "Project")) -ForegroundColor Cyan -NoNewline
-    Write-Host ("{0,-24} " -f "Last used") -ForegroundColor DarkGray -NoNewline
+    Write-Host "$(Pad-CdpText 'Project' $nameWidth) " -ForegroundColor Cyan -NoNewline
+    Write-Host "$(Pad-CdpText 'Last used' 24) " -ForegroundColor DarkGray -NoNewline
     Write-Host ("{0,-7} " -f "Visits") -ForegroundColor DarkGray -NoNewline
     Write-Host "Path" -ForegroundColor DarkGray
     Write-Host ("-" * 110) -ForegroundColor DarkGray
@@ -210,8 +211,8 @@ function Get-CdpRecentProjects {
         $visitCount = if ($null -eq $project.visitCount) { 1 } else { [int]$project.visitCount }
 
         Write-Host ("  {0,-4} " -f $number) -ForegroundColor DarkGray -NoNewline
-        Write-Host (("{0,-$nameWidth} " -f $projectName)) -ForegroundColor Green -NoNewline
-        Write-Host ("{0,-24} " -f (Limit-CdpText -Text $lastVisited -MaxLength 24)) -ForegroundColor DarkGray -NoNewline
+        Write-Host "$(Pad-CdpText $projectName $nameWidth) " -ForegroundColor Green -NoNewline
+        Write-Host "$(Pad-CdpText (Limit-CdpText -Text $lastVisited -MaxLength 24) 24) " -ForegroundColor DarkGray -NoNewline
         Write-Host ("{0,-7} " -f $visitCount) -ForegroundColor Cyan -NoNewline
         $resolution = Resolve-CdpProjectPath -Project $project
         $pathText = if ($resolution.ErrorCode) { "<invalid $($resolution.Source)>" } else { $resolution.ResolvedPath }

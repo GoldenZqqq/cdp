@@ -128,9 +128,11 @@ cdp_recent_rows() {
 cdp_recent_name_width() {
     local recent_projects="$1"
     local name_width=14
-    local name ignored
+    local name ignored name_display_width
+    # Width must be measured in terminal columns: CJK and fullwidth glyphs occupy two.
     while IFS=$'\t' read -r name ignored; do
-        if (( ${#name} > name_width )); then name_width=${#name}; fi
+        name_display_width=$(cdp_display_width "$name")
+        if (( name_display_width > name_width )); then name_width=$name_display_width; fi
     done <<< "$recent_projects"
     if (( name_width > 30 )); then name_width=30; fi
     printf '%s\n' "$name_width"
@@ -145,11 +147,11 @@ cdp_render_recent() {
     name_width=$(cdp_recent_name_width "$recent_projects")
     echo -e "\n${CYAN}cdp recent${NC} ${GRAY}($(line_count "$recent_projects") shown)${NC}"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
-    printf "  ${GRAY}%-4s${NC} ${CYAN}%-*s${NC} ${GRAY}%-24s %-7s %s${NC}\n" "#" "$name_width" "Project" "Last used" "Visits" "Path"
+    printf "  ${GRAY}%-4s${NC} ${CYAN}%s${NC} ${GRAY}%s %-7s %s${NC}\n" "#" "$(cdp_pad_text "Project" "$name_width")" "$(cdp_pad_text "Last used" 24)" "Visits" "Path"
     echo -e "${GRAY}$(printf -- '-%.0s' {1..110})${NC}"
     while IFS=$'\t' read -r name last_used visits project_path; do
-        display_name=$(truncate_text "$name" "$name_width")
-        display_last=$(truncate_text "$last_used" 24)
+        display_name=$(cdp_limit_text "$name" "$name_width")
+        display_last=$(cdp_limit_text "$last_used" 24)
         recent_json=$(jq -c --arg name "$name" --arg root "$project_path" \
             '.recentProjects[] | select(.name == $name and .rootPath == $root)' "$state_path" | head -n1)
         if cdp_resolve_project_json "$recent_json"; then
@@ -157,7 +159,7 @@ cdp_render_recent() {
         else
             display_path="$project_path"
         fi
-        printf "  ${GRAY}%02d  ${NC} ${GREEN}%-*s${NC} ${GRAY}%-24s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$name_width" "$display_name" "$display_last" "$visits" "$display_path"
+        printf "  ${GRAY}%02d  ${NC} ${GREEN}%s${NC} ${GRAY}%s ${CYAN}%-7s${NC} ${GRAY}%s${NC}\n" "$index" "$(cdp_pad_text "$display_name" "$name_width")" "$(cdp_pad_text "$display_last" 24)" "$visits" "$display_path"
         ((index++))
     done <<< "$recent_projects"
 

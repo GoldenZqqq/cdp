@@ -20,9 +20,25 @@ Prepare `cdp` for a stronger public release by improving first-run clarity, term
 
 Latest verified GitHub release: v2.3.1 (verified 2026-09-11). Latest verified PowerShell Gallery release: v2.3.1 (verified 2026-09-11).
 
-Current release target: v2.3.1.
+Current release target: v2.3.2.
 
 Release status: v2.3.1 is published and verified on GitHub and PowerShell Gallery. The release tag, `origin/main`, and local `HEAD` all resolve to `0575b5bd77686a7f664d9bce1144928095142a85`.
+
+## 2.3.2 Wide Character Table Alignment Checklist
+
+- [x] Measure `cdp-ls` / `Get-ProjectList` and `cdp-recent` columns by terminal display width instead of character count.
+- [x] Pad and truncate wide project names through the shared display-width helpers in both runtimes.
+- [x] Add PowerShell and bash/zsh regressions that require one path column for wide project names.
+- [x] Keep `src/cdp.sh` regenerated and the installer digest / Scoop package hash synchronized.
+- [ ] Publish v2.3.2 on GitHub Releases and PowerShell Gallery and verify both endpoints.
+
+2.3.2 local verification: PowerShell 7 passed Pester `178/178`, command coverage
+`4143/5463` (`75.84%`), PSScriptAnalyzer, release metadata, and the documentation
+gate; Windows PowerShell 5.1 passed Pester `178/178`; bash and zsh passed the
+regenerated artifact check, ShellCheck, the wide-character alignment regression,
+the remaining shell contracts, the installer gate, and the Scoop package gate;
+the Scoop package SHA-256 is
+`85abf12c5726309ac26593c03b8078c495f72c3ebcc00508d81d6f95646d457a`.
 
 ## 2.3.1 Project Manager Path Interop Checklist
 

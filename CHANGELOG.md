@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.3.2
+
+### Fixed
+
+- `cdp-ls` / `Get-ProjectList` and `cdp-recent` keep the path column aligned when a project name contains wide (CJK or fullwidth) characters. Column widths and padding now use terminal display width instead of character count, so a two-column glyph no longer pushes the path out of line.
+- Over-long wide project names are truncated by display width, matching the ASCII path so the path column still starts at one column.
+
+### Tests
+
+- Added PowerShell and bash/zsh regressions that assert every project row and the header start the path column at the same display column for wide project names.
+
 ## 2.3.1
 
 ### Fixed
