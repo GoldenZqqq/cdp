@@ -30,7 +30,7 @@ Release status: v2.3.1 is published and verified on GitHub and PowerShell Galler
 - [x] Pad and truncate wide project names through the shared display-width helpers in both runtimes.
 - [x] Add PowerShell and bash/zsh regressions that require one path column for wide project names.
 - [x] Keep `src/cdp.sh` regenerated and the installer digest / Scoop package hash synchronized.
-- [ ] Publish v2.3.2 on GitHub Releases and PowerShell Gallery and verify both endpoints.
+- [x] Publish v2.3.2 on GitHub Releases and PowerShell Gallery and verify both endpoints.
 
 2.3.2 local verification: PowerShell 7 passed Pester `178/178`, command coverage
 `4143/5463` (`75.84%`), PSScriptAnalyzer, release metadata, and the documentation
@@ -39,6 +39,14 @@ regenerated artifact check, ShellCheck, the wide-character alignment regression,
 the remaining shell contracts, the installer gate, and the Scoop package gate;
 the Scoop package SHA-256 is
 `85abf12c5726309ac26593c03b8078c495f72c3ebcc00508d81d6f95646d457a`.
+
+## 2.3.2 Release Verification
+
+- Release commit and annotated tag: `11fceecf89d8f8b1270769711127f1f18be38d1e` / `v2.3.2`; local `HEAD`, the peeled tag, and `origin/main` match.
+- CI on `main` for the release commit: all five jobs green — Windows PowerShell 5.1, PowerShell 7.x, Web smoke, Bash smoke, macOS smoke (https://github.com/GoldenZqqq/cdp/actions/runs/36380190353).
+- GitHub Release https://github.com/GoldenZqqq/cdp/releases/tag/v2.3.2 is public, latest, non-draft, and non-prerelease; the re-downloaded `cdp-2.3.2.tar.gz` asset matches SHA-256 `85abf12c5726309ac26593c03b8078c495f72c3ebcc00508d81d6f95646d457a` and `scoop/cdp.json`.
+- PowerShell Gallery exact lookup resolves `cdp` version `2.3.2` from `PSGallery`, and https://www.powershellgallery.com/packages/cdp/2.3.2 returns HTTP 200.
+- Local module updated to the published `2.3.2` from `PSGallery`; `cdp-ls` renders all 56 projects with a single aligned path column, including CJK names such as `城市运行安全考核系统` and `中央在沪国有企业在线考核管理`.
 
 ## 2.3.1 Project Manager Path Interop Checklist
 
